@@ -1,0 +1,35 @@
+/*
+ * Course Attendance List Styles.
+ *
+ * Vertical card stack for all student subjects:
+ * - Section header with course count badge.
+ * - Gap-separated list of individual CourseRow cards.
+ */
+
+.section {
+  margin-bottom: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.1px;
+}
+
+.count {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+}

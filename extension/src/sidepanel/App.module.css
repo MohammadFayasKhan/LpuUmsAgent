@@ -1,0 +1,71 @@
+/*
+ * Sidepanel Root Layout Styles.
+ *
+ * The Chrome side panel has a fixed viewport height determined by the browser window,
+ * but its width can be freely resized by the student dragging the side panel divider.
+ *
+ * We use a full-height flex column layout where:
+ * - The header is pinned at the top.
+ * - The mainContent takes the remaining vertical space and scrolls internally.
+ * - Horizontal overflow is strictly hidden so resizing the panel narrower never
+ *   causes horizontal scrollbars to appear.
+ */
+
+.root {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  overflow: hidden;
+  position: relative;
+}
+
+/*
+ * Internal scrolling area:
+ * min-height: 0 is required here because inside flex containers, children
+ * default to min-height: auto which prevents flex items from shrinking and scrolling.
+ */
+.mainContent {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.dashboard {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+/*
+ * Chat section divider:
+ * Separates the Computer Use execution panel from the conversational assistant.
+ */
+.chatSection {
+  margin-top: 10px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.chatHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.chatTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chatSub {
+  font-size: 11px;
+  color: var(--text-tertiary);
+}

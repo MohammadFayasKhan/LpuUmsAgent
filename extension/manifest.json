@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "ONEE - LPU Agent",
+  "short_name": "ONEE",
+  "version": "1.1.0",
+  "description": "ONEE LPU AI Agent. Autonomous browser navigation, attendance verification, and live Computer Use assistant.",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://ums.lpu.in/*",
+    "*://*.lpu.in/*"
+  ],
+  "action": {
+    "default_title": "Open ONEE - LPU Agent"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://ums.lpu.in/*",
+        "*://*.lpu.in/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  }
+}

@@ -1,0 +1,116 @@
+/*
+ * Loading Skeleton Styles.
+ *
+ * Shimmering placeholder bones shown during initial data extraction:
+ * - 200% width linear gradient animating across the bone surface.
+ * - Sized to match the exact dimensions of AttendanceCard and CourseRow elements.
+ */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.bone {
+  background: linear-gradient(90deg, #EBEBEF 25%, #F5F5F7 50%, #EBEBEF 75%);
+  background-size: 200% 100%;
+  border-radius: var(--radius-xs);
+  animation: shimmer 1.5s infinite;
+}
+
+.greetingSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.titleBone {
+  width: 140px;
+  height: 20px;
+}
+
+.subtitleBone {
+  width: 200px;
+  height: 14px;
+}
+
+.cardSkeleton {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.headerBone {
+  width: 100px;
+  height: 12px;
+}
+
+.percentageBone {
+  width: 120px;
+  height: 38px;
+}
+
+.trackBone {
+  width: 100%;
+  height: 6px;
+  border-radius: var(--radius-pill);
+}
+
+.footerBone {
+  width: 160px;
+  height: 12px;
+}
+
+.listSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitleBone {
+  width: 80px;
+  height: 14px;
+  margin-bottom: 4px;
+}
+
+.rowSkeleton {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rowLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.codeBone {
+  width: 70px;
+  height: 14px;
+}
+
+.nameBone {
+  width: 160px;
+  height: 12px;
+}
+
+.pctBone {
+  width: 40px;
+  height: 18px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}

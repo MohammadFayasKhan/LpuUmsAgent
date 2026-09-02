@@ -1,0 +1,138 @@
+/*
+ * ONEE Live Companion Mascot & Speech Bubble Styles.
+ *
+ * This styles the 3D procedural avatar container and its attached speech bubble:
+ * 1. Responsive Avatar Scaling: We use clamp(64px, 18vw, 92px) so the avatar stays
+ *    proportional whether the side panel is narrow (320px) or stretched wide across a desktop.
+ * 2. Floating Speech Bubble: Positioned above the avatar's head with a centered CSS arrow pointer.
+ * 3. Micro-Interactions: A subtle ambient glow and hover scale affordance (scale: 1.05)
+ *    so the student intuitively understands that clicking ONEE will focus the chat.
+ */
+
+.companionContainer {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  position: relative;
+  flex-shrink: 0;
+  width: clamp(64px, 18vw, 92px);
+}
+
+.avatarWrapper {
+  position: relative;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform var(--transition-fast);
+  user-select: none;
+  width: clamp(64px, 18vw, 92px);
+  height: clamp(64px, 18vw, 92px);
+}
+
+.avatarWrapper:hover {
+  transform: scale(1.05);
+}
+
+.avatarWrapper:active {
+  transform: scale(0.96);
+}
+
+.avatar {
+  border-radius: 50%;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.08));
+}
+
+.ambientGlow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(99, 102, 241, 0) 70%);
+  pointer-events: none;
+  opacity: 0.8;
+  transition: opacity var(--transition-fast);
+}
+
+.avatarWrapper:hover .ambientGlow {
+  opacity: 1;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, rgba(99, 102, 241, 0) 75%);
+}
+
+.pulseRing {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+}
+
+.avatarWrapper:hover .pulseRing {
+  opacity: 0.5;
+}
+
+/*
+ * Context-aware speech bubble floating above ONEE.
+ */
+.captionBubble {
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  width: max-content;
+  max-width: 96px;
+  overflow: visible;
+  text-align: center;
+  pointer-events: none;
+  z-index: 10;
+  animation: bubbleFadeIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.captionArrow {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid var(--border-color);
+}
+
+@keyframes bubbleFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 4px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.captionText {
+  display: inline-block;
+  letter-spacing: -0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatarWrapper:hover {
+    transform: none;
+  }
+  .captionBubble {
+    animation: none;
+  }
+}

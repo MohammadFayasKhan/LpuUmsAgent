@@ -1,0 +1,86 @@
+/*
+ * Toast Notification Styles.
+ *
+ * Bottom-anchored notification container:
+ * - High z-index (10000) and pointer-events: none on container to preserve page clicks.
+ * - Pointer-events: auto on individual toast cards for close button interaction.
+ * - Slide-up entrance animation with soft drop-shadow.
+ */
+
+.toastContainer {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10000;
+  width: calc(100% - 32px);
+  max-width: 360px;
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  box-shadow: var(--shadow-md);
+  font-size: 12px;
+  font-weight: 500;
+  pointer-events: auto;
+  animation: toastSlideUp 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes toastSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.toastText {
+  flex: 1;
+}
+
+.closeBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: var(--radius-xs);
+  transition: color var(--transition-fast);
+}
+
+.closeBtn:hover {
+  color: var(--text-primary);
+}
+
+.success {
+  border-left: 3px solid var(--success);
+}
+
+.warning {
+  border-left: 3px solid var(--warning);
+}
+
+.error {
+  border-left: 3px solid var(--danger);
+}
+
+.info {
+  border-left: 3px solid var(--accent);
+}

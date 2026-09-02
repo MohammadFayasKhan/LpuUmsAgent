@@ -1,0 +1,98 @@
+/*
+ * Global CSS Baseline & Accessibility Styles for ONEE.
+ *
+ * This file establishes baseline styling across the sidepanel:
+ * - Box sizing reset (border-box) so paddings don't break responsive widths.
+ * - Font smoothing (-webkit-font-smoothing: antialiased) for clean typography on macOS and Windows.
+ * - Custom slim scrollbars (5px wide) with soft rounded thumbs so scrollable areas
+ *   remain unobtrusive.
+ * - Visible focus rings (:focus-visible) for keyboard accessibility navigation.
+ */
+
+@import './variables.css';
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/*
+ * Custom slim scrollbar for conversation lists and course tables.
+ */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+/*
+ * Button base:
+ * Resets native browser button styles while preserving accessible focus outlines.
+ */
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/*
+ * Form inputs & textareas:
+ * Consistent borders and glowing focus rings matching our brand accent.
+ */
+input, textarea {
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  border: 1px solid var(--border-color);
+  background: var(--surface);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+input:focus, textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}

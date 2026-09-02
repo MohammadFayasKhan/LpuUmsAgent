@@ -1,0 +1,39 @@
+{
+  "name": "onee-lpu-agent",
+  "private": true,
+  "version": "1.1.0",
+  "description": "ONEE - LPU Agent Chrome Extension",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc && vite build && vite build --config vite.content.config.ts && vite build --config vite.background.config.ts",
+    "package": "python3 scripts/package_extension.py",
+    "icons": "python3 scripts/generate_onee_mascot_icons.py",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@bible-strong/avatar-core": "^0.1.0",
+    "@bible-strong/avatar-web": "^0.1.0",
+    "@types/canvas-confetti": "^1.9.0",
+    "canvas-confetti": "^1.9.4",
+    "framer-motion": "^13.1.1",
+    "lucide-react": "^1.16.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@testing-library/react": "^16.0.1",
+    "@types/chrome": "^0.0.280",
+    "@types/node": "^22.7.4",
+    "@types/react": "^18.3.10",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.2",
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^25.0.1",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8",
+    "vite-plugin-static-copy": "^1.0.6",
+    "vitest": "^2.1.2"
+  }
+}

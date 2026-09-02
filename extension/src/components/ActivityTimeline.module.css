@@ -1,0 +1,146 @@
+/*
+ * Agent Activity Timeline Styles.
+ *
+ * Collapsible execution log shown during Computer Use tasks:
+ * - Summary bar with live pulsating dot and toggle chevron.
+ * - Vertical timeline items with state badges (OBSERVE, MOVE, EXTRACT).
+ */
+
+.container {
+  background: var(--surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.summaryBar {
+  width: 100%;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  text-align: left;
+}
+
+.summaryBar:hover {
+  background: var(--surface-hover);
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-light);
+  flex-shrink: 0;
+}
+
+.summaryText {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.activityTitle {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.activityDetail {
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  font-size: 8px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.timelineList {
+  padding: 8px 12px 12px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.timelineItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.itemIcon {
+  font-size: 10px;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.completed .itemIcon {
+  color: var(--success);
+  border: 1px solid var(--success-border);
+}
+
+.in_progress .itemIcon {
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.warning .itemIcon {
+  color: var(--warning);
+  border: 1px solid var(--warning-border);
+}
+
+.error .itemIcon {
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+.itemContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.itemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.itemTitle {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.itemTime {
+  color: var(--text-tertiary);
+  font-size: 10px;
+}
+
+.itemDetail {
+  color: var(--text-secondary);
+  margin-top: 1px;
+  line-height: 1.3;
+}

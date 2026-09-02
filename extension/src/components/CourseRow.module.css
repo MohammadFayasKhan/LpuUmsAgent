@@ -1,0 +1,160 @@
+/*
+ * Course Attendance Row Styles.
+ *
+ * Compact row card for an individual subject:
+ * - Left accent border (.lowestRow) highlighting the lowest attendance subject.
+ * - Mini progress bar with dynamic fill matching attendance tier.
+ * - Pill badge for safe bunk or required recovery count.
+ */
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  gap: 12px;
+}
+
+.row:hover {
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-sm);
+  background: var(--surface-hover);
+}
+
+.lowestRow {
+  border-left: 3px solid var(--warning);
+}
+
+.mainInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.codeLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.code {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.1px;
+}
+
+.lowestBadge {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: var(--warning-bg);
+  color: var(--warning);
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  letter-spacing: 0.3px;
+}
+
+.qualityWarning {
+  font-size: 11px;
+  color: var(--warning);
+}
+
+.name {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.subInfo {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.fraction {
+  color: var(--text-secondary);
+}
+
+.separator {
+  color: var(--border-strong);
+}
+
+.bunkHint {
+  color: var(--text-tertiary);
+}
+
+.needClasses {
+  color: var(--danger);
+  font-weight: 500;
+}
+
+.safeStatus {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.percentageColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.percentage {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.pctSafe {
+  color: var(--text-primary);
+}
+
+.pctWarning {
+  color: var(--warning);
+}
+
+.pctDanger {
+  color: var(--danger);
+}
+
+.miniTrack {
+  width: 48px;
+  height: 3px;
+  background: var(--bg-primary);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.miniBar {
+  height: 100%;
+  border-radius: var(--radius-pill);
+}
+
+.miniBar.pctSafe {
+  background: var(--text-primary);
+}
+
+.miniBar.pctWarning {
+  background: var(--warning);
+}
+
+.miniBar.pctDanger {
+  background: var(--danger);
+}
