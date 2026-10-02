@@ -56,7 +56,12 @@ class PageObservationModel(BaseModel):
     url: str
     title: str
     pageType: str
-    hasAttendanceTable: bool
+    hasAttendanceTable: bool = False
+    hasCampusDriveModal: Optional[bool] = False
+    hasExamTable: Optional[bool] = False
+    isExamPage: Optional[bool] = False
+    isExamContentRendered: Optional[bool] = False
+    examRecordsCount: Optional[int] = 0
     elements: List[PageElementModel] = []
     screenshot: Optional[str] = None
     viewportWidth: Optional[int] = None
@@ -65,7 +70,11 @@ class PageObservationModel(BaseModel):
     summaryText: Optional[str] = None
 
 class AgentActionModel(BaseModel):
-    action: Literal["click", "type", "scroll", "select", "hover", "wait", "goBack", "extractAttendance", "finish", "fail"]
+    action: Literal[
+        "click", "type", "scroll", "select", "hover", "wait", "waitForRender",
+        "goBack", "extractAttendance", "extractExamination", "extractSeatingPlan",
+        "scrollContainer", "dismissPopup", "openSamplePaper", "finish", "fail"
+    ]
     elementId: Optional[str] = None
     targetCoordinates: Optional[CoordinateModel] = None
     text: Optional[str] = None

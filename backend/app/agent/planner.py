@@ -43,8 +43,13 @@ Operational Rules:
    - NEVER click "My Class", "LPU Touch", "LPU Live", "YourDost", or sidebar shortcuts.
    - If Attendance Modal opens (`hasAttendanceTable: true`):
      - Select `finish` to extract the complete structured attendance table.
-5. Verification Awareness: Specify `expectedOutcome` for every click or navigation action so ONEE can verify success before proceeding.
-6. Strict JSON Output: Respond ONLY with a valid JSON object matching this schema:
+5. Examination / Date Sheet Navigation Strategy:
+   - When goal involves Date Sheet, Seating Plan, or Exam Schedule:
+   - On Student Dashboard: Locate "Date Sheet" under "Important Links" below the navigation bar.
+   - When on Seating Plan or Date Sheet interface (`isExamPage: true` or URL contains `seatingplan`):
+     - Select `finish` to extract the complete examination date sheet.
+6. Verification Awareness: Specify `expectedOutcome` for every click or navigation action so ONEE can verify success before proceeding.
+7. Strict JSON Output: Respond ONLY with a valid JSON object matching this schema:
 {
   "thought": "Step-by-step reasoning about the current visual layout and target",
   "action": {
@@ -67,9 +72,34 @@ def heuristic_plan(request: PlanActionRequest) -> PlanActionResponse:
     Deterministic fallback planner for LPU UMS navigation with spatial grounding and expected outcomes.
     """
     obs = request.observation
+    step = request.step
+    goal_lower = request.goal.lower()
+    is_exam_goal = any(kw in goal_lower for kw in ["date sheet", "datesheet", "seating", "exam", "venue", "seat"])
+
+    # 0. Global UMS Preflight: If Campus Drive Notification popup is blocking the page
+    has_popup = (
+        obs.hasCampusDriveModal or
+        any(("remind" in el.text.lower() or "remaind" in el.text.lower()) and "later" in el.text.lower() for el in obs.elements) or
+        any("campus drive" in el.text.lower() for el in obs.elements)
+    )
+    if has_popup:
+        remind_el = next(
+            (el for el in obs.elements if ("remind" in el.text.lower() or "remaind" in el.text.lower()) and "later" in el.text.lower()),
+            None
+        )
+        return PlanActionResponse(
+            thought="Campus Drive Notifications popup is blocking the viewport. Must safely click 'Remind me later' before proceeding with any automation.",
+            action=AgentActionModel(
+                action="click",
+                elementId=remind_el.id if remind_el else (obs.elements[0].id if obs.elements else "onee-001"),
+                reason="Dismissing Campus Drive notification (Remind me later)",
+                expectedOutcome="modal_dismissed"
+            ),
+            isGoalComplete=False
+        )
 
     # 1. If attendance table is already present/visible in DOM
-    if obs.hasAttendanceTable:
+    if obs.hasAttendanceTable and not is_exam_goal:
         return PlanActionResponse(
             thought="Attendance modal table is open and visible in DOM.",
             action=AgentActionModel(
@@ -88,7 +118,86 @@ def heuristic_plan(request: PlanActionRequest) -> PlanActionResponse:
             isGoalComplete=True
         )
 
-    # 2. Priority navigation sequence on Student Dashboard
+    # 2. If on Examination Date Sheet / Seating Plan view
+    if is_exam_goal:
+        is_dashboard = "studentdashboard" in obs.url.lower()
+        is_seating_page = (
+            not is_dashboard
+            and (
+                "seatingplan" in obs.url.lower()
+                or "/examination/conduct/" in obs.url.lower()
+                or "examinationdatesheet" in obs.url.lower()
+                or (obs.isExamPage and not is_dashboard)
+            )
+        )
+        if is_seating_page:
+            is_rendered = bool(getattr(obs, 'isExamContentRendered', False))
+            if not is_rendered and step < 4:
+                return PlanActionResponse(
+                    thought="Examination seating plan surface loaded. Waiting for examination records to render.",
+                    action=AgentActionModel(
+                        action="waitForRender",
+                        durationMs=12000,
+                        reason="Waiting for examination records to render on UMS.",
+                        expectedOutcome="examination_rendered"
+                    ),
+                    isGoalComplete=False
+                )
+            return PlanActionResponse(
+                thought="Examination date sheet / seating plan records detected and ready for extraction.",
+                action=AgentActionModel(
+                    action="finish",
+                    reason="Date sheet detected and ready for extraction.",
+                    expectedOutcome="date_sheet_extracted",
+                    confidenceBreakdown=ConfidenceBreakdownModel(
+                        confidence=0.98,
+                        semanticScore=1.0,
+                        visualScore=0.95,
+                        spatialScore=1.0,
+                        visibilityScore=1.0,
+                        interactionScore=1.0
+                    )
+                ),
+                isGoalComplete=bool(is_rendered or step >= 4)
+            )
+
+        # Look for Date Sheet link under Important Links
+        date_sheet_keywords = ["date sheet", "datesheet", "seating plan", "examination"]
+        for el in obs.elements:
+            t = el.text.lower()
+            if any(kw in t for kw in date_sheet_keywords):
+                return PlanActionResponse(
+                    thought=f"Targeting '{el.text}' ({el.id}) to open Examination Date Sheet.",
+                    action=AgentActionModel(
+                        action="click",
+                        elementId=el.id,
+                        reason=f"Clicking {el.text} under Important Links",
+                        expectedOutcome="date_sheet_opened",
+                        confidenceBreakdown=ConfidenceBreakdownModel(
+                            confidence=0.96,
+                            semanticScore=0.98,
+                            visualScore=0.94,
+                            spatialScore=0.95,
+                            visibilityScore=1.0,
+                            interactionScore=1.0
+                        )
+                    ),
+                    isGoalComplete=False
+                )
+
+        return PlanActionResponse(
+            thought="Scrolling down to bring Important Links into view.",
+            action=AgentActionModel(
+                action="scroll",
+                direction="down",
+                amount=350,
+                reason="Scrolling to locate Date Sheet link under Important Links",
+                expectedOutcome="important_links_visible"
+            ),
+            isGoalComplete=False
+        )
+
+    # 3. Priority navigation sequence on Student Dashboard for Attendance
     priority_keywords = [
         "attendance modal",
         "attendance :",
@@ -175,6 +284,28 @@ async def plan_next_action(request: PlanActionRequest) -> PlanActionResponse:
     Decides the next active computer-use action using Qwen LLM with spatial-vision context.
     """
     obs = request.observation
+
+    # 0. Global UMS Preflight: Blocking Campus Drive Modal
+    has_popup = (
+        obs.hasCampusDriveModal or
+        any(("remind" in el.text.lower() or "remaind" in el.text.lower()) and "later" in el.text.lower() for el in obs.elements) or
+        any("campus drive" in el.text.lower() for el in obs.elements)
+    )
+    if has_popup:
+        remind_el = next(
+            (el for el in obs.elements if ("remind" in el.text.lower() or "remaind" in el.text.lower()) and "later" in el.text.lower()),
+            None
+        )
+        return PlanActionResponse(
+            thought="Campus Drive Notifications popup is blocking the viewport. Must safely click 'Remind me later' before proceeding with any automation.",
+            action=AgentActionModel(
+                action="click",
+                elementId=remind_el.id if remind_el else (obs.elements[0].id if obs.elements else "onee-001"),
+                reason="Dismissing Campus Drive notification (Remind me later)",
+                expectedOutcome="modal_dismissed"
+            ),
+            isGoalComplete=False
+        )
 
     if obs.hasAttendanceTable:
         return PlanActionResponse(

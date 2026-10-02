@@ -59,3 +59,61 @@ async def test_planner_heuristic_click_academics():
     res = heuristic_plan(req)
     assert res.action.action == "click"
     assert res.action.elementId == "onee-001"
+
+@pytest.mark.asyncio
+async def test_planner_heuristic_exam_waiting_for_render():
+    obs = PageObservationModel(
+        url="https://studentums.lpu.in/dashboard/examination/conduct/seatingplan",
+        title="Examination Date Sheet",
+        pageType="Examination Date Sheet / Seating Plan",
+        isExamPage=True,
+        isExamContentRendered=False,
+        elements=[]
+    )
+    req = PlanActionRequest(
+        goal="Check my date sheet and seating plan",
+        step=1,
+        observation=obs
+    )
+    res = heuristic_plan(req)
+    assert res.action.action == "waitForRender"
+    assert res.isGoalComplete is False
+
+@pytest.mark.asyncio
+async def test_planner_heuristic_exam_rendered_extracted():
+    obs = PageObservationModel(
+        url="https://studentums.lpu.in/dashboard/examination/conduct/seatingplan",
+        title="Examination Date Sheet",
+        pageType="Examination Date Sheet / Seating Plan",
+        isExamPage=True,
+        isExamContentRendered=True,
+        elements=[]
+    )
+    req = PlanActionRequest(
+        goal="Check my date sheet and seating plan",
+        step=2,
+        observation=obs
+    )
+    res = heuristic_plan(req)
+    assert res.action.action == "finish"
+    assert res.isGoalComplete is True
+
+@pytest.mark.asyncio
+async def test_planner_heuristic_exam_step_timeout_extracted():
+    obs = PageObservationModel(
+        url="https://studentums.lpu.in/dashboard/examination/conduct/seatingplan",
+        title="Examination Date Sheet",
+        pageType="Examination Date Sheet / Seating Plan",
+        isExamPage=True,
+        isExamContentRendered=False,
+        elements=[]
+    )
+    req = PlanActionRequest(
+        goal="Check my date sheet and seating plan",
+        step=4,
+        observation=obs
+    )
+    res = heuristic_plan(req)
+    assert res.action.action == "finish"
+    assert res.isGoalComplete is True
+

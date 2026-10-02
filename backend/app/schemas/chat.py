@@ -32,6 +32,7 @@ class ToolCallRecord(BaseModel):
 class ChatRequest(BaseModel):
     message: str = Field(min_length=1)
     attendance: Optional[AttendanceSummary] = None
+    examination: Optional[Dict[str, Any]] = None
     history: Optional[List[ChatMessage]] = []
 
 class ChatResponse(BaseModel):
