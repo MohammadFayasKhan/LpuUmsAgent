@@ -13,14 +13,17 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { AttendanceSummary, ChatMessage, AgentActivity } from '../shared/types';
+import { AttendanceSummary, ExaminationSummary, ChatMessage, AgentActivity } from '../shared/types';
 import { streamChatMessage } from '../services/api';
 import {
   localDatabase,
   ConversationRecord,
   MessageRecord
 } from '../services/localDatabase';
+import { verifiedExaminationRepo } from '../services/repositories';
+import { generateContextualSuggestions } from '../services/suggestionGenerator';
 import { personalizationStore } from '../services/personalizationStore';
+import { cleanPreviewSnippet } from '../lib/scrollUtils';
 
 export interface UseChatAgentResult {
   messages: ChatMessage[];
@@ -38,114 +41,29 @@ export interface UseChatAgentResult {
 function generateUUID(): string {
   return 'conv-' + Math.random().toString(36).substring(2, 9) + '-' + Date.now().toString(36);
 }
-
-/**
- * Generates dynamic, highly personalized prompt suggestions based on current student data.
- */
-function generateDynamicSuggestions(
-  attendance: AttendanceSummary | null,
-  messages: ChatMessage[] = []
-): string[] {
-  if (!attendance || !attendance.courses || attendance.courses.length === 0) {
-    const unauthenticatedPool = [
-      "Check my live attendance",
-      "Which subject has the lowest attendance?",
-      "How do safe bunk calculations work?",
-      "Show my overall attendance summary"
-    ];
-    return unauthenticatedPool;
-  }
-
-  const courses = attendance.courses;
-  const dangerCourses = courses.filter((c) => c.percentage < 75);
-  const safeCourses = courses.filter((c) => c.percentage >= 75);
-
-  // Extract recent query context from chat history
-  const recentHistoryText = messages
-    .slice(-8)
-    .map((m) => (m.text || m.content || '').toUpperCase())
-    .join(' ');
-
-  // Filter courses that haven't been queried recently
-  const unaskedCourses = courses.filter(
-    (c) => !recentHistoryText.includes(c.code.toUpperCase())
-  );
-
-  const pool: string[] = [];
-
-  // 1. Critical & At-Risk Course Inquiries
-  if (dangerCourses.length > 0) {
-    dangerCourses.forEach((c) => {
-      if (!recentHistoryText.includes(c.code.toUpperCase())) {
-        pool.push(`How many classes to recover ${c.code} to 75%?`);
-        pool.push(`Can I afford to miss any ${c.code} lectures?`);
-      }
-    });
-  }
-
-  // 2. Unasked Course Inquiries
-  const coursesToSuggest = unaskedCourses.length > 0 ? unaskedCourses : courses;
-  coursesToSuggest.forEach((c) => {
-    if (c.percentage >= 85) {
-      pool.push(`How many classes can I safely skip in ${c.code}?`);
-    } else if (c.percentage >= 75) {
-      pool.push(`Can I bunk any classes in ${c.code}?`);
-      pool.push(`What is my safe margin in ${c.code}?`);
-    } else {
-      pool.push(`How to get ${c.code} back to 75%?`);
-    }
-  });
-
-  // 3. Strategic / Overview Questions
-  if (!recentHistoryText.includes('BUFFER') && !recentHistoryText.includes('COMBINED')) {
-    pool.push(`What is my overall bunk buffer across all ${courses.length} subjects?`);
-  }
-  if (!recentHistoryText.includes('CLOSEST') && !recentHistoryText.includes('RISK') && safeCourses.length > 0) {
-    pool.push(`Which subject is closest to falling below 75%?`);
-  }
-  if (!recentHistoryText.includes('BREAKDOWN') && !recentHistoryText.includes('SUMMARY')) {
-    pool.push(`Give me a summary breakdown of all my subjects`);
-  }
-  if (!recentHistoryText.includes('ELIGIB') && !recentHistoryText.includes('EXAM')) {
-    pool.push(`Am I eligible for exams across all subjects?`);
-  }
-  if (!recentHistoryText.includes('TOMORROW') && !recentHistoryText.includes('MISS')) {
-    pool.push(`What happens if I take leave tomorrow?`);
-  }
-
-  // Deduplicate and filter out any prompt that matches an existing message exactly
-  const uniqueSuggestions = Array.from(new Set(pool)).filter(
-    (sug) => !messages.some((m) => (m.text || m.content || '').trim().toLowerCase() === sug.trim().toLowerCase())
-  );
-
-  // Return up to 4 dynamic suggestions
-  if (uniqueSuggestions.length >= 3) {
-    return uniqueSuggestions.slice(0, 4);
-  }
-
-  // Fallback defaults if pool is depleted
-  const fallbacks = [
-    `Can I bunk any classes in ${courses[0]?.code || 'my courses'}?`,
-    `What is my overall bunk buffer?`,
-    `Give me a summary breakdown of all my subjects`,
-    `Which subject has the lowest attendance?`
-  ];
-  return Array.from(new Set([...uniqueSuggestions, ...fallbacks])).slice(0, 4);
-}
-
 export function useChatAgent(
   attendance: AttendanceSummary | null,
   onActivityLog?: (activity: AgentActivity) => void,
-  accountId: string = 'default'
+  accountId: string = 'default',
+  examination?: ExaminationSummary | null
 ): UseChatAgentResult {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const [conversations, setConversations] = useState<ConversationRecord[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string>('');
   const [localVerifiedContext, setLocalVerifiedContext] = useState<AttendanceSummary | null>(null);
+  const [localVerifiedExamination, setLocalVerifiedExamination] = useState<ExaminationSummary | null>(null);
 
   const activeConvRef = useRef<string>('');
   activeConvRef.current = activeConversationId;
+
+  // Effective examination: Merges live examination snapshot with local verified records
+  const effectiveExamination = useMemo(() => {
+    if (examination && examination.exams && examination.exams.length > 0) {
+      return examination;
+    }
+    return localVerifiedExamination;
+  }, [examination, localVerifiedExamination]);
 
   // Effective attendance: Merges live snapshot with local verified context so exact class counts are never lost
   const effectiveAttendance = useMemo(() => {
@@ -198,12 +116,17 @@ export function useChatAgent(
 
     async function loadStorage() {
       try {
-        const [convList, verifiedAtt] = await Promise.all([
+        const [convList, verifiedAtt, verifiedExam] = await Promise.all([
           localDatabase.listConversations(accountId),
-          localDatabase.getLatestVerifiedAttendance(accountId)
+          localDatabase.getLatestVerifiedAttendance(accountId),
+          verifiedExaminationRepo.getLatestVerifiedExamination(accountId)
         ]);
 
         if (!isMounted) return;
+
+        if (verifiedExam && verifiedExam.examination) {
+          setLocalVerifiedExamination(verifiedExam.examination);
+        }
 
         if (verifiedAtt && verifiedAtt.subjects) {
           setLocalVerifiedContext({
@@ -271,11 +194,11 @@ export function useChatAgent(
     };
   }, [accountId]);
 
-  // Dynamic contextual suggestions based on live/local attendance state and message history
-  const suggestions = useMemo(
-    () => generateDynamicSuggestions(effectiveAttendance, messages),
-    [effectiveAttendance, messages]
-  );
+  // Dynamic contextual suggestions based on live/local attendance & exam state and message history
+  const suggestions = useMemo(() => {
+    const lastUserMsg = [...messages].reverse().find((m) => m.sender === 'user')?.text || null;
+    return generateContextualSuggestions(effectiveAttendance, lastUserMsg, effectiveExamination);
+  }, [effectiveAttendance, messages, effectiveExamination]);
 
   const switchConversation = useCallback(
     async (conversationId: string) => {
@@ -386,13 +309,15 @@ export function useChatAgent(
           effectiveAttendance,
           messages,
           (chunk: string) => {
+            const cleanChunk = chunk.replace(/—/g, '→');
             setMessages((prev) =>
-              prev.map((m) => (m.id === assistantId ? { ...m, text: m.text + chunk } : m))
+              prev.map((m) => (m.id === assistantId ? { ...m, text: ((m.text || '') + cleanChunk).replace(/—/g, '→') } : m))
             );
           },
           (act: AgentActivity) => {
             if (onActivityLog) onActivityLog(act);
-          }
+          },
+          effectiveExamination
         );
 
         const oneeTimestamp = new Date().toLocaleTimeString([], {
@@ -400,14 +325,14 @@ export function useChatAgent(
           minute: '2-digit'
         });
 
-        const finalText = response.message || '';
+        const finalText = (response.message || '').replace(/—/g, '→');
 
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
               ? {
                   ...m,
-                  text: finalText || m.text,
+                  text: finalText || (m.text || '').replace(/—/g, '→'),
                   timestamp: oneeTimestamp,
                   isStreaming: false,
                   activities: response.activities,
@@ -440,7 +365,7 @@ export function useChatAgent(
             title,
             createdAt: Date.now(),
             updatedAt: Date.now(),
-            lastMessagePreview: finalText.slice(0, 80)
+            lastMessagePreview: cleanPreviewSnippet(finalText, 80)
           };
           await localDatabase.saveConversation(updatedConv);
           setConversations((prev) =>

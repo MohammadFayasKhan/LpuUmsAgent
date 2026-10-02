@@ -18,14 +18,15 @@
 }
 
 .avatar {
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  background: var(--text-primary);
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #1d1d1f 0%, #2d2d30 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .avatarInner {
@@ -36,22 +37,23 @@
 }
 
 .typingBubble {
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  padding: 8px 12px;
-  border-radius: var(--radius-md);
-  border-bottom-left-radius: var(--radius-xs);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  padding: 8px 14px;
+  border-radius: 18px 18px 18px 4px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  box-shadow: var(--shadow-sm);
+  gap: 5px;
+  box-shadow: var(--glass-shadow);
 }
 
 .typingDot {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--text-tertiary);
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
   animation: bounce 1.2s infinite ease-in-out;
 }
 
@@ -107,12 +109,29 @@
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  overscroll-behavior-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
   scroll-behavior: smooth;
   gap: 6px;
   padding: 2px 4px 4px 4px;
   scrollbar-width: none;
   -ms-overflow-style: none;
   width: 100%;
+  cursor: grab;
+  user-select: none;
+}
+
+.suggestionRail:active {
+  cursor: grabbing;
+}
+
+.suggestionRail:focus-visible {
+  outline: 1px solid var(--accent, #7c3aed);
+  outline-offset: 1px;
+  border-radius: var(--radius-sm, 6px);
 }
 
 .suggestionRail::-webkit-scrollbar {
@@ -124,7 +143,7 @@
   left: 0;
   top: 0;
   bottom: 0;
-  width: 18px;
+  width: 20px;
   pointer-events: none;
   background: linear-gradient(to right, var(--bg-primary, #0f172a), transparent);
   z-index: 2;
@@ -169,57 +188,67 @@
 .suggestionChip {
   flex-shrink: 0;
   white-space: nowrap;
-  padding: 4px 10px;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: var(--radius-pill);
   font-size: 11px;
   color: var(--text-secondary);
   font-weight: 500;
-  box-shadow: var(--shadow-sm);
-  transition: all var(--transition-fast);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: all var(--transition-spring), transform var(--transition-spring-press);
   cursor: pointer;
   user-select: none;
   line-height: 1.3;
 }
 
 .suggestionChip:hover:not(:disabled) {
-  background: var(--surface-hover);
+  background: rgba(255, 255, 255, 0.98);
   color: var(--text-primary);
-  border-color: var(--accent-purple, #7c3aed);
-  transform: translateY(-1px);
+  border-color: rgba(124, 58, 237, 0.35);
+  box-shadow: 0 3px 10px rgba(124, 58, 237, 0.12);
+  transform: translateY(-1px) scale(1.02);
+}
+
+.suggestionChip:active:not(:disabled) {
+  transform: scale(0.95);
 }
 
 .composerWrapper {
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .composer {
   display: flex;
   align-items: flex-end;
-  background: var(--surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  padding: 6px 8px 6px 12px;
-  box-shadow: var(--shadow-sm);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid rgba(0, 0, 0, 0.09);
+  border-radius: 24px;
+  padding: 6px 8px 6px 14px;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: border-color var(--transition-spring), box-shadow var(--transition-spring);
 }
 
 .composer:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-light);
+  box-shadow: 0 4px 24px -2px rgba(124, 58, 237, 0.16), 0 0 0 3.5px rgba(124, 58, 237, 0.12);
 }
 
 .input {
   flex: 1;
   border: none;
   background: transparent;
-  padding: 4px 0;
+  padding: 5px 0;
   font-size: 13px;
   line-height: 1.4;
   max-height: 100px;
   resize: none;
   box-shadow: none !important;
+  font-family: var(--font-family);
 }
 
 .input::placeholder {
@@ -227,8 +256,8 @@
 }
 
 .sendButton {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--bg-primary);
   color: var(--text-tertiary);
@@ -237,16 +266,22 @@
   justify-content: center;
   flex-shrink: 0;
   margin-left: 6px;
-  transition: all var(--transition-fast);
+  transition: all var(--transition-spring), transform var(--transition-spring-press);
 }
 
 .sendActive {
-  background: var(--text-primary);
-  color: var(--text-inverse);
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.35);
 }
 
 .sendActive:hover {
-  background: #333336;
+  transform: scale(1.06);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.45);
+}
+
+.sendActive:active {
+  transform: scale(0.92);
 }
 
 @keyframes bounce {

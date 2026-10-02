@@ -13,12 +13,13 @@
  * we reset active agent state and clear temporary memory so data never bleeds across accounts.
  */
 
-import React, { useState, useEffect } from 'react';
-import { AttendanceSummary, AttendanceRecord } from '../shared/types';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { AttendanceSummary, AttendanceRecord, ExaminationSummary, ConnectionStatus } from '../shared/types';
 import { useUmsConnection } from '../hooks/useUmsConnection';
 import { useChatAgent } from '../hooks/useChatAgent';
 import { useAgentController } from '../hooks/useAgentController';
-import { hasSeenPrivacyNotice, markPrivacyNoticeSeen } from '../services/storage';
+import { markPrivacyNoticeSeen } from '../services/storage';
+import { verifiedExaminationRepo } from '../services/repositories';
 
 import { Header } from '../components/Header';
 import { ConnectionState } from '../components/ConnectionState';
@@ -31,6 +32,7 @@ import { PrivacyModal } from '../components/PrivacyModal';
 import { ConversationDrawer } from '../components/ConversationDrawer';
 import { Skeletons } from '../components/Skeletons';
 import { AgentControlPanel } from '../components/AgentControlPanel';
+import { ExaminationCard } from '../components/ExaminationCard';
 import { ToastContainer, useToasts } from '../components/Toast';
 
 import styles from './App.module.css';
@@ -39,7 +41,19 @@ import { connectionManager, RuntimeConnectionState } from '../services/connectio
 
 export const App: React.FC = () => {
   const [runtimeState, setRuntimeState] = useState<RuntimeConnectionState>('INITIAL');
+  const [examination, setExamination] = useState<ExaminationSummary | null>(null);
   const { toasts, addToast, dismissToast } = useToasts();
+
+  /*
+   * Load any previously verified examination data from local storage
+   */
+  useEffect(() => {
+    verifiedExaminationRepo.getLatestVerifiedExamination('default').then((record) => {
+      if (record?.examination) {
+        setExamination(record.examination);
+      }
+    });
+  }, []);
 
   /*
    * useUmsConnection monitors the active Chrome tab. It detects whether the student
@@ -60,7 +74,8 @@ export const App: React.FC = () => {
 
   const [selectedCourse, setSelectedCourse] = useState<AttendanceRecord | null>(null);
   const [showOverallCalc, setShowOverallCalc] = useState<boolean>(false);
-  const [showPrivacy, setShowPrivacy] = useState<boolean>(false);
+  // Show privacy & info panel on fresh launch
+  const [showPrivacy, setShowPrivacy] = useState<boolean>(true);
   const [showHistory, setShowHistory] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
@@ -81,7 +96,7 @@ export const App: React.FC = () => {
   /*
    * useAgentController manages active Computer Use tasks.
    * When an extraction finishes successfully, it invokes this callback so we
-   * can play confetti and trigger a fresh read of the verified attendance.
+   * can play confetti and trigger a fresh read of the verified data.
    */
   const {
     state: agentState,
@@ -91,11 +106,19 @@ export const App: React.FC = () => {
     resumeAgent,
     toggleDebugMode,
     resetAgentState
-  } = useAgentController((_extractedAttendance: AttendanceSummary) => {
-    addToast('Attendance updated', 'success');
-    triggerSuccessConfetti();
-    refresh();
-  });
+  } = useAgentController(
+    (_extractedAttendance: AttendanceSummary) => {
+      addToast('Attendance updated', 'success');
+      triggerSuccessConfetti();
+      refresh();
+    },
+    'default',
+    (extractedExam: ExaminationSummary) => {
+      setExamination(extractedExam);
+      addToast('Examination schedule verified', 'success');
+      triggerSuccessConfetti();
+    }
+  );
 
   /*
    * useChatAgent manages conversation threads, local IndexedDB persistence,
@@ -112,19 +135,29 @@ export const App: React.FC = () => {
     newConversation,
     switchConversation,
     deleteConversation
-  } = useChatAgent(attendance);
+  } = useChatAgent(attendance, undefined, 'default', examination);
 
   /*
-   * Show the privacy disclosure on first launch so the student knows
-   * that all attendance and chat data stays strictly on their own machine.
+   * Track UMS status transitions. Whenever the student logs in to LPU UMS
+   * (transition from LOGIN_PAGE / NOT_CONNECTED to CONNECTED / TABLE_DETECTED),
+   * display the ONEE Data & Privacy info panel.
    */
+  const prevStatusRef = useRef<ConnectionStatus>(status);
   useEffect(() => {
-    hasSeenPrivacyNotice().then((seen) => {
-      if (!seen) {
-        setShowPrivacy(true);
-      }
-    });
-  }, []);
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = status;
+
+    const isAuth =
+      status === 'READY' ||
+      status === 'UMS_DETECTED' ||
+      status === 'READING' ||
+      status === 'NO_ATTENDANCE_ON_PAGE' ||
+      status === 'connected';
+
+    if ((prev === 'LOGIN_PAGE' || prev === 'NOT_CONNECTED') && isAuth) {
+      setShowPrivacy(true);
+    }
+  }, [status]);
 
   /*
    * Session boundary check:
@@ -135,6 +168,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     if (status === 'LOGIN_PAGE' || status === 'NOT_CONNECTED' || status === 'HUMAN_VERIFICATION') {
       resetAgentState();
+      setExamination(null);
     }
   }, [status, resetAgentState]);
 
@@ -168,6 +202,31 @@ export const App: React.FC = () => {
     await sendMessage(text);
   };
 
+  const chatSectionRef = useRef<HTMLDivElement>(null);
+  const mainContentRef = useRef<HTMLElement>(null);
+
+  /*
+   * When student clicks "Ask ONEE about this" in verification cards or quick actions,
+   * immediately trigger message generation and smoothly glide down to the chatbot section.
+   */
+  const handleAskOnee = useCallback(
+    (prompt: string) => {
+      // 1. Kick off prompt generation immediately
+      sendMessage(prompt);
+
+      // 2. Smoothly glide down to the chatbot section and generated response
+      requestAnimationFrame(() => {
+        const container = mainContentRef.current;
+        if (container) {
+          container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        } else {
+          chatSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+      });
+    },
+    [sendMessage]
+  );
+
   const isAttendanceVerified = Boolean(
     attendance &&
     attendance.status === 'verified' &&
@@ -194,7 +253,7 @@ export const App: React.FC = () => {
         isRefreshing={isRefreshing}
       />
 
-      <main className={styles.mainContent}>
+      <main ref={mainContentRef} className={styles.mainContent}>
         {isLoading && !attendance ? (
           <Skeletons />
         ) : !isSessionAuthenticated ? (
@@ -219,23 +278,14 @@ export const App: React.FC = () => {
               onPause={pauseAgent}
               onResume={resumeAgent}
               onToggleDebug={toggleDebugMode}
-              onAskOnee={(prompt) => sendMessage(prompt)}
+              onAskOnee={handleAskOnee}
               onCopy={(text) => {
                 navigator.clipboard.writeText(text);
                 addToast('Summary copied to clipboard', 'success');
               }}
             />
 
-            {!isAttendanceVerified ? (
-              <ConnectionState
-                status={status}
-                errorMessage={errorMessage}
-                hasAttendanceLink={hasAttendanceLink}
-                onOpenUms={openUmsTab}
-                onRefresh={handleRefresh}
-                onNavigateToAttendance={navigateToAttendance}
-              />
-            ) : (
+            {isAttendanceVerified ? (
               <>
                 <AttendanceCard
                   attendance={attendance!}
@@ -246,12 +296,36 @@ export const App: React.FC = () => {
                   courses={attendance!.courses}
                   onSelectCourse={(course) => setSelectedCourse(course)}
                 />
-
-                <ActivityTimeline activities={activities} />
               </>
+            ) : (
+              <ConnectionState
+                status={status}
+                errorMessage={errorMessage}
+                hasAttendanceLink={hasAttendanceLink}
+                onOpenUms={openUmsTab}
+                onRefresh={handleRefresh}
+                onNavigateToAttendance={navigateToAttendance}
+              />
             )}
 
-            <div className={styles.chatSection}>
+            {/* Examination Schedule & Seating Plan Card - Preserved alongside attendance report */}
+            <ExaminationCard
+              examination={examination}
+              onCheckDateSheet={() =>
+                startGoal('Open Date Sheet from Important Links and check my exams')
+              }
+              onOpenSamplePaper={(code) =>
+                startGoal(`Open sample paper for ${code}`)
+              }
+            />
+
+            <ActivityTimeline activities={activities} />
+
+            <div
+              id="ask-onee-chat-section"
+              ref={chatSectionRef}
+              className={styles.chatSection}
+            >
               <div className={styles.chatHeader}>
                 <h3 className={styles.chatTitle}>Ask ONEE</h3>
               </div>
@@ -262,6 +336,8 @@ export const App: React.FC = () => {
                 suggestions={suggestions}
                 agentState={agentState}
                 attendance={attendance}
+                examination={examination}
+                scrollContainerRef={mainContentRef}
               />
             </div>
           </div>
@@ -301,6 +377,7 @@ export const App: React.FC = () => {
           onClose={handleClosePrivacy}
           onDataCleared={() => {
             clearHistory();
+            setExamination(null);
             addToast('Local data cleared', 'info');
           }}
         />
