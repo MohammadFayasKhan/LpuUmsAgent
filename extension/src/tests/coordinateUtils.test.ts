@@ -13,7 +13,8 @@ import {
   viewportToDocument,
   visionToViewport,
   isTargetInSafeViewport,
-  calculateSafeScrollDelta
+  calculateSafeScrollDelta,
+  getTightBoundingBox
 } from '../content/coordinateUtils';
 
 describe('coordinateUtils', () => {
@@ -80,4 +81,79 @@ describe('coordinateUtils', () => {
     const delta = calculateSafeScrollDelta(elBelow);
     expect(delta).toBeGreaterThan(0);
   });
+
+  it('calculates tight bounding box for attendance container with empty space on the left', () => {
+    const container = document.createElement('div');
+    container.className = 'col-xs-6 text-right';
+    container.innerHTML = `
+      <span class="lbl-attendance">ATTENDANCE : 91%</span>
+      <a href="#"><i class="fa fa-info-circle"></i></a>
+    `;
+    container.getBoundingClientRect = () => ({
+      top: 200,
+      bottom: 232,
+      left: 400,
+      right: 660,
+      width: 260,
+      height: 32,
+      x: 400,
+      y: 200,
+      toJSON: () => {}
+    });
+
+    const span = container.querySelector('span') as HTMLElement;
+    span.getBoundingClientRect = () => ({
+      top: 200,
+      bottom: 232,
+      left: 540,
+      right: 635,
+      width: 95,
+      height: 32,
+      x: 540,
+      y: 200,
+      toJSON: () => {}
+    });
+
+    const icon = container.querySelector('i') as HTMLElement;
+    icon.getBoundingClientRect = () => ({
+      top: 200,
+      bottom: 232,
+      left: 640,
+      right: 660,
+      width: 20,
+      height: 32,
+      x: 640,
+      y: 200,
+      toJSON: () => {}
+    });
+
+    document.body.appendChild(container);
+
+    const tight = getTightBoundingBox(container);
+    // Should trim the left whitespace from 400 to 540
+    expect(tight.left).toBe(540);
+    expect(tight.width).toBe(120);
+    expect(tight.right).toBe(660);
+  });
+
+  it('preserves full width bounding box for table rows and data tables', () => {
+    const tr = document.createElement('tr');
+    tr.getBoundingClientRect = () => ({
+      top: 150,
+      bottom: 180,
+      left: 50,
+      right: 850,
+      width: 800,
+      height: 30,
+      x: 50,
+      y: 150,
+      toJSON: () => {}
+    });
+    document.body.appendChild(tr);
+
+    const tight = getTightBoundingBox(tr);
+    expect(tight.left).toBe(50);
+    expect(tight.width).toBe(800);
+  });
 });
+

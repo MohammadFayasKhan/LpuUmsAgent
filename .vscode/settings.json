@@ -1,0 +1,5 @@
+{
+  "playwright.configs": [
+    "extension/playwright.config.ts"
+  ]
+}

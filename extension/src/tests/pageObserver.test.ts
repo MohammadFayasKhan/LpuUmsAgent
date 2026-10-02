@@ -68,4 +68,97 @@ describe('pageObserver', () => {
     );
     expect(attendanceEl).toBeDefined();
   });
+
+  it('indexes Date Sheet link on StudentDashboard with high priority', () => {
+    document.body.innerHTML = `
+      <div class="important-links-container">
+        <h3>Important Links</h3>
+        <a id="btnDateSheet" href="https://studentums.lpu.in/dashboard/examination/conduct/seatingplan" class="pill-btn">
+          Date Sheet <span class="badge">1</span>
+        </a>
+      </div>
+    `;
+
+    Array.from(document.querySelectorAll('*')).forEach((el) => {
+      (el as HTMLElement).getBoundingClientRect = () => ({
+        top: 200,
+        left: 300,
+        width: 100,
+        height: 35,
+        bottom: 235,
+        right: 400,
+        x: 300,
+        y: 200,
+        toJSON: () => {}
+      });
+    });
+
+    const observation = observePage(document);
+    const dateSheetEl = observation.elements.find((e) => e.text.includes('Date Sheet'));
+    expect(dateSheetEl).toBeDefined();
+    expect(dateSheetEl?.text).toContain('Date Sheet');
+  });
+
+  it('indexes attendance modal trigger with tight geometry and dynamic percentage text', () => {
+    document.body.innerHTML = `
+      <div class="card">
+        <div class="row">
+          <div class="col-xs-6">CGPA : 9.66</div>
+          <div class="col-xs-6 text-right">
+            <span class="att-text">ATTENDANCE : 91%</span>
+            <a href="#" id="lnkAttModal"><i class="fa fa-info-circle"></i></a>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const container = document.querySelector('.col-xs-6.text-right') as HTMLElement;
+    container.getBoundingClientRect = () => ({
+      top: 300,
+      bottom: 332,
+      left: 400,
+      right: 660,
+      width: 260,
+      height: 32,
+      x: 400,
+      y: 300,
+      toJSON: () => {}
+    });
+
+    const span = document.querySelector('.att-text') as HTMLElement;
+    span.getBoundingClientRect = () => ({
+      top: 300,
+      bottom: 332,
+      left: 540,
+      right: 635,
+      width: 95,
+      height: 32,
+      x: 540,
+      y: 300,
+      toJSON: () => {}
+    });
+
+    const link = document.querySelector('#lnkAttModal') as HTMLElement;
+    link.getBoundingClientRect = () => ({
+      top: 300,
+      bottom: 332,
+      left: 640,
+      right: 660,
+      width: 20,
+      height: 32,
+      x: 640,
+      y: 300,
+      toJSON: () => {}
+    });
+
+    const observation = observePage(document);
+    const attendanceEl = observation.elements.find((e) => e.text.includes('ATTENDANCE'));
+    expect(attendanceEl).toBeDefined();
+    expect(attendanceEl?.text).toContain('ATTENDANCE : 91%');
+    // Tight coordinates without left gap:
+    expect(attendanceEl?.x).toBe(540);
+    expect(attendanceEl?.width).toBe(120);
+  });
 });
+
+
