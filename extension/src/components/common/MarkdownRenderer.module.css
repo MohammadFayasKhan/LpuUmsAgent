@@ -202,13 +202,23 @@
 
 .streamingCursor {
   display: inline-block;
-  color: var(--accent-purple, #7c3aed);
-  font-weight: 700;
-  margin-left: 2px;
-  animation: cursorBlink 0.75s infinite ease-in-out;
+  width: 6.5px;
+  height: 14px;
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+  border-radius: 2px;
+  vertical-align: -1.5px;
+  margin-left: 3px;
+  box-shadow: 0 0 8px rgba(124, 58, 237, 0.45);
+  animation: iosCursorPulse 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
 }
 
-@keyframes cursorBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+@keyframes iosCursorPulse {
+  0% {
+    opacity: 0.25;
+    transform: scaleY(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: scaleY(1.05);
+  }
 }

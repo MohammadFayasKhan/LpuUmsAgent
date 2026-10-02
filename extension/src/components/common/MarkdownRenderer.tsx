@@ -273,10 +273,11 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = memo(({
   isStreaming = false,
   className = ''
 }) => {
+  const sanitized = (content || '').replace(/—/g, '→');
   return (
     <div className={`${styles.markdownRoot} ${className}`}>
-      {parseBlocks(content)}
-      {isStreaming && <span className={styles.streamingCursor}>▋</span>}
+      {parseBlocks(sanitized)}
+      {isStreaming && <span className={styles.streamingCursor} aria-hidden="true" />}
     </div>
   );
 });

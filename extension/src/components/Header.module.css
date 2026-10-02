@@ -12,10 +12,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border-color);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: var(--glass-border);
+  position: sticky;
+  top: 0;
+  z-index: 50;
   flex-shrink: 0;
   user-select: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .brandGroup {
@@ -27,11 +33,17 @@
 .logoMark {
   width: 24px;
   height: 24px;
-  border-radius: 6px;
-  background: var(--text-primary);
+  border-radius: 7px;
+  background: linear-gradient(135deg, #1d1d1f 0%, #2d2d30 100%);
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transition: transform var(--transition-spring);
+}
+
+.logoMark:hover {
+  transform: scale(1.05);
 }
 
 .logoInner {
@@ -49,13 +61,14 @@
 .name {
   font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.2px;
+  letter-spacing: -0.1px;
   color: var(--text-primary);
   line-height: 1.1;
+  font-family: var(--font-family);
 }
 
 .sub {
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--text-secondary);
   font-weight: 400;
 }
@@ -70,12 +83,16 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 8px;
-  background: var(--bg-primary);
-  border: 1px solid var(--border-subtle);
+  padding: 3px 9px;
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 0, 0, 0.07);
   border-radius: var(--radius-pill);
   font-size: 11px;
+  font-weight: 500;
   color: var(--text-secondary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
 .dot {
@@ -110,19 +127,28 @@
 }
 
 .iconButton {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-secondary);
-  background: transparent;
+  background: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+  cursor: pointer;
+  transition: all var(--transition-fast), transform var(--transition-spring-press);
 }
 
 .iconButton:hover {
-  background: var(--surface-hover);
+  background: rgba(255, 255, 255, 0.95);
   color: var(--text-primary);
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.iconButton:active {
+  transform: scale(0.92);
 }
 
 .spinning svg {

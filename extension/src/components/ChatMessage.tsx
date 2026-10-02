@@ -25,7 +25,7 @@ interface ChatMessageProps {
 
 export const ChatMessage: React.FC<ChatMessageProps> = memo(({ message }) => {
   const isUser = message.sender === 'user' || message.role === 'user';
-  const textContent = message.text || message.content || '';
+  const textContent = (message.text || message.content || '').replace(/—/g, '→');
 
   return (
     <div
