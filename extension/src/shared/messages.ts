@@ -9,7 +9,15 @@
  * across different parts of the extension.
  */
 
-import { AttendanceSummary, ConnectionStatus, PageObservation, AgentAction } from './types';
+import {
+  AttendanceSummary,
+  ExaminationSummary,
+  TimetableSummary,
+  ConnectionStatus,
+  PageObservation,
+  AgentAction,
+  SamplePaperResult
+} from './types';
 
 export const MESSAGE_TYPES = {
   REQUEST_UMS_STATUS: 'ONEE_REQUEST_UMS_STATUS',
@@ -17,6 +25,7 @@ export const MESSAGE_TYPES = {
   UMS_STATUS_UPDATE: 'ONEE_UMS_STATUS_UPDATE',
   TRIGGER_PAGE_SCAN: 'ONEE_TRIGGER_PAGE_SCAN',
   NAVIGATE_TO_ATTENDANCE: 'ONEE_NAVIGATE_TO_ATTENDANCE',
+  NAVIGATE_TO_EXAMS: 'ONEE_NAVIGATE_TO_EXAMS',
   PING: 'ONEE_PING',
   HANDSHAKE: 'ONEE_HANDSHAKE',
   KEEP_ALIVE: 'ONEE_KEEP_ALIVE',
@@ -25,11 +34,25 @@ export const MESSAGE_TYPES = {
 
   // Computer Use Agent IPC Messages
   OBSERVE_PAGE: 'ONEE_OBSERVE_PAGE',
+  STOP_ACTION: 'ONEE_STOP_ACTION',
   EXECUTE_ACTION: 'ONEE_EXECUTE_ACTION',
   SHOW_CURSOR: 'ONEE_SHOW_CURSOR',
   HIDE_CURSOR: 'ONEE_HIDE_CURSOR',
-  CAPTURE_VISIBLE_TAB: 'ONEE_CAPTURE_VISIBLE_TAB'
+  CAPTURE_VISIBLE_TAB: 'ONEE_CAPTURE_VISIBLE_TAB',
+
+  // Preflight and Examination Sub-Automation
+  DISMISS_UMS_POPUP: 'ONEE_DISMISS_UMS_POPUP',
+  OPEN_SAMPLE_PAPER: 'ONEE_OPEN_SAMPLE_PAPER'
 } as const;
+
+export interface DismissUmsPopupMessage {
+  type: typeof MESSAGE_TYPES.DISMISS_UMS_POPUP;
+}
+
+export interface OpenSamplePaperMessage {
+  type: typeof MESSAGE_TYPES.OPEN_SAMPLE_PAPER;
+  courseCode: string;
+}
 
 export interface ShowCursorMessage {
   type: typeof MESSAGE_TYPES.SHOW_CURSOR;
@@ -58,11 +81,16 @@ export interface PingMessage {
   type: typeof MESSAGE_TYPES.PING;
 }
 
+export interface NavigateToExamsMessage {
+  type: typeof MESSAGE_TYPES.NAVIGATE_TO_EXAMS;
+}
+
 export interface UmsStatusUpdateMessage {
   type: typeof MESSAGE_TYPES.UMS_STATUS_UPDATE;
   payload: {
     status: ConnectionStatus;
     attendance?: AttendanceSummary;
+    examination?: ExaminationSummary;
     errorMessage?: string;
     pageTitle?: string;
     url?: string;
@@ -92,26 +120,40 @@ export type ExtensionMessage =
   | RequestAttendanceDataMessage
   | TriggerPageScanMessage
   | NavigateToAttendanceMessage
+  | NavigateToExamsMessage
   | PingMessage
   | UmsStatusUpdateMessage
   | ObservePageMessage
   | ExecuteActionMessage
   | ShowCursorMessage
   | { type: typeof MESSAGE_TYPES.HIDE_CURSOR }
+  | { type: typeof MESSAGE_TYPES.STOP_ACTION }
   | CaptureVisibleTabMessage
   | ReinjectContentScriptMessage
+  | DismissUmsPopupMessage
+  | OpenSamplePaperMessage
   | { type: typeof MESSAGE_TYPES.DEV_RELOAD };
 
 export interface UmsResponsePayload {
   status: ConnectionStatus;
   attendance?: AttendanceSummary | null;
+  examination?: ExaminationSummary | null;
+  timetable?: TimetableSummary | null;
   errorMessage?: string | null;
   hasAttendanceLink?: boolean;
+  hasExamLink?: boolean;
+  hasTimetableLink?: boolean;
   observation?: PageObservation;
   actionResult?: {
     success: boolean;
     error?: string;
     attendance?: AttendanceSummary;
+    examination?: ExaminationSummary;
+    timetable?: TimetableSummary;
+    samplePaperResult?: SamplePaperResult;
+    popupDismissed?: boolean;
   };
+  samplePaperResult?: SamplePaperResult;
+  dismissed?: boolean;
   screenshot?: string;
 }
