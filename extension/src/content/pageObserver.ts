@@ -15,6 +15,10 @@
  */
 
 import { PageElement, PageObservation } from '../shared/types';
+import { detectExaminationPage, isExaminationContentRendered, findDateSheetLinkElement } from './examination/examinationDetector';
+import { detectTimetablePage, findTimetableLinkElement, findAcademicsMenuElement } from './timetable/timetableParser';
+import { detectCampusDriveModal } from './umsPreflight';
+import { getTightBoundingBox } from './coordinateUtils';
 
 // Ephemeral registry mapping ONEE IDs to live DOM elements for the current step
 const elementRegistry = new Map<string, HTMLElement>();
@@ -154,26 +158,66 @@ function isBlacklisted(text: string, href?: string): boolean {
  * Finds the Attendance info icon trigger (ⓘ) beside ATTENDANCE on StudentDashboard.aspx.
  */
 function findAttendanceModalTrigger(doc: Document): HTMLElement | null {
-  // 1. Look for element with onclick matching attendance
+  // 1. Look for explicit interactive elements with onclick/href matching attendance
   const onclickElements = Array.from(
     doc.querySelectorAll<HTMLElement>(
-      'a[onclick*="Attendance" i], span[onclick*="Attendance" i], button[onclick*="Attendance" i], i[onclick*="Attendance" i], [onclick*="att" i], [data-target*="attendance" i]'
+      'a[onclick*="Attendance" i], button[onclick*="Attendance" i], [onclick*="ShowAttendance" i], [onclick*="att" i], [data-target*="attendance" i]'
     )
   );
   for (const el of onclickElements) {
     if (isElementVisible(el)) return resolveClickableAncestor(el);
   }
 
-  // 2. Search for any clickable icon or link near ATTENDANCE text in My Courses card
-  const allElements = Array.from(doc.querySelectorAll<HTMLElement>('.card *, .panel *, .section-box *, div, span, p, a, button'));
-  for (const el of allElements) {
-    const text = (el.textContent || '').trim();
-    if (text.includes('ATTENDANCE') && (text.includes('%') || text.includes(':'))) {
-      const clickables = Array.from(el.querySelectorAll<HTMLElement>('a, button, span, i, svg, [onclick], [role="button"]'));
-      for (const child of clickables) {
-        if (isElementVisible(child)) return resolveClickableAncestor(child);
+  // 2. Search for any clickable icon, link, or specific trigger inside the My Courses card
+  const attCandidates = Array.from(
+    doc.querySelectorAll<HTMLElement>(
+      'a, button, [role="button"], [onclick], div, span, p, .card *, .panel *, .section-box *'
+    )
+  );
+
+  const matching = attCandidates.filter((el) => {
+    if (!isElementVisible(el)) return false;
+    const text = (el.textContent || '').trim().toUpperCase();
+    return text.includes('ATTENDANCE') && (text.includes('%') || text.includes(':'));
+  });
+
+  // Sort by shortest textContent to find the most specific element (avoiding outer card/row containers)
+  matching.sort((a, b) => (a.textContent || '').trim().length - (b.textContent || '').trim().length);
+
+  for (const el of matching) {
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'a' || tag === 'button' || el.hasAttribute('onclick') || el.getAttribute('role') === 'button') {
+      return el;
+    }
+
+    // If el itself already contains an interactive button/link/icon, it is the attendance unit!
+    const innerInteractive = el.querySelector<HTMLElement>('a, button, [onclick], [role="button"]');
+    if (innerInteractive && isElementVisible(innerInteractive)) {
+      return el;
+    }
+
+    // Otherwise, if el is a text wrapper (like a span), check if its immediate parent houses the link
+    const parent = el.parentElement;
+    if (parent && parent !== doc.body) {
+      const parentLink = parent.querySelector<HTMLElement>('a, button, [onclick], [role="button"]');
+      if (parentLink && isElementVisible(parentLink)) {
+        const parentText = (parent.textContent || '').toUpperCase();
+        if (!parentText.includes('CGPA') && !parentText.includes('MY COURSES')) {
+          return parent;
+        }
       }
-      if (isElementVisible(el)) return resolveClickableAncestor(el);
+    }
+
+    return resolveClickableAncestor(el);
+  }
+
+  // 3. Any icon or link whose parent/sibling mentions Attendance
+  const infoIcons = Array.from(doc.querySelectorAll<HTMLElement>('i.fa-info-circle, i[class*="info" i], svg'));
+  for (const icon of infoIcons) {
+    if (!isElementVisible(icon)) continue;
+    const parentText = (icon.parentElement?.textContent || '').toUpperCase();
+    if (parentText.includes('ATTENDANCE')) {
+      return resolveClickableAncestor(icon);
     }
   }
 
@@ -221,11 +265,70 @@ export function observePage(doc: Document = document): PageObservation {
   let elementCounter = 1;
   let modalTrigger: HTMLElement | null = null;
 
-  // 1. If Attendance Table is NOT already open, index the modal trigger
-  if (!hasAttendanceTable) {
+  // 0. Preflight check: If Campus Drive Notification modal is open, index "Remind me later" as #1 priority
+  const campusModal = detectCampusDriveModal(doc);
+  const hasCampusDriveModal = campusModal.isModalOpen && campusModal.isCampusDrive;
+
+  if (hasCampusDriveModal && campusModal.remindButton) {
+    const btn = campusModal.remindButton;
+    const rect = btn.getBoundingClientRect();
+    const id = `onee-${String(elementCounter).padStart(3, '0')}`;
+    elementCounter++;
+
+    btn.setAttribute('data-onee-id', id);
+    elementRegistry.set(id, btn);
+
+    const left = Math.round(rect.left || 400);
+    const top = Math.round(rect.top || 300);
+    const width = Math.round(rect.width || 120);
+    const height = Math.round(rect.height || 36);
+
+    observedElements.push({
+      id,
+      tag: btn.tagName.toLowerCase(),
+      role: 'button',
+      text: 'Remind me later (Dismiss Campus Drive Notification)',
+      ariaLabel: 'Dismiss Campus Drive Notification and Remind Later',
+      visible: true,
+      enabled: true,
+      x: left,
+      y: top,
+      width,
+      height,
+      centerX: Math.round(left + width / 2),
+      centerY: Math.round(top + height / 2),
+      visualDescription: 'Remind me later button in Campus Drive Notification modal',
+      semanticCategory: 'button'
+    });
+
+    // CRITICAL: When blocking Campus Drive modal is present, completely isolate the interaction.
+    // Exclude all background elements (Date Sheet, Attendance, navbar links) from the actionable registry.
+    return {
+      url,
+      title,
+      pageType: 'Campus Drive Notifications Modal',
+      isLoginPage: false,
+      isAuthenticated: true,
+      hasAttendanceTable: false,
+      hasCampusDriveModal: true,
+      hasExamTable: false,
+      isExamPage: false,
+      isExamContentRendered: false,
+      examRecordsCount: 0,
+      elements: observedElements,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+      devicePixelRatio: window.devicePixelRatio || 1,
+      summaryText: 'Campus Drive Notifications modal is blocking the UMS page. Action isolated to "Remind me later" button.'
+    };
+  }
+
+  // 1. If Attendance Table is NOT already open and no blocking modal, index the modal trigger
+  if (!hasAttendanceTable && !hasCampusDriveModal) {
     modalTrigger = findAttendanceModalTrigger(doc);
     if (modalTrigger && isElementVisible(modalTrigger)) {
-      const rect = modalTrigger.getBoundingClientRect();
+      const rect = getTightBoundingBox(modalTrigger);
+
       const id = `onee-${String(elementCounter).padStart(3, '0')}`;
       elementCounter++;
 
@@ -237,11 +340,20 @@ export function observePage(doc: Document = document): PageObservation {
       const width = Math.round(rect.width || 40);
       const height = Math.round(rect.height || 30);
 
+      const rawText = getCleanElementText(modalTrigger);
+      const parentOrSelfText = rawText || getCleanElementText(modalTrigger.parentElement || modalTrigger);
+      const pctMatch = parentOrSelfText.match(/\b\d{1,3}\s*%/);
+      const labelText = pctMatch
+        ? `ATTENDANCE : ${pctMatch[0]} ⓘ (Click to open Student Attendance Modal)`
+        : parentOrSelfText.toUpperCase().includes('ATTENDANCE')
+        ? `${parentOrSelfText} (Click to open Student Attendance Modal)`
+        : 'ATTENDANCE (Click to open Student Attendance Modal)';
+
       observedElements.push({
         id,
         tag: modalTrigger.tagName.toLowerCase(),
         role: 'button',
-        text: 'ATTENDANCE : 100% ⓘ (Click to open Student Attendance Modal)',
+        text: labelText,
         ariaLabel: 'Open Student Attendance Details Modal',
         visible: true,
         enabled: true,
@@ -252,6 +364,119 @@ export function observePage(doc: Document = document): PageObservation {
         centerX: Math.round(left + width / 2),
         centerY: Math.round(top + height / 2),
         visualDescription: 'Info icon button (ⓘ) beside ATTENDANCE in My Courses card'
+      });
+    }
+  }
+
+  // 1b. If Date Sheet link is present on dashboard and no blocking modal, index it with high priority
+  let dateSheetTrigger: HTMLElement | null = null;
+  const examDetection = detectExaminationPage(doc, window.location);
+  if (!examDetection.isExamPage && !hasCampusDriveModal) {
+    dateSheetTrigger = findDateSheetLinkElement(doc);
+    if (dateSheetTrigger && isElementVisible(dateSheetTrigger)) {
+      const rect = dateSheetTrigger.getBoundingClientRect();
+      const id = `onee-${String(elementCounter).padStart(3, '0')}`;
+      elementCounter++;
+
+      dateSheetTrigger.setAttribute('data-onee-id', id);
+      elementRegistry.set(id, dateSheetTrigger);
+
+      const left = Math.round(rect.left);
+      const top = Math.round(rect.top);
+      const width = Math.round(rect.width || 80);
+      const height = Math.round(rect.height || 36);
+
+      observedElements.push({
+        id,
+        tag: dateSheetTrigger.tagName.toLowerCase(),
+        role: 'link',
+        text: 'Date Sheet (Important Links)',
+        ariaLabel: 'Open Examination Date Sheet & Seating Plan',
+        href: dateSheetTrigger.getAttribute('href') || 'https://studentums.lpu.in/dashboard/examination/conduct/seatingplan',
+        visible: true,
+        enabled: true,
+        x: left,
+        y: top,
+        width,
+        height,
+        centerX: Math.round(left + width / 2),
+        centerY: Math.round(top + height / 2),
+        visualDescription: 'Date Sheet button in Important Links section below navbar',
+        semanticCategory: 'navigation'
+      });
+    }
+  }
+
+  // 1c. If View Time Table link is present on dashboard and no blocking modal, index it
+  const timetableDetection = detectTimetablePage(doc, window.location);
+  if (!timetableDetection.isTimetablePage && !hasCampusDriveModal) {
+    const timetableTrigger = findTimetableLinkElement(doc);
+    if (timetableTrigger && isElementVisible(timetableTrigger)) {
+      const rect = timetableTrigger.getBoundingClientRect();
+      const id = `onee-${String(elementCounter).padStart(3, '0')}`;
+      elementCounter++;
+
+      timetableTrigger.setAttribute('data-onee-id', id);
+      elementRegistry.set(id, timetableTrigger);
+
+      const left = Math.round(rect.left);
+      const top = Math.round(rect.top);
+      const width = Math.round(rect.width || 100);
+      const height = Math.round(rect.height || 36);
+
+      observedElements.push({
+        id,
+        tag: timetableTrigger.tagName.toLowerCase(),
+        role: 'link',
+        text: 'View Time Table (Academics)',
+        ariaLabel: 'Open Student Time Table and Faculty Directory',
+        href: timetableTrigger.getAttribute('href') || 'https://ums.lpu.in/lpuums/Reports/frmStudentTimeTable.aspx',
+        visible: true,
+        enabled: true,
+        x: left,
+        y: top,
+        width,
+        height,
+        centerX: Math.round(left + width / 2),
+        centerY: Math.round(top + height / 2),
+        visualDescription: 'View Time Table link in Academics mega menu or quick links',
+        semanticCategory: 'navigation'
+      });
+    }
+  }
+
+  // 1d. If Academics top navigation menu is present on dashboard and no blocking modal, index it
+  if (!timetableDetection.isTimetablePage && !hasCampusDriveModal) {
+    const academicsTrigger = findAcademicsMenuElement(doc);
+    if (academicsTrigger && isElementVisible(academicsTrigger)) {
+      const rect = academicsTrigger.getBoundingClientRect();
+      const id = `onee-${String(elementCounter).padStart(3, '0')}`;
+      elementCounter++;
+
+      academicsTrigger.setAttribute('data-onee-id', id);
+      elementRegistry.set(id, academicsTrigger);
+
+      const left = Math.round(rect.left);
+      const top = Math.round(rect.top);
+      const width = Math.round(rect.width || 90);
+      const height = Math.round(rect.height || 36);
+
+      observedElements.push({
+        id,
+        tag: academicsTrigger.tagName.toLowerCase(),
+        role: 'button',
+        text: 'Academics',
+        ariaLabel: 'Academics navigation menu dropdown',
+        visible: true,
+        enabled: true,
+        x: left,
+        y: top,
+        width,
+        height,
+        centerX: Math.round(left + width / 2),
+        centerY: Math.round(top + height / 2),
+        visualDescription: 'Academics dropdown trigger in top navbar',
+        semanticCategory: 'navigation'
       });
     }
   }
@@ -291,7 +516,24 @@ export function observePage(doc: Document = document): PageObservation {
 
     const el = resolveClickableAncestor(rawEl);
 
+    // If Campus Drive modal is active, do not index background elements outside the modal
+    if (hasCampusDriveModal) {
+      if (campusModal.modalElement && campusModal.modalElement !== doc.body && campusModal.modalElement !== doc.documentElement) {
+        if (!campusModal.modalElement.contains(rawEl) && !campusModal.modalElement.contains(el)) {
+          continue;
+        }
+      } else {
+        if (el !== campusModal.remindButton && !campusModal.remindButton?.contains(el)) {
+          continue;
+        }
+      }
+    }
+
     if (modalTrigger && (el === modalTrigger || modalTrigger.contains(el))) {
+      continue;
+    }
+
+    if (dateSheetTrigger && (el === dateSheetTrigger || dateSheetTrigger.contains(el))) {
       continue;
     }
 
@@ -349,12 +591,94 @@ export function observePage(doc: Document = document): PageObservation {
     }
   }
 
+  // 3. Index Examination cards/rows and Sample Question Paper buttons if on Examination surface
+  const examRendered = isExaminationContentRendered(doc);
+
+  if (examDetection.isExamPage && examRendered.records && examRendered.records.length > 0) {
+    for (let i = 0; i < Math.min(examRendered.records.length, 15); i++) {
+      const card = examRendered.records[i];
+      if (isElementVisible(card)) {
+        const id = `onee-exam-${String(elementCounter).padStart(3, '0')}`;
+        elementCounter++;
+        card.setAttribute('data-onee-id', id);
+        elementRegistry.set(id, card);
+
+        const rect = card.getBoundingClientRect();
+        const left = Math.round(rect.left);
+        const top = Math.round(rect.top);
+        const width = Math.round(rect.width);
+        const height = Math.round(rect.height);
+        const text = getCleanElementText(card);
+
+        observedElements.unshift({
+          id,
+          tag: card.tagName.toLowerCase(),
+          role: 'card',
+          text: text.slice(0, 150),
+          visible: true,
+          enabled: true,
+          x: left,
+          y: top,
+          width,
+          height,
+          centerX: Math.round(left + width / 2),
+          centerY: Math.round(top + height / 2),
+          visualDescription: `Examination schedule card (${id}): ${text.slice(0, 80)}`,
+          semanticCategory: 'table'
+        });
+
+        // Also index Sample Question Paper button if present inside this card
+        const sampleBtn = card.querySelector<HTMLElement>(
+          'a[href*="sample" i], button[title*="sample" i], div[class*="sample" i], [aria-label*="sample" i]'
+        ) || Array.from(card.querySelectorAll<HTMLElement>('a, button, div, span')).find((el) =>
+          (el.textContent || '').toLowerCase().includes('sample question paper')
+        );
+
+        if (sampleBtn && isElementVisible(sampleBtn) && !sampleBtn.getAttribute('data-onee-id')) {
+          const sampleRect = sampleBtn.getBoundingClientRect();
+          const sampleId = `onee-sample-${String(elementCounter).padStart(3, '0')}`;
+          elementCounter++;
+          sampleBtn.setAttribute('data-onee-id', sampleId);
+          elementRegistry.set(sampleId, sampleBtn);
+
+          const sLeft = Math.round(sampleRect.left);
+          const sTop = Math.round(sampleRect.top);
+          const sWidth = Math.round(sampleRect.width || 120);
+          const sHeight = Math.round(sampleRect.height || 36);
+          const courseMatch = (card.textContent || '').match(/([A-Z]{2,5}\s*\d{3,4})/i)?.[1] || '';
+
+          observedElements.push({
+            id: sampleId,
+            tag: sampleBtn.tagName.toLowerCase(),
+            role: 'button',
+            text: `Sample Question Paper (${courseMatch})`,
+            ariaLabel: `Download Sample Question Paper for ${courseMatch}`,
+            visible: true,
+            enabled: true,
+            x: sLeft,
+            y: sTop,
+            width: sWidth,
+            height: sHeight,
+            centerX: Math.round(sLeft + sWidth / 2),
+            centerY: Math.round(sTop + sHeight / 2),
+            visualDescription: `Sample Question Paper button for ${courseMatch}`,
+            semanticCategory: 'button'
+          });
+        }
+      }
+    }
+  }
+
   let pageType = 'Student Dashboard';
   const path = window.location.pathname.toLowerCase();
   const isLogin = path.includes('login') || document.querySelector('input[type="password"]') !== null || document.querySelector('#txtPassword') !== null;
 
   if (isLogin) {
     pageType = 'Login Page';
+  } else if (timetableDetection.isTimetablePage) {
+    pageType = 'Student Time Table & Faculty Directory';
+  } else if (examDetection.isExamPage) {
+    pageType = 'Examination Date Sheet / Seating Plan';
   } else if (hasAttendanceTable) {
     pageType = 'Student Attendance Table / Modal';
   } else if (path.includes('attendance')) {
@@ -368,10 +692,17 @@ export function observePage(doc: Document = document): PageObservation {
     isLoginPage: isLogin,
     isAuthenticated: !isLogin,
     hasAttendanceTable,
+    hasCampusDriveModal,
+    hasExamTable: examRendered.rendered,
+    isExamPage: examDetection.isExamPage,
+    isExamContentRendered: examRendered.rendered,
+    examRecordsCount: examRendered.count,
+    isTimetablePage: timetableDetection.isTimetablePage,
+    hasTimetableGrid: timetableDetection.hasTimetableGrid,
     elements: observedElements,
     viewportWidth: window.innerWidth,
     viewportHeight: window.innerHeight,
     devicePixelRatio: window.devicePixelRatio || 1,
-    summaryText: `Page: ${pageType} (${url}) with ${observedElements.length} actionable elements.`
+    summaryText: `Page: ${pageType} (${url}) with ${observedElements.length} actionable elements.${examRendered.rendered ? ` Found ${examRendered.count} exam records.` : ''}`
   };
 }

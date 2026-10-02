@@ -14,8 +14,9 @@
  */
 
 import { AnimationKey, ExpressionKey } from '../types/avatar';
-import { AgentState, AttendanceSummary } from '../shared/types';
+import { AgentState, AttendanceSummary, ExaminationSummary } from '../shared/types';
 import { RuntimeConnectionState } from '../services/connectionManager';
+import { getNextExam } from '../content/examination/examinationValidator';
 
 export type OneeSemanticState =
   | 'IDLE'
@@ -49,6 +50,7 @@ export interface OneeRuntimeState {
   connectionState: RuntimeConnectionState;
   agentState: AgentState | null;
   attendance: AttendanceSummary | null;
+  examination?: ExaminationSummary | null;
   isUserTyping: boolean;
   isChatStreaming: boolean;
   lastUserMessage: string | null;
@@ -142,6 +144,7 @@ class RuntimeStateManager {
       connectionState,
       agentState,
       attendance,
+      examination,
       isUserTyping,
       isChatStreaming,
       lastExplicitInteractionAt
@@ -239,12 +242,18 @@ class RuntimeStateManager {
         };
       }
 
+      const isExam =
+        agentState.capability === 'EXAM_DATE_SHEET' ||
+        agentState.capability === 'SEATING_PLAN' ||
+        (agentState.currentGoal || '').toLowerCase().includes('exam') ||
+        (agentState.currentGoal || '').toLowerCase().includes('date sheet');
+
       if (status === 'moving') {
         return {
           semanticState: 'MOVING',
           animation: 'working',
           expression: 'attentive-left',
-          popupMessage: 'Navigating UMS...',
+          popupMessage: isExam ? 'Navigating to Date Sheet...' : 'Navigating UMS...',
           showTapAffordance: false,
           isBusy: true
         };
@@ -255,7 +264,7 @@ class RuntimeStateManager {
           semanticState: 'LOCATING',
           animation: 'searching',
           expression: 'far-right-glance',
-          popupMessage: 'Locating target...',
+          popupMessage: isExam ? 'Locating Date Sheet link...' : 'Locating target...',
           showTapAffordance: false,
           isBusy: true
         };
@@ -266,7 +275,7 @@ class RuntimeStateManager {
           semanticState: 'PLANNING',
           animation: 'thinking',
           expression: 'upward-side-glance',
-          popupMessage: 'Planning step...',
+          popupMessage: isExam ? 'Checking schedule...' : 'Planning step...',
           showTapAffordance: false,
           isBusy: true
         };
@@ -277,7 +286,7 @@ class RuntimeStateManager {
           semanticState: 'OBSERVING',
           animation: 'searching',
           expression: 'curious-left',
-          popupMessage: 'Checking UMS...',
+          popupMessage: isExam ? 'Checking exam schedule...' : 'Checking UMS...',
           showTapAffordance: false,
           isBusy: true
         };
@@ -319,6 +328,13 @@ class RuntimeStateManager {
         defaultIdleMessage = `${danger.code}: ${Math.round(danger.percentage)}%`;
       } else if (attendance.overallPercentage) {
         defaultIdleMessage = `${Math.round(attendance.overallPercentage)}% overall`;
+      }
+    } else if (examination && examination.exams && examination.exams.length > 0) {
+      const next = getNextExam(examination.exams);
+      if (next) {
+        defaultIdleMessage = `Next: ${next.courseCode}`;
+      } else {
+        defaultIdleMessage = `${examination.totalExams} exams`;
       }
     }
 

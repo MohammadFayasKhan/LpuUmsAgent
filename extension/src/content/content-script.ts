@@ -16,18 +16,23 @@
 
 import { detectUmsState } from './umsDetector';
 import { parseUmsAttendance } from './umsAttendanceParser';
+import { parseExamDateSheet } from './examination/examDateSheetParser';
+import { findDateSheetLinkElement, detectExaminationPage } from './examination/examinationDetector';
 import { observePage } from './pageObserver';
-import { executeAgentAction } from './actionEngine';
+import { executeAgentAction, cancelActiveExecution } from './actionEngine';
 import { hideCursor, showCursor } from './aiCursorOverlay';
+import { runUmsPreflight } from './umsPreflight';
+import { executeOpenSamplePaper, findSamplePaperButtonForCourse } from './samplePaperAgent';
 import {
   MESSAGE_TYPES,
   ExtensionMessage,
   UmsResponsePayload
 } from '../shared/messages';
-import { ConnectionStatus, AttendanceSummary } from '../shared/types';
+import { ConnectionStatus, AttendanceSummary, ExaminationSummary } from '../shared/types';
 
 let lastStatus: ConnectionStatus = 'NOT_CONNECTED';
 let lastAttendance: AttendanceSummary | null = null;
+let lastExamination: ExaminationSummary | null = null;
 let scanTimeout: number | null = null;
 
 /*
@@ -71,8 +76,32 @@ function navigateToAttendance(): boolean {
 }
 
 /*
+ * Triggers navigation to the Date Sheet / Seating Plan view.
+ * If a link is found under Important Links on StudentDashboard, we click it.
+ */
+function navigateToExams(): boolean {
+  hideCursor();
+  const linkEl = findDateSheetLinkElement(document);
+  if (linkEl) {
+    const anchor = linkEl.closest('a') as HTMLAnchorElement | null;
+    if (anchor) {
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+    }
+    linkEl.click();
+    scheduleScan(400);
+    return true;
+  }
+  try {
+    window.open('https://studentums.lpu.in/dashboard/examination/conduct/seatingplan', '_blank', 'noopener,noreferrer');
+  } catch {}
+  scheduleScan(100);
+  return true;
+}
+
+/*
  * Inspects the current DOM to determine whether the student is logged in,
- * facing a Cloudflare verification challenge, or viewing their attendance numbers.
+ * facing a Cloudflare verification challenge, viewing attendance, or viewing examination date sheet.
  */
 function scanCurrentPage(): UmsResponsePayload {
   const detection = detectUmsState(document, window.location);
@@ -80,6 +109,7 @@ function scanCurrentPage(): UmsResponsePayload {
   if (!detection.isUmsDomain) {
     lastStatus = 'NOT_CONNECTED';
     lastAttendance = null;
+    lastExamination = null;
     return {
       status: 'NOT_CONNECTED',
       errorMessage: detection.statusMessage
@@ -89,6 +119,7 @@ function scanCurrentPage(): UmsResponsePayload {
   if (detection.status === 'HUMAN_VERIFICATION') {
     lastStatus = 'HUMAN_VERIFICATION';
     lastAttendance = null;
+    lastExamination = null;
     return {
       status: 'HUMAN_VERIFICATION',
       errorMessage: detection.statusMessage
@@ -98,33 +129,57 @@ function scanCurrentPage(): UmsResponsePayload {
   if (detection.status === 'LOGIN_PAGE') {
     lastStatus = 'LOGIN_PAGE';
     lastAttendance = null;
+    lastExamination = null;
     return {
       status: 'LOGIN_PAGE',
       errorMessage: detection.statusMessage
     };
   }
 
-  // Attempt to parse the structured attendance table from the active DOM
+  // 1. Check for Examination Date Sheet / Seating Plan
+  const examPageDetection = detectExaminationPage(document, window.location);
+  const examination = parseExamDateSheet(document);
+  if (examination && examination.exams.length > 0) {
+    lastExamination = examination;
+  }
+
+  // 2. Attempt to parse the structured attendance table from the active DOM
   const attendance = parseUmsAttendance(document);
   if (attendance && attendance.courses.length > 0) {
     lastStatus = 'READY';
     lastAttendance = attendance;
     return {
       status: 'READY',
-      attendance
+      attendance,
+      examination: examination || lastExamination || undefined,
+      hasAttendanceLink: true,
+      hasExamLink: examPageDetection.hasDateSheetLink
     };
   }
 
-  // The student is authenticated on the UMS dashboard, but has not opened attendance yet
+  if (examination && examination.exams.length > 0) {
+    lastStatus = 'READY';
+    return {
+      status: 'READY',
+      examination,
+      attendance: lastAttendance || undefined,
+      hasAttendanceLink: findAttendanceLinkElement() !== null,
+      hasExamLink: true
+    };
+  }
+
+  // The student is authenticated on the UMS dashboard, but has not opened attendance or exam view yet
   lastStatus = 'NO_ATTENDANCE_ON_PAGE';
-  lastAttendance = null;
-  const hasLink = findAttendanceLinkElement() !== null;
+  const hasAttendanceLink = findAttendanceLinkElement() !== null;
+  const hasExamLink = examPageDetection.hasDateSheetLink;
 
   return {
     status: 'NO_ATTENDANCE_ON_PAGE',
     errorMessage:
-      'ONEE is connected to your LPU UMS session. Open Academics > View Attendance in your UMS tab and ONEE will read it automatically.',
-    hasAttendanceLink: hasLink
+      'ONEE is connected to your LPU UMS session. Open Academics > View Attendance or Examination Date Sheet in your UMS tab and ONEE will read it automatically.',
+    hasAttendanceLink,
+    hasExamLink,
+    examination: lastExamination || undefined
   };
 }
 
@@ -191,6 +246,51 @@ chrome.runtime.onMessage.addListener(
       return false;
     }
 
+    if (message.type === MESSAGE_TYPES.NAVIGATE_TO_EXAMS) {
+      navigateToExams();
+      sendResponse({ status: 'READING' });
+      return false;
+    }
+
+    if (message.type === MESSAGE_TYPES.DISMISS_UMS_POPUP) {
+      runUmsPreflight(document).then((preflight) => {
+        sendResponse({
+          status: lastStatus,
+          dismissed: preflight.dismissed,
+          actionResult: {
+            success: preflight.dismissed || !preflight.hasBlockingModal,
+            popupDismissed: preflight.dismissed,
+            error: preflight.error
+          }
+        });
+      });
+      return true;
+    }
+
+    if (message.type === MESSAGE_TYPES.OPEN_SAMPLE_PAPER) {
+      const { buttonElement } = findSamplePaperButtonForCourse(message.courseCode, document);
+      if (!buttonElement) {
+        sendResponse({
+          status: lastStatus,
+          actionResult: {
+            success: false,
+            error: `Sample Question Paper control not found for ${message.courseCode}`
+          }
+        });
+        return false;
+      }
+      executeOpenSamplePaper(message.courseCode, buttonElement, document).then((res) => {
+        sendResponse({
+          status: lastStatus,
+          actionResult: {
+            success: res.verified,
+            samplePaperResult: res
+          }
+        });
+      });
+      return true;
+    }
+
     if (message.type === MESSAGE_TYPES.PING) {
       sendResponse({ status: lastStatus });
       return false;
@@ -222,7 +322,11 @@ chrome.runtime.onMessage.addListener(
             actionResult: {
               success: result.success,
               error: result.error,
-              attendance: result.attendance
+              attendance: result.attendance,
+              examination: result.examination,
+              timetable: result.timetable,
+              samplePaperResult: result.samplePaperResult,
+              popupDismissed: result.popupDismissed
             }
           });
         })
@@ -247,8 +351,17 @@ chrome.runtime.onMessage.addListener(
       return false;
     }
 
-    // Hide the Computer Use cursor after action completion
+    // Stop any active Computer Use action immediately
+    if (message.type === MESSAGE_TYPES.STOP_ACTION) {
+      cancelActiveExecution();
+      hideCursor();
+      sendResponse({ status: lastStatus });
+      return false;
+    }
+
+    // Hide the Computer Use cursor after action completion or cancellation
     if (message.type === MESSAGE_TYPES.HIDE_CURSOR) {
+      cancelActiveExecution();
       hideCursor();
       sendResponse({ status: lastStatus });
       return false;

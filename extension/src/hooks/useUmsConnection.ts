@@ -14,6 +14,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AttendanceSummary, ConnectionStatus, AgentActivity } from '../shared/types';
 import { MESSAGE_TYPES, UmsResponsePayload } from '../shared/messages';
 import { getActiveLpuTab, sendTabMessageWithAutoRecovery, isLpuUrl } from '../services/tabMessenger';
+import { localDatabase } from '../services/localDatabase';
 
 export interface UseUmsConnectionResult {
   status: ConnectionStatus;
@@ -25,6 +26,27 @@ export interface UseUmsConnectionResult {
   refresh: () => Promise<void>;
   openUmsTab: () => void;
   navigateToAttendance: () => Promise<void>;
+}
+
+function parseVerifiedRecordToSummary(rec: any): AttendanceSummary | null {
+  if (!rec || !rec.subjects || !rec.aggregate) return null;
+  return {
+    courses: rec.subjects.map((s: any) => ({
+      code: s.code,
+      name: s.code,
+      percentage: s.percentage,
+      attended: s.attended,
+      total: s.delivered,
+      dutyLeave: s.dutyLeave || 0,
+      lastAttended: s.lastAttended
+    })),
+    overallPercentage: rec.aggregate.percentage,
+    totalAttended: rec.aggregate.attended,
+    totalDelivered: rec.aggregate.delivered,
+    totalCourses: rec.aggregate.totalCourses,
+    status: 'verified',
+    source: 'live-ums-dom'
+  };
 }
 
 export function useUmsConnection(): UseUmsConnectionResult {
@@ -83,11 +105,34 @@ export function useUmsConnection(): UseUmsConnectionResult {
         setStatus(response.status);
         setErrorMessage(response.errorMessage || null);
         setHasAttendanceLink(Boolean(response.hasAttendanceLink));
-        setAttendance(null);
+        // Retain verified attendance in state! Do not wipe it when on Seating Plan or other LPU tab.
+        setAttendance((prev) => {
+          if (prev && prev.status === 'verified' && prev.courses && prev.courses.length > 0) {
+            return prev;
+          }
+          localDatabase.getLatestVerifiedAttendance('default').then((cached) => {
+            const parsed = parseVerifiedRecordToSummary(cached);
+            if (parsed) {
+              setAttendance((existing) => existing || parsed);
+            }
+          }).catch(() => {});
+          return null;
+        });
       } else {
         setStatus('UMS_DETECTED');
-        setAttendance(null);
         setErrorMessage('Connected to UMS. Ready to check attendance.');
+        setAttendance((prev) => {
+          if (prev && prev.status === 'verified' && prev.courses && prev.courses.length > 0) {
+            return prev;
+          }
+          localDatabase.getLatestVerifiedAttendance('default').then((cached) => {
+            const parsed = parseVerifiedRecordToSummary(cached);
+            if (parsed) {
+              setAttendance((existing) => existing || parsed);
+            }
+          }).catch(() => {});
+          return null;
+        });
       }
     } catch (err: any) {
       console.warn('Error querying active tab:', err);
@@ -127,6 +172,14 @@ export function useUmsConnection(): UseUmsConnectionResult {
   useEffect(() => {
     queryActiveTab();
 
+    // Hydrate latest verified attendance from local database on startup
+    localDatabase.getLatestVerifiedAttendance('default').then((cached) => {
+      const parsed = parseVerifiedRecordToSummary(cached);
+      if (parsed) {
+        setAttendance((prev) => prev || parsed);
+      }
+    }).catch(() => {});
+
     const messageListener = (message: any) => {
       if (message.type === MESSAGE_TYPES.UMS_STATUS_UPDATE && message.payload) {
         const payload: UmsResponsePayload = message.payload;
@@ -141,7 +194,8 @@ export function useUmsConnection(): UseUmsConnectionResult {
           setStatus(payload.status);
           setErrorMessage(payload.errorMessage || null);
           setHasAttendanceLink(Boolean(payload.hasAttendanceLink));
-          if (payload.status !== 'READY') {
+          // Only wipe attendance if session is truly logged out or disconnected from UMS
+          if (payload.status === 'NOT_CONNECTED' || payload.status === 'LOGIN_PAGE' || payload.status === 'HUMAN_VERIFICATION') {
             setAttendance(null);
           }
         }

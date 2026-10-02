@@ -18,12 +18,14 @@ import {
   calculateBezierPoint,
   calculatePrecisionEasing
 } from './agentMotion';
+import { getTightBoundingBox } from './coordinateUtils';
 
 let cursorContainer: HTMLDivElement | null = null;
 let cursorPointer: HTMLDivElement | null = null;
 let statusPill: HTMLDivElement | null = null;
 let highlightBox: HTMLDivElement | null = null;
 let targetBadge: HTMLDivElement | null = null;
+let isCursorCurrentlyVisible = false;
 
 // Floating-point sub-pixel cursor coordinates
 let currentX = window.innerWidth / 2;
@@ -46,7 +48,14 @@ export function getCurrentCursorPos(): { x: number; y: number } {
  * all UMS elements without modifying the university's stylesheet.
  */
 export function initAiCursorOverlay(): void {
-  if (document.getElementById('onee-ai-cursor-root')) {
+  const existing = document.getElementById('onee-ai-cursor-root') as HTMLDivElement | null;
+  if (existing) {
+    cursorContainer = existing;
+    cursorPointer = existing.querySelector('#onee-ai-pointer');
+    statusPill = existing.querySelector('#onee-ai-status-pill');
+    highlightBox = existing.querySelector('#onee-ai-highlight-box');
+    targetBadge = existing.querySelector('#onee-ai-target-badge');
+    setupViewportTracking();
     return;
   }
 
@@ -176,7 +185,7 @@ function setupViewportTracking(): void {
 
   scrollTrackingListener = () => {
     if (activeTargetElement && highlightBox && highlightBox.style.display !== 'none') {
-      const rect = activeTargetElement.getBoundingClientRect();
+      const rect = getTightBoundingBox(activeTargetElement);
       highlightBox.style.transform = `translate3d(${rect.left - 4}px, ${rect.top - 4}px, 0)`;
       highlightBox.style.width = `${rect.width + 8}px`;
       highlightBox.style.height = `${rect.height + 8}px`;
@@ -220,33 +229,48 @@ export function showCursor(
     setCursorStatus(initialLabel);
   }
 
-  if (cursorContainer) {
-    cursorContainer.style.display = 'block';
-    requestAnimationFrame(() => {
-      if (cursorContainer) {
-        cursorContainer.style.opacity = '1';
-      }
-    });
+  if (cursorPointer) {
+    cursorPointer.style.display = 'flex';
+    cursorPointer.style.opacity = '1';
+  }
+
+  const root = cursorContainer || (typeof document !== 'undefined' ? (document.getElementById('onee-ai-cursor-root') as HTMLDivElement | null) : null);
+  if (root) {
+    isCursorCurrentlyVisible = true;
+    root.style.display = 'block';
+    root.style.opacity = '1';
   }
 }
 
 /**
  * Hides the AI cursor overlay gracefully with smooth fade-out.
  */
-export function hideCursor(): void {
+export function hideCursor(keepHighlight = false): void {
+  isCursorCurrentlyVisible = false;
   if (activeAnimationId !== null) {
     cancelAnimationFrame(activeAnimationId);
     activeAnimationId = null;
   }
-  if (cursorContainer) {
-    cursorContainer.style.opacity = '0';
+  const root = cursorContainer || (typeof document !== 'undefined' ? (document.getElementById('onee-ai-cursor-root') as HTMLDivElement | null) : null);
+  if (root) {
+    root.style.opacity = '0';
+    root.style.pointerEvents = 'none';
     setTimeout(() => {
-      if (cursorContainer && cursorContainer.style.opacity === '0') {
-        cursorContainer.style.display = 'none';
+      if (!isCursorCurrentlyVisible) {
+        const currentRoot = cursorContainer || (typeof document !== 'undefined' ? (document.getElementById('onee-ai-cursor-root') as HTMLDivElement | null) : null);
+        if (currentRoot) {
+          currentRoot.style.display = 'none';
+        }
       }
     }, 240);
   }
-  hideHighlight();
+  const ptr = cursorPointer || (typeof document !== 'undefined' ? (document.getElementById('onee-ai-pointer') as HTMLDivElement | null) : null);
+  if (ptr) {
+    ptr.style.opacity = '0';
+  }
+  if (!keepHighlight) {
+    hideHighlight();
+  }
 }
 
 /**
@@ -351,7 +375,7 @@ export function highlightElement(el: HTMLElement, label?: string, state: TargetH
   showCursor();
 
   activeTargetElement = el;
-  const rect = el.getBoundingClientRect();
+  const rect = getTightBoundingBox(el);
 
   if (highlightBox) {
     highlightBox.style.transform = `translate3d(${rect.left - 4}px, ${rect.top - 4}px, 0)`;
@@ -424,6 +448,26 @@ export async function animateCursorTo(
 
   return new Promise<void>((resolve) => {
     let startTime: number | null = null;
+    let resolved = false;
+
+    const finish = () => {
+      if (resolved) return;
+      resolved = true;
+      if (activeAnimationId !== null) {
+        cancelAnimationFrame(activeAnimationId);
+        activeAnimationId = null;
+      }
+      currentX = destX;
+      currentY = destY;
+      if (cursorPointer) {
+        cursorPointer.style.transform = `translate3d(${destX}px, ${destY}px, 0)`;
+      }
+      updatePillPosition(destX, destY);
+      resolve();
+    };
+
+    // Safety timeout in case tab is backgrounded or requestAnimationFrame is throttled
+    const safetyTimer = setTimeout(finish, (duration || 400) + 150);
 
     if (activeAnimationId !== null) {
       cancelAnimationFrame(activeAnimationId);
@@ -431,6 +475,7 @@ export async function animateCursorTo(
     }
 
     const step = (timestamp: number) => {
+      if (resolved) return;
       if (!startTime) startTime = timestamp;
       const elapsed = timestamp - startTime;
       const progress = Math.min(1, elapsed / (duration || 1));
@@ -451,15 +496,8 @@ export async function animateCursorTo(
       if (progress < 1) {
         activeAnimationId = requestAnimationFrame(step);
       } else {
-        // Land exactly at destination
-        currentX = destX;
-        currentY = destY;
-        if (cursorPointer) {
-          cursorPointer.style.transform = `translate3d(${destX}px, ${destY}px, 0)`;
-        }
-        updatePillPosition(destX, destY);
-        activeAnimationId = null;
-        resolve();
+        clearTimeout(safetyTimer);
+        finish();
       }
     };
 

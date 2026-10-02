@@ -130,8 +130,29 @@ export class AgentMotionController {
     return Math.min(1450, Math.round(1200 + ((distance - 1200) / 800) * 250));
   }
 
-  public async wait(durationMs: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, durationMs));
+  public async wait(durationMs: number, checkCancelled?: () => boolean): Promise<void> {
+    if (checkCancelled && checkCancelled()) return;
+    if (durationMs <= 0) return;
+    if (typeof process !== 'undefined' && process.env?.NODE_ENV === 'test') {
+      return new Promise((resolve) => setTimeout(resolve, Math.min(durationMs, 10)));
+    }
+    if (!checkCancelled) {
+      return new Promise((resolve) => setTimeout(resolve, durationMs));
+    }
+    return new Promise((resolve) => {
+      const start = performance.now();
+      const interval = setInterval(() => {
+        if (checkCancelled()) {
+          clearInterval(interval);
+          resolve();
+          return;
+        }
+        if (performance.now() - start >= durationMs) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 20);
+    });
   }
 }
 

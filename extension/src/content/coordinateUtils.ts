@@ -135,3 +135,202 @@ export function calculateSafeScrollDelta(element: HTMLElement): number {
 
   return Math.round(targetCenterY - desiredY);
 }
+
+export interface TightElementRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  right: number;
+  bottom: number;
+}
+
+/**
+ * Calculates a tight, visually accurate bounding box for an element.
+ * 
+ * For block containers or right-aligned links (e.g. Bootstrap col-xs-6 text-right
+ * containing "ATTENDANCE : 91% ⓘ"), el.getBoundingClientRect() includes wide
+ * empty padding/margins on the left.
+ * This function detects when the inner content/text/children occupy a tighter,
+ * more compact area and returns the tight content rect so the highlight box
+ * and cursor interaction point are positioned efficiently without trailing
+ * empty space on the left.
+ */
+export function getTightBoundingBox(el: HTMLElement): TightElementRect {
+  const baseRect = el.getBoundingClientRect();
+  const fallback: TightElementRect = {
+    left: baseRect.left,
+    top: baseRect.top,
+    width: baseRect.width,
+    height: baseRect.height,
+    right: baseRect.right ?? baseRect.left + baseRect.width,
+    bottom: baseRect.bottom ?? baseRect.top + baseRect.height
+  };
+
+  if (!el || !el.ownerDocument || !el.isConnected || baseRect.width <= 0 || baseRect.height <= 0) {
+    return fallback;
+  }
+
+  // Never shrink full-width data tables or table rows
+  const tag = el.tagName.toLowerCase();
+  if (tag === 'table' || tag === 'tr' || tag === 'tbody' || tag === 'thead') {
+    return fallback;
+  }
+
+  try {
+    const doc = el.ownerDocument || document;
+    const text = (el.textContent || '').trim();
+    const isAttendance = text.toUpperCase().includes('ATTENDANCE');
+    const isAcademics = text.toUpperCase().includes('ACADEMICS');
+
+    // If element is a dropdown wrapper container (e.g. li.dropdown, .nav-item),
+    // delegate to its direct trigger link so the highlight box wraps the button only!
+    const isDropdownContainer =
+      (el.classList.contains('dropdown') ||
+       el.classList.contains('nav-item') ||
+       el.classList.contains('dropdown-submenu') ||
+       el.tagName.toLowerCase() === 'li') &&
+      !isAttendance;
+
+    if (isDropdownContainer) {
+      const trigger = el.querySelector<HTMLElement>('a.dropdown-toggle, a, button, [role="button"]');
+      if (trigger && trigger !== el) {
+        const trRect = trigger.getBoundingClientRect();
+        if (trRect.width > 0 && trRect.height > 0) {
+          return getTightBoundingBox(trigger);
+        }
+      }
+    }
+
+    // 1. Attempt Range-based measurement of actual rendered text & inline content
+    try {
+      if (typeof doc.createRange === 'function') {
+        let range: Range | null = null;
+
+        if (isAttendance && typeof doc.createTreeWalker === 'function') {
+          const walker = doc.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+          let curr: Node | null;
+          while ((curr = walker.nextNode())) {
+            if (curr.textContent && curr.textContent.toUpperCase().includes('ATTENDANCE')) {
+              range = doc.createRange();
+              range.setStart(curr, 0);
+              const lastNode = el.lastElementChild || el.lastChild || curr;
+              if (lastNode instanceof Element) {
+                range.setEndAfter(lastNode);
+              } else {
+                range.setEnd(curr, curr.textContent.length);
+              }
+              break;
+            }
+          }
+        }
+
+        if (!range) {
+          range = doc.createRange();
+          range.selectNodeContents(el);
+        }
+
+        if (range && typeof range.getBoundingClientRect === 'function') {
+          const rRect = range.getBoundingClientRect();
+          if (rRect && rRect.width > 0 && rRect.height > 0) {
+            const hasLeftGap = rRect.left > baseRect.left + 8;
+            const isSignificantlyTighter = rRect.width < baseRect.width * 0.92;
+            const isSignificantlyTighterHeight = rRect.height < baseRect.height * 0.85;
+
+            if (isAttendance) {
+              return {
+                left: rRect.left,
+                top: rRect.top,
+                width: rRect.width,
+                height: rRect.height,
+                right: rRect.right ?? rRect.left + rRect.width,
+                bottom: rRect.bottom ?? rRect.top + rRect.height
+              };
+            }
+
+            if (isAcademics || isSignificantlyTighterHeight || (hasLeftGap && isSignificantlyTighter)) {
+              const padX = isAcademics ? 6 : 4;
+              const padY = isAcademics ? 4 : 2;
+              const tLeft = Math.max(baseRect.left, rRect.left - padX);
+              const tTop = Math.max(baseRect.top, rRect.top - padY);
+              const tRight = Math.min(baseRect.right ?? baseRect.left + baseRect.width, (rRect.right ?? rRect.left + rRect.width) + padX);
+              const tBottom = Math.min(baseRect.bottom ?? baseRect.top + baseRect.height, (rRect.bottom ?? rRect.top + rRect.height) + padY);
+
+              return {
+                left: tLeft,
+                top: tTop,
+                width: Math.max(10, tRight - tLeft),
+                height: Math.max(10, tBottom - tTop),
+                right: tRight,
+                bottom: tBottom
+              };
+            }
+          }
+        }
+      }
+    } catch {}
+
+    // 2. Child Union Fallback: check bounding boxes of child elements (e.g. spans, icons, links)
+    try {
+      const children = Array.from(el.querySelectorAll<HTMLElement>('*')).filter((c) => {
+        if (!c.isConnected) return false;
+        const cr = c.getBoundingClientRect();
+        return cr && cr.width > 0 && cr.height > 0;
+      });
+
+      if (children.length > 0) {
+        const relevantChildren = isAttendance
+          ? children.filter(
+              (c) =>
+                (c.textContent || '').toUpperCase().includes('ATTENDANCE') ||
+                c.tagName.toLowerCase() === 'a' ||
+                c.tagName.toLowerCase() === 'button' ||
+                c.tagName.toLowerCase() === 'i' ||
+                c.tagName.toLowerCase() === 'svg' ||
+                c.classList.contains('fa-info-circle') ||
+                c.querySelector('i, svg') !== null ||
+                c.getAttribute('onclick')?.toLowerCase().includes('attendance') ||
+                c.id?.toLowerCase().includes('att')
+            )
+          : children;
+
+        const targetChildren = relevantChildren.length > 0 ? relevantChildren : children;
+
+        let minLeft = Infinity;
+        let minTop = Infinity;
+        let maxRight = -Infinity;
+        let maxBottom = -Infinity;
+
+        for (const child of targetChildren) {
+          const cr = child.getBoundingClientRect();
+          if (cr && cr.width > 0 && cr.height > 0) {
+            minLeft = Math.min(minLeft, cr.left);
+            minTop = Math.min(minTop, cr.top);
+            maxRight = Math.max(maxRight, cr.right ?? cr.left + cr.width);
+            maxBottom = Math.max(maxBottom, cr.bottom ?? cr.top + cr.height);
+          }
+        }
+
+        if (minLeft < maxRight && minTop < maxBottom) {
+          const uWidth = maxRight - minLeft;
+          const uHeight = maxBottom - minTop;
+          const hasLeftGap = minLeft > baseRect.left + 8;
+
+          if (isAttendance || (hasLeftGap && uWidth < baseRect.width * 0.92)) {
+            return {
+              left: minLeft,
+              top: minTop,
+              width: uWidth,
+              height: uHeight,
+              right: maxRight,
+              bottom: maxBottom
+            };
+          }
+        }
+      }
+    } catch {}
+  } catch {}
+
+  return fallback;
+}
+

@@ -21,7 +21,7 @@ export interface UmsDetectionResult {
   statusMessage: string;
   studentName?: string;
   registrationNumber?: string;
-  pageType: 'unknown' | 'verification' | 'login' | 'dashboard' | 'attendance' | 'other_ums';
+  pageType: 'unknown' | 'verification' | 'login' | 'dashboard' | 'attendance' | 'examination' | 'other_ums';
 }
 
 /*
@@ -210,7 +210,14 @@ export function detectUmsState(
   const path = currentLocation.pathname.toLowerCase();
 
   let pageType: UmsDetectionResult['pageType'] = 'other_ums';
-  if (path.includes('dashboard')) {
+  if (
+    path.includes('examination') ||
+    path.includes('seatingplan') ||
+    path.includes('datesheet') ||
+    (doc.title && doc.title.toLowerCase().includes('date sheet'))
+  ) {
+    pageType = 'examination';
+  } else if (path.includes('dashboard')) {
     pageType = 'dashboard';
   } else if (path.includes('attendance')) {
     pageType = 'attendance';
