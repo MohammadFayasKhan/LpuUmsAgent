@@ -1,10 +1,11 @@
 /*
- * Privacy & Storage Management Modal Styles.
+ * Privacy & Storage Management Modal Styles (Apple iOS Design System).
  *
- * Centered modal overlay for student data controls:
- * - High z-index (9999) and heavy backdrop blur.
- * - Storage metrics grid showing record counts and disk usage.
- * - Danger zone with soft red border and confirmation action buttons.
+ * Implements WWDC Human Interface Guidelines:
+ * - Frosted glass sheet material with top grab handle and rounded squircles.
+ * - Non-collapsing flex children (flex-shrink: 0) preventing content clipping.
+ * - Tactile spring-animated action buttons with clear destruction semantics.
+ * - Smooth iOS momentum scrolling and custom thin pill scrollbar.
  */
 
 .overlay {
@@ -14,31 +15,91 @@
   right: 0;
   bottom: 0;
   background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 12px;
+  box-sizing: border-box;
   z-index: 9999;
-  animation: fadeIn 0.15s ease-out;
+  animation: overlayFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .modal {
+  position: relative;
   width: 100%;
-  max-width: 400px;
-  max-height: 90vh;
-  overflow-y: auto;
-  background: #0d0e15;
-  border: 1px solid rgba(124, 58, 237, 0.25);
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 30px rgba(124, 58, 237, 0.15);
+  max-width: 375px;
+  max-height: 88vh;
+  box-sizing: border-box;
+  background: rgba(18, 19, 28, 0.94);
+  backdrop-filter: blur(40px) saturate(190%);
+  -webkit-backdrop-filter: blur(40px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 24px;
+  padding: 14px 16px 16px;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.22), 0 24px 64px rgba(0, 0, 0, 0.85);
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  animation: scaleUp 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
-  color: #f4f4f5;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  gap: 14px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  animation: modalSpringUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+}
+
+.modal::-webkit-scrollbar {
+  width: 5px;
+}
+
+.modal::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+.modal::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.grabHandle {
+  width: 38px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  align-self: center;
+  flex-shrink: 0;
+  margin-top: -2px;
+  margin-bottom: 2px;
+}
+
+.closeBtn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.closeBtn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
+  transform: scale(1.06);
+}
+
+.closeBtn:active {
+  transform: scale(0.92);
 }
 
 .header {
@@ -47,44 +108,51 @@
   align-items: center;
   text-align: center;
   gap: 6px;
+  flex-shrink: 0;
+  padding: 0 8px;
 }
 
 .iconCircle {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: rgba(124, 58, 237, 0.15);
-  color: #a78bfa;
-  border: 1px solid rgba(124, 58, 237, 0.3);
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.28) 0%, rgba(99, 102, 241, 0.38) 100%);
+  color: #c4b5fd;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  box-shadow: 0 8px 24px rgba(124, 58, 237, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .title {
   font-size: 16px;
   font-weight: 700;
+  letter-spacing: -0.3px;
   color: #ffffff;
   margin: 0;
 }
 
 .subtitle {
   font-size: 12px;
-  color: #a1a1aa;
-  line-height: 1.4;
+  color: #94a3b8;
+  line-height: 1.45;
   margin: 0;
 }
 
-/* Storage Telemetry Section */
+/* Storage Telemetry Section - Guaranteed Non-Collapsing */
 .storageSection {
-  background: rgba(18, 19, 28, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  flex-shrink: 0; /* CRITICAL FIX: prevents flex parent from squishing section */
 }
 
 .sectionTitleRow {
@@ -94,192 +162,232 @@
 }
 
 .sectionTitle {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
-  color: #e4e4e7;
+  color: #cbd5e1;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.7px;
 }
 
 .storageBadge {
   font-size: 10px;
-  font-weight: 600;
-  background: rgba(124, 58, 237, 0.2);
+  font-weight: 700;
+  background: rgba(124, 58, 237, 0.22);
   color: #c4b5fd;
-  border: 1px solid rgba(124, 58, 237, 0.4);
-  padding: 2px 6px;
-  border-radius: 4px;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  padding: 2px 7px;
+  border-radius: 999px;
+  line-height: 1.3;
 }
 
 .storageGrid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .storageCard {
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  padding: 8px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 12px;
+  padding: 8px 4px;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 2px;
+  gap: 3px;
+  box-sizing: border-box;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease;
+}
+
+.storageCard:hover {
+  background: rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
 }
 
 .cardLabel {
   font-size: 10px;
-  color: #a1a1aa;
-  font-weight: 500;
+  color: #94a3b8;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 100%;
 }
 
 .cardValue {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
-  color: #f4f4f5;
-}
-
-.cardValue small {
-  font-size: 9px;
-  font-weight: 500;
-  color: #71717a;
-}
-
-.cardDetail {
-  font-size: 9px;
-  color: #71717a;
+  color: #ffffff;
   white-space: nowrap;
 }
 
+.cardValue small {
+  font-size: 9.5px;
+  font-weight: 500;
+  color: #64748b;
+  margin-left: 1px;
+}
+
+.cardDetail {
+  font-size: 9.5px;
+  color: #64748b;
+  line-height: 1.25;
+  text-align: center;
+}
+
 .actionNotice {
-  font-size: 11px;
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  padding: 6px 10px;
-  border-radius: 6px;
+  font-size: 11.5px;
+  color: #34d399;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  padding: 7px 12px;
+  border-radius: 10px;
   text-align: center;
   font-weight: 600;
-  animation: fadeIn 0.15s ease-out;
+  animation: noticePop 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .dataActionRow {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 7px;
+  margin-top: 2px;
 }
 
 .purgeBtn {
   flex: 1;
-  min-width: 90px;
-  background: rgba(255, 255, 255, 0.05);
+  min-width: 85px;
+  background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #d4d4d8;
+  color: #e2e8f0;
   font-size: 11px;
   font-weight: 600;
-  padding: 6px 8px;
-  border-radius: 6px;
+  padding: 7px 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .purgeBtn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.purgeBtn:active:not(:disabled) {
+  transform: scale(0.96);
 }
 
 .purgeBtn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
 .dangerBtn {
   width: 100%;
   background: rgba(239, 68, 68, 0.12);
-  border: 1px solid rgba(239, 68, 68, 0.35);
+  border: 1px solid rgba(239, 68, 68, 0.32);
   color: #fca5a5;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 6px 10px;
-  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .dangerBtn:hover:not(:disabled) {
   background: rgba(239, 68, 68, 0.22);
   color: #ffffff;
-  border-color: rgba(239, 68, 68, 0.6);
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+.dangerBtn:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 .dangerBtn:disabled {
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: not-allowed;
 }
 
-/* Principles Checklist */
+/* Principles Checklist - Grouped Inset Material */
 .principles {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px;
-  background: rgba(18, 19, 28, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  flex-shrink: 0;
 }
 
 .principleItem {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
   font-size: 11px;
 }
 
-.checkIcon {
-  color: #10b981;
-  font-weight: 800;
-  font-size: 12px;
+.checkBadge {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(16, 185, 129, 0.16);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  color: #34d399;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   margin-top: 1px;
 }
 
-.principleItem strong {
+.principleContent {
+  flex: 1;
+}
+
+.principleContent strong {
   display: block;
-  font-size: 11px;
-  color: #f4f4f5;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #ffffff;
   margin-bottom: 2px;
 }
 
-.principleItem p {
-  color: #a1a1aa;
-  line-height: 1.35;
+.principleContent p {
+  color: #94a3b8;
+  line-height: 1.4;
   margin: 0;
   font-size: 10.5px;
 }
 
 .creatorNote {
-  background: rgba(124, 58, 237, 0.08);
-  border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.12) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border: 1px solid rgba(124, 58, 237, 0.25);
+  border-radius: 14px;
   padding: 10px 12px;
+  flex-shrink: 0;
 }
 
 .creatorTag {
   display: inline-block;
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
   color: #a78bfa;
   margin-bottom: 4px;
 }
 
 .creatorText {
   font-size: 11px;
-  color: #d4d4d8;
-  line-height: 1.4;
+  color: #cbd5e1;
+  line-height: 1.45;
   margin: 0;
 }
 
@@ -290,31 +398,57 @@
 .footer {
   display: flex;
   justify-content: flex-end;
+  flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .continueBtn {
   width: 100%;
-  background: #7c3aed;
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
   color: #ffffff;
-  border: none;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 10px;
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+  padding: 11px;
+  border-radius: 13px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 16px rgba(124, 58, 237, 0.38);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .continueBtn:hover {
-  background: #6d28d9;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 6px 20px rgba(124, 58, 237, 0.52);
+  filter: brightness(1.06);
 }
 
-@keyframes fadeIn {
+.continueBtn:active {
+  transform: scale(0.98);
+}
+
+@keyframes overlayFade {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-@keyframes scaleUp {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+@keyframes modalSpringUp {
+  from {
+    transform: scale(0.94) translateY(12px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes noticePop {
+  from {
+    transform: scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
 }

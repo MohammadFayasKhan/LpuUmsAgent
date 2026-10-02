@@ -1,17 +1,11 @@
 /*
- * Privacy & Data Management Modal for ONEE.
+ * Privacy & Data Management Modal for ONEE (Apple iOS Design System).
  *
- * This modal gives the student full visibility and control over what ONEE stores
- * on their device. It shows:
- * - Storage metrics: how much space conversations, agent executions, and
- *   verified attendance snapshots are using in IndexedDB
- * - Individual "Clear" buttons for each data category
- * - A "Clear All Local Data" nuclear option that wipes everything
- *
- * We show this modal the first time the student opens ONEE so they understand
- * what data is kept locally before they start using it. After dismissal, a
- * privacy acknowledgement flag is saved in chrome.storage.local so the modal
- * only appears once unless the student opens it from the settings gear.
+ * Implements WWDC Human Interface Guidelines:
+ * - Frosted glass sheet material with top grab handle and corner squircle.
+ * - Non-collapsing flex structure so storage metrics are always fully visible.
+ * - Tactile spring-animated action buttons with clear destruction semantics.
+ * - Grouped checklist items with dedicated SVG status indicators.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -103,21 +97,32 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
   };
 
   return (
-    <div className={styles.overlay} onClick={onClose}>
+    <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="privacy-modal-title">
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        {/* iOS Grab Handle */}
+        <div className={styles.grabHandle} aria-hidden="true" />
+
+        {/* Top-Right Circular Close Button */}
+        <button className={styles.closeBtn} onClick={onClose} aria-label="Close privacy modal">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+
         <div className={styles.header}>
-          <div className={styles.iconCircle}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className={styles.iconCircle} aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg>
           </div>
-          <h2 className={styles.title}>ONEE Data & Privacy</h2>
+          <h2 id="privacy-modal-title" className={styles.title}>ONEE Data & Privacy</h2>
           <p className={styles.subtitle}>
             Local-first storage on your device. UMS credentials and session tokens are never stored.
           </p>
         </div>
 
-        {/* Local Storage Telemetry Grid */}
+        {/* Local Storage Telemetry Section */}
         <div className={styles.storageSection}>
           <div className={styles.sectionTitleRow}>
             <span className={styles.sectionTitle}>Local Memory Storage</span>
@@ -138,7 +143,7 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
               <strong className={styles.cardValue}>
                 {metrics.executionCount} <small>runs</small>
               </strong>
-              <span className={styles.cardDetail}>Computer Use traces</span>
+              <span className={styles.cardDetail}>Agent traces</span>
             </div>
 
             <div className={styles.storageCard}>
@@ -146,7 +151,7 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
               <strong className={styles.cardValue}>
                 {metrics.datasetCount} <small>datasets</small>
               </strong>
-              <span className={styles.cardDetail}>Verified UMS records</span>
+              <span className={styles.cardDetail}>Verified records</span>
             </div>
           </div>
 
@@ -182,38 +187,55 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
         {/* Privacy Principles Checklist */}
         <div className={styles.principles}>
           <div className={styles.principleItem}>
-            <span className={styles.checkIcon}>✓</span>
-            <div>
+            <div className={styles.checkBadge} aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div className={styles.principleContent}>
               <strong>Local-First Architecture</strong>
               <p>Chat threads, agent traces, and attendance datasets are stored on this device in IndexedDB.</p>
             </div>
           </div>
 
           <div className={styles.principleItem}>
-            <span className={styles.checkIcon}>✓</span>
-            <div>
+            <div className={styles.checkBadge} aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div className={styles.principleContent}>
               <strong>Zero Password & Token Storage</strong>
               <p>ONEE never stores, collects, or transmits your UMS password or session authentication cookies.</p>
             </div>
           </div>
 
           <div className={styles.principleItem}>
-            <span className={styles.checkIcon}>✓</span>
-            <div>
+            <div className={styles.checkBadge} aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div className={styles.principleContent}>
               <strong>Minimal LLM Request Context</strong>
               <p>Only the specific question and active verified attendance table leave your device for AI processing.</p>
             </div>
           </div>
 
           <div className={styles.principleItem}>
-            <span className={styles.checkIcon}>✓</span>
-            <div>
+            <div className={styles.checkBadge} aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <div className={styles.principleContent}>
               <strong>Account / Session Boundaries</strong>
               <p>Storage is namespaced per student account. Logging out invalidates active runtime sessions immediately.</p>
             </div>
           </div>
         </div>
 
+        {/* Creator / Engineering Attribution */}
         <div className={styles.creatorNote}>
           <div className={styles.creatorTag}>Engineering</div>
           <p className={styles.creatorText}>
@@ -221,6 +243,7 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
           </p>
         </div>
 
+        {/* Footer Done Action */}
         <div className={styles.footer}>
           <button className={styles.continueBtn} onClick={onClose}>
             Done

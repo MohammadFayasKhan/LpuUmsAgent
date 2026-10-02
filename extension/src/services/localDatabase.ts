@@ -84,15 +84,28 @@ export interface StorageMetrics {
 }
 
 import { PersonalizationProfile } from './personalizationStore';
+import { ExaminationSummary } from '../shared/types';
+import { cleanPreviewSnippet } from '../lib/scrollUtils';
+
+export interface VerifiedExaminationRecord {
+  id: string; // e.g. latest_${accountId} or executionId
+  accountId: string;
+  executionId?: string;
+  capturedAt: number;
+  source: 'UMS_DOM';
+  verified: boolean;
+  examination: ExaminationSummary;
+}
 
 const DB_NAME = 'ONEE_LOCAL_DB';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 const STORES = {
   CONVERSATIONS: 'conversations',
   MESSAGES: 'messages',
   EXECUTIONS: 'agentExecutions',
   VERIFIED_ATTENDANCE: 'verifiedAttendance',
+  VERIFIED_EXAMINATION: 'verifiedExamination',
   PERSONALIZATION: 'personalization'
 } as const;
 
@@ -147,6 +160,13 @@ class LocalDatabase {
         // 5. Personalization Profile store
         if (!db.objectStoreNames.contains(STORES.PERSONALIZATION)) {
           db.createObjectStore(STORES.PERSONALIZATION, { keyPath: 'activeAccountId' });
+        }
+
+        // 6. Verified Examination store
+        if (!db.objectStoreNames.contains(STORES.VERIFIED_EXAMINATION)) {
+          const store = db.createObjectStore(STORES.VERIFIED_EXAMINATION, { keyPath: 'id' });
+          store.createIndex('accountId', 'accountId', { unique: false });
+          store.createIndex('capturedAt', 'capturedAt', { unique: false });
         }
       };
 
@@ -260,7 +280,7 @@ class LocalDatabase {
         const conv: ConversationRecord | undefined = convReq.result;
         if (conv) {
           conv.updatedAt = message.createdAt;
-          conv.lastMessagePreview = message.content.slice(0, 80);
+          conv.lastMessagePreview = cleanPreviewSnippet(message.content, 80);
           convStore.put(conv);
         }
       };
@@ -376,6 +396,35 @@ class LocalDatabase {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORES.VERIFIED_ATTENDANCE, 'readonly');
       const store = tx.objectStore(STORES.VERIFIED_ATTENDANCE);
+      const req = store.get(`latest_${accountId}`);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  /*
+   * Saves the verified examination schedule snapshot extracted directly from the UMS DOM.
+   */
+  public async saveVerifiedExamination(record: VerifiedExaminationRecord): Promise<void> {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORES.VERIFIED_EXAMINATION, 'readwrite');
+      const store = tx.objectStore(STORES.VERIFIED_EXAMINATION);
+      store.put(record);
+      store.put({
+        ...record,
+        id: `latest_${record.accountId}`
+      });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  public async getLatestVerifiedExamination(accountId: string = 'default'): Promise<VerifiedExaminationRecord | null> {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORES.VERIFIED_EXAMINATION, 'readonly');
+      const store = tx.objectStore(STORES.VERIFIED_EXAMINATION);
       const req = store.get(`latest_${accountId}`);
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
@@ -548,7 +597,14 @@ class LocalDatabase {
     const db = await this.getDB();
     return new Promise((resolve, reject) => {
       const tx = db.transaction(
-        [STORES.CONVERSATIONS, STORES.MESSAGES, STORES.EXECUTIONS, STORES.VERIFIED_ATTENDANCE, STORES.PERSONALIZATION],
+        [
+          STORES.CONVERSATIONS,
+          STORES.MESSAGES,
+          STORES.EXECUTIONS,
+          STORES.VERIFIED_ATTENDANCE,
+          STORES.VERIFIED_EXAMINATION,
+          STORES.PERSONALIZATION
+        ],
         'readwrite'
       );
 
@@ -578,6 +634,13 @@ class LocalDatabase {
           attStore.delete(`latest_${accountId}`);
         };
 
+        const examStore = tx.objectStore(STORES.VERIFIED_EXAMINATION);
+        const examReq = examStore.index('accountId').getAll(accountId);
+        examReq.onsuccess = () => {
+          for (const e of examReq.result || []) examStore.delete(e.id);
+          examStore.delete(`latest_${accountId}`);
+        };
+
         const persStore = tx.objectStore(STORES.PERSONALIZATION);
         persStore.delete(accountId);
       } else {
@@ -585,6 +648,7 @@ class LocalDatabase {
         tx.objectStore(STORES.MESSAGES).clear();
         tx.objectStore(STORES.EXECUTIONS).clear();
         tx.objectStore(STORES.VERIFIED_ATTENDANCE).clear();
+        tx.objectStore(STORES.VERIFIED_EXAMINATION).clear();
         tx.objectStore(STORES.PERSONALIZATION).clear();
       }
 

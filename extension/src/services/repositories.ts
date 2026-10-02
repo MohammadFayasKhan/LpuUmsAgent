@@ -18,7 +18,8 @@ import {
   ConversationRecord,
   MessageRecord,
   AgentExecutionRecord,
-  VerifiedAttendanceRecord
+  VerifiedAttendanceRecord,
+  VerifiedExaminationRecord
 } from './localDatabase';
 import { PersonalizationProfile } from './personalizationStore';
 
@@ -123,6 +124,44 @@ export class VerifiedContextRepository implements IVerifiedContextRepository {
     return new Promise((resolve, reject) => {
       const tx = db.transaction('verifiedAttendance', 'readwrite');
       const store = tx.objectStore('verifiedAttendance');
+      if (accountId) {
+        const req = store.index('accountId').getAll(accountId);
+        req.onsuccess = () => {
+          for (const item of req.result || []) store.delete(item.id);
+          store.delete(`latest_${accountId}`);
+        };
+      } else {
+        store.clear();
+      }
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+}
+
+/*
+ * Keeps the latest verified examination date sheet / seating plan parsed from UMS.
+ */
+export interface IVerifiedExaminationRepository {
+  saveVerifiedExamination(record: VerifiedExaminationRecord): Promise<void>;
+  getLatestVerifiedExamination(accountId?: string): Promise<VerifiedExaminationRecord | null>;
+  clearContext(accountId?: string): Promise<void>;
+}
+
+export class VerifiedExaminationRepository implements IVerifiedExaminationRepository {
+  public async saveVerifiedExamination(record: VerifiedExaminationRecord): Promise<void> {
+    return localDatabase.saveVerifiedExamination(record);
+  }
+
+  public async getLatestVerifiedExamination(accountId: string = 'default'): Promise<VerifiedExaminationRecord | null> {
+    return localDatabase.getLatestVerifiedExamination(accountId);
+  }
+
+  public async clearContext(accountId?: string): Promise<void> {
+    const db = await (localDatabase as any).getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('verifiedExamination', 'readwrite');
+      const store = tx.objectStore('verifiedExamination');
       if (accountId) {
         const req = store.index('accountId').getAll(accountId);
         req.onsuccess = () => {
@@ -378,6 +417,7 @@ export class SessionRepository implements ISessionRepository {
 export const chatRepo = new ChatRepository();
 export const agentHistoryRepo = new AgentHistoryRepository();
 export const verifiedContextRepo = new VerifiedContextRepository();
+export const verifiedExaminationRepo = new VerifiedExaminationRepository();
 export const personalizationRepo = new PersonalizationRepository();
 export const settingsRepo = new SettingsRepository();
 export const sessionRepo = new SessionRepository();

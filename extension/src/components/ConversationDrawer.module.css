@@ -1,10 +1,11 @@
 /*
- * Conversation History Drawer Styles.
+ * Conversation History Drawer Styles (Apple iOS Design System).
  *
- * Slide-in side drawer for switching and deleting past conversations:
- * - High z-index (1500) and dark backdrop overlay for focus containment.
- * - Smooth slideIn transition from the left side of the panel.
- * - Truncated item previews with hover highlights and delete action buttons.
+ * Implements WWDC Human Interface Guidelines:
+ * - Ultra-thin frosted glass materials with specular edge highlights.
+ * - Critically-damped spring animations (cubic-bezier(0.16, 1, 0.3, 1)).
+ * - Tactile press states with instant touch feedback.
+ * - High-contrast active cards with glowing indicator pills.
  */
 
 .backdrop {
@@ -13,94 +14,136 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(12px) saturate(160%);
+  -webkit-backdrop-filter: blur(12px) saturate(160%);
   z-index: 1500;
   display: flex;
   justify-content: flex-start;
-  animation: fadeIn 0.15s ease-out;
+  animation: backdropFade 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .drawer {
-  width: 260px;
+  width: 280px;
+  max-width: 86vw;
   height: 100%;
-  background: #0d0e15;
-  border-right: 1px solid rgba(124, 58, 237, 0.25);
-  padding: 16px;
+  box-sizing: border-box;
+  background: rgba(16, 17, 24, 0.92);
+  backdrop-filter: blur(36px) saturate(190%);
+  -webkit-backdrop-filter: blur(36px) saturate(190%);
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.6);
-  animation: slideIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  color: #f4f4f5;
+  gap: 14px;
+  box-shadow: 16px 0 48px rgba(0, 0, 0, 0.75), inset -1px 0 0 0 rgba(255, 255, 255, 0.06);
+  animation: drawerSlide 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  color: #f8fafc;
 }
 
 .drawerHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 2px 4px;
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .drawerTitle {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
+  letter-spacing: -0.3px;
   color: #ffffff;
   margin: 0;
 }
 
+.countBadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #a78bfa;
+  background: rgba(124, 58, 237, 0.18);
+  border: 1px solid rgba(124, 58, 237, 0.35);
+  border-radius: 999px;
+  padding: 1px 7px;
+  line-height: 1.3;
+}
+
 .closeBtn {
-  background: transparent;
-  border: none;
-  color: #a1a1aa;
-  font-size: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.15s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .closeBtn:hover {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.16);
+  transform: scale(1.06);
+}
+
+.closeBtn:active {
+  transform: scale(0.92);
 }
 
 .newChatBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  background: rgba(124, 58, 237, 0.15);
-  border: 1px solid rgba(124, 58, 237, 0.4);
-  color: #c4b5fd;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 12px;
+  gap: 8px;
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 13px;
   font-weight: 600;
+  letter-spacing: -0.1px;
   cursor: pointer;
-  transition: all 0.15s ease;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 14px rgba(124, 58, 237, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .newChatBtn:hover {
-  background: #7c3aed;
-  color: #ffffff;
-  border-color: #7c3aed;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 6px 20px rgba(124, 58, 237, 0.5);
+  filter: brightness(1.06);
+}
+
+.newChatBtn:active {
+  transform: scale(0.97);
 }
 
 .convContainer {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  margin-top: 4px;
+  gap: 16px;
+  margin-top: 2px;
+  padding-right: 2px;
+  -webkit-overflow-scrolling: touch;
 }
 
-.emptyNotice {
-  font-size: 12px;
-  color: #71717a;
-  text-align: center;
-  padding: 24px 0;
+.convContainer::-webkit-scrollbar {
+  width: 4px;
+}
+
+.convContainer::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
 }
 
 .group {
@@ -110,41 +153,79 @@
 }
 
 .groupHeader {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: #71717a;
-  padding: 0 4px;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+  padding: 0 6px;
 }
 
 .groupList {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .convItem {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid transparent;
+  gap: 10px;
+  padding: 10px 11px;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   cursor: pointer;
-  transition: all 0.15s ease;
-  gap: 6px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
 }
 
 .convItem:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.075);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.convItem:active {
+  transform: scale(0.98);
 }
 
 .convItem.active {
-  background: rgba(124, 58, 237, 0.18);
-  border-color: rgba(124, 58, 237, 0.45);
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.22) 0%, rgba(99, 102, 241, 0.15) 100%);
+  border-color: rgba(167, 139, 250, 0.45);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 4px 16px rgba(124, 58, 237, 0.25);
+}
+
+.convItem.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3.5px;
+  border-radius: 0 4px 4px 0;
+  background: #a78bfa;
+}
+
+.convLeadIcon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.convItem.active .convLeadIcon {
+  background: rgba(124, 58, 237, 0.25);
+  border-color: rgba(167, 139, 250, 0.35);
+  color: #c4b5fd;
 }
 
 .convContent {
@@ -152,53 +233,107 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .convTitle {
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 600;
-  color: #f4f4f5;
+  letter-spacing: -0.15px;
+  color: #ffffff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.35;
 }
 
 .convPreview {
-  font-size: 10px;
-  color: #71717a;
+  font-size: 11px;
+  color: #94a3b8;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.35;
 }
 
 .deleteBtn {
   opacity: 0;
-  background: transparent;
-  border: none;
-  color: #71717a;
-  font-size: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: all 0.15s ease;
+  flex-shrink: 0;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.convItem:hover .deleteBtn {
+.convItem:hover .deleteBtn,
+.deleteBtn:focus-visible {
   opacity: 1;
 }
 
 .deleteBtn:hover {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.35);
 }
 
-@keyframes fadeIn {
+.deleteBtn:active {
+  transform: scale(0.9);
+}
+
+.emptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 14px;
+  gap: 8px;
+}
+
+.emptyIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.emptyTitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.emptyDesc {
+  font-size: 11.5px;
+  color: #64748b;
+  line-height: 1.4;
+  margin: 0;
+}
+
+@keyframes backdropFade {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-@keyframes slideIn {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+@keyframes drawerSlide {
+  from {
+    transform: translateX(-100%);
+    opacity: 0.7;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
