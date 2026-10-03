@@ -13,28 +13,38 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
   display: flex;
   align-items: flex-end;
   justify-content: center;
   z-index: 100;
-  animation: fadeIn 0.15s ease-out;
+  animation: iosBackdropEnter 0.28s var(--ios-spring-snappy) forwards;
+}
+
+.overlay.closing {
+  animation: iosBackdropExit 0.22s var(--ios-spring-snappy) forwards;
 }
 
 .modal {
   width: 100%;
   max-height: 90vh;
   background: var(--surface);
-  border-top-left-radius: var(--radius-lg);
-  border-top-right-radius: var(--radius-lg);
+  border-top-left-radius: var(--radius-xl, 22px);
+  border-top-right-radius: var(--radius-xl, 22px);
   padding: 20px 18px 24px;
   overflow-y: auto;
-  box-shadow: var(--shadow-lg);
-  animation: slideUp 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15), var(--shadow-lg);
+  animation: iosSheetEnter 0.36s var(--ios-spring-sheet) forwards;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.modal.closing {
+  animation: iosSheetExit 0.22s var(--ios-spring-sheet) forwards;
 }
 
 .header {

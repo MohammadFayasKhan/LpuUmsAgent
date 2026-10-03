@@ -20,7 +20,11 @@
   z-index: 1500;
   display: flex;
   justify-content: flex-start;
-  animation: backdropFade 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: iosBackdropEnter 0.28s var(--ios-spring-snappy) forwards;
+}
+
+.backdrop.closing {
+  animation: iosBackdropExit 0.22s var(--ios-spring-snappy) forwards;
 }
 
 .drawer {
@@ -37,9 +41,13 @@
   flex-direction: column;
   gap: 14px;
   box-shadow: 16px 0 48px rgba(0, 0, 0, 0.75), inset -1px 0 0 0 rgba(255, 255, 255, 0.06);
-  animation: drawerSlide 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: drawerSlide 0.36s var(--ios-spring-sheet) forwards;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
   color: #f8fafc;
+}
+
+.drawer.closing {
+  animation: drawerSlideOut 0.24s var(--ios-spring-sheet) forwards;
 }
 
 .drawerHeader {
@@ -337,3 +345,15 @@
     opacity: 1;
   }
 }
+
+@keyframes drawerSlideOut {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-100%);
+    opacity: 0.7;
+  }
+}
+

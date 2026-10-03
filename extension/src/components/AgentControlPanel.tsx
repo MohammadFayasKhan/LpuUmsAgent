@@ -930,7 +930,7 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                             )}
                           </div>
 
-                          <div className={styles.examCardList} style={{ maxHeight: '240px', overflowY: 'auto' }}>
+                          <div className={styles.examCardList}>
                             {examsToRender.map((exam, idx) => {
                               const examKey = getExamKey(exam, idx);
                               const isExpanded = expandedExamId === examKey;
@@ -1452,52 +1452,51 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                 );
               })()}
 
-              {/* Verified Badge */}
-              <div className={styles.verifiedBadge}>
-                <span className={styles.verifiedCheck}>✓</span>
-                <span>Verified directly from UMS</span>
-              </div>
-
-              {/* Verification Footer Metadata */}
-              <div className={styles.verificationFooter}>
-                <div className={styles.footerSourceRow}>
-                  <span className={styles.footerLabel}>Source:</span>
-                  <span
-                    className={styles.footerSourceValue}
-                    title={finalResponse.verification?.source || 'UMS Dashboard'}
-                  >
-                    {formatVerificationSource(finalResponse.verification?.source)}
-                  </span>
+              {/* Sleek Compact Verification & Metadata Bar */}
+              <div className={styles.compactFooterBar}>
+                <div className={styles.footerTopRow}>
+                  <div className={styles.verifiedBadge}>
+                    <span className={styles.verifiedCheck}>✓</span>
+                    <span>Verified directly from UMS</span>
+                  </div>
+                  <div className={styles.footerSourceRow}>
+                    <span className={styles.footerLabel}>Source:</span>
+                    <span
+                      className={styles.footerSourceValue}
+                      title={finalResponse.verification?.source || 'UMS Dashboard'}
+                    >
+                      {formatVerificationSource(finalResponse.verification?.source)}
+                    </span>
+                  </div>
                 </div>
 
-                <div className={styles.footerMetaGrid}>
-                  <div className={styles.footerItem}>
+                <div className={styles.footerMetaPills}>
+                  <span className={styles.footerMetaItem}>
                     <span className={styles.footerLabel}>
                       {finalResponse.verification?.examsChecked !== undefined || finalResponse.details?.exams !== undefined
-                        ? 'Exams checked:'
+                        ? 'Exams: '
                         : finalResponse.timetable || finalResponse.details?.timetable
-                        ? 'Classes checked:'
-                        : 'Subjects checked:'}
+                        ? 'Classes: '
+                        : 'Subjects: '}
                     </span>
-                    <span className={styles.footerValue}>
+                    <strong className={styles.footerValue}>
                       {finalResponse.details?.exams?.length ??
                         finalResponse.timetable?.totalSlots ??
                         finalResponse.details?.timetable?.totalSlots ??
                         finalResponse.verification?.examsChecked ??
                         finalResponse.verification?.subjectsChecked ??
                         0}
-                    </span>
-                  </div>
-                  <div className={styles.footerItem}>
-                    <span className={styles.footerLabel}>Execution:</span>
-                    <span className={styles.executionCompleted}>
-                      completed
-                    </span>
-                  </div>
-                  <div className={styles.footerItem}>
-                    <span className={styles.footerLabel}>Observation:</span>
-                    <span className={styles.footerValue}>just now</span>
-                  </div>
+                    </strong>
+                  </span>
+                  <span className={styles.footerDot}>•</span>
+                  <span className={styles.footerMetaItem}>
+                    <span className={styles.footerLabel}>Execution: </span>
+                    <span className={styles.executionCompleted}>completed</span>
+                  </span>
+                  <span className={styles.footerDot}>•</span>
+                  <span className={styles.footerMetaItem}>
+                    <span className={styles.footerTime}>just now</span>
+                  </span>
                 </div>
               </div>
 

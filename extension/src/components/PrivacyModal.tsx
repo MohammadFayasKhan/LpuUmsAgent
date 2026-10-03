@@ -96,14 +96,24 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
     }
   };
 
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 220);
+  };
+
   return (
-    <div className={styles.overlay} onClick={onClose} role="dialog" aria-modal="true" aria-labelledby="privacy-modal-title">
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+    <div className={`${styles.overlay} ${isClosing ? styles.closing : ''}`} onClick={handleClose} role="dialog" aria-modal="true" aria-labelledby="privacy-modal-title">
+      <div className={`${styles.modal} ${isClosing ? styles.closing : ''}`} onClick={(e) => e.stopPropagation()}>
         {/* iOS Grab Handle */}
         <div className={styles.grabHandle} aria-hidden="true" />
 
         {/* Top-Right Circular Close Button */}
-        <button className={styles.closeBtn} onClick={onClose} aria-label="Close privacy modal">
+        <button className={styles.closeBtn} onClick={handleClose} aria-label="Close privacy modal">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />

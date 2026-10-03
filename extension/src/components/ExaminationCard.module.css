@@ -9,6 +9,7 @@
   flex-direction: column;
   gap: 12px;
   box-shadow: var(--shadow-sm);
+  animation: iosCardEnter 360ms var(--ios-spring-sheet) both;
 }
 
 .header {
@@ -239,10 +240,13 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 280px;
+  min-height: 220px;
+  max-height: 480px;
   overflow-y: auto;
   box-sizing: border-box;
   width: 100%;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 .examItemCard {
@@ -257,12 +261,25 @@
   box-sizing: border-box;
   width: 100%;
   min-width: 0;
-  transition: all var(--transition-fast);
+  transition: all var(--ios-spring-snappy), transform var(--ios-spring-press);
+  animation: iosCardEnter 340ms var(--ios-spring-snappy) both;
 }
+
+.examItemCard:nth-child(1) { animation-delay: 20ms; }
+.examItemCard:nth-child(2) { animation-delay: 50ms; }
+.examItemCard:nth-child(3) { animation-delay: 80ms; }
+.examItemCard:nth-child(4) { animation-delay: 110ms; }
+.examItemCard:nth-child(5) { animation-delay: 140ms; }
+.examItemCard:nth-child(6) { animation-delay: 170ms; }
 
 .examItemCard:hover {
   background: rgba(124, 58, 237, 0.04);
   border-color: rgba(124, 58, 237, 0.3);
+  transform: translateY(-1px);
+}
+
+.examItemCard:active {
+  transform: scale(0.975);
 }
 
 .examItemCard.active {

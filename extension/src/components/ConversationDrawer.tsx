@@ -32,7 +32,32 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   onNewConversation,
   onDeleteConversation
 }) => {
-  if (!isOpen) return null;
+  const [shouldRender, setShouldRender] = React.useState(isOpen);
+  const [isClosing, setIsClosing] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      setIsClosing(false);
+    } else if (shouldRender) {
+      setIsClosing(true);
+      const timer = setTimeout(() => {
+        setShouldRender(false);
+        setIsClosing(false);
+      }, 240);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, shouldRender]);
+
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 220);
+  };
+
+  if (!shouldRender) return null;
 
   const now = Date.now();
   const ONE_DAY = 24 * 60 * 60 * 1000;
@@ -108,8 +133,8 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
   };
 
   return (
-    <div className={styles.backdrop} onClick={onClose}>
-      <aside className={styles.drawer} onClick={(e) => e.stopPropagation()}>
+    <div className={`${styles.backdrop} ${isClosing ? styles.closing : ''}`} onClick={handleClose}>
+      <aside className={`${styles.drawer} ${isClosing ? styles.closing : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className={styles.drawerHeader}>
           <div className={styles.titleRow}>
             <h3 className={styles.drawerTitle}>Conversations</h3>
@@ -117,7 +142,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
               <span className={styles.countBadge}>{conversations.length}</span>
             )}
           </div>
-          <button className={styles.closeBtn} onClick={onClose} aria-label="Close conversation drawer">
+          <button className={styles.closeBtn} onClick={handleClose} aria-label="Close conversation drawer">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
@@ -129,7 +154,7 @@ export const ConversationDrawer: React.FC<ConversationDrawerProps> = ({
           className={styles.newChatBtn}
           onClick={() => {
             onNewConversation();
-            onClose();
+            handleClose();
           }}
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">

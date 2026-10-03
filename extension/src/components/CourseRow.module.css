@@ -17,14 +17,20 @@
   border-radius: var(--radius-md);
   margin-bottom: 8px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all var(--ios-spring-snappy), transform var(--ios-spring-press);
   gap: 12px;
+  animation: iosCardEnter 340ms var(--ios-spring-snappy) both;
 }
 
 .row:hover {
   border-color: var(--border-color);
   box-shadow: var(--shadow-sm);
   background: var(--surface-hover);
+  transform: translateY(-1px);
+}
+
+.row:active {
+  transform: scale(0.975);
 }
 
 .lowestRow {

@@ -23,7 +23,11 @@
   padding: 12px;
   box-sizing: border-box;
   z-index: 9999;
-  animation: overlayFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: iosBackdropEnter 0.28s var(--ios-spring-snappy) forwards;
+}
+
+.overlay.closing {
+  animation: iosBackdropExit 0.22s var(--ios-spring-snappy) forwards;
 }
 
 .modal {
@@ -45,9 +49,13 @@
   overflow-x: hidden;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  animation: modalSpringUp 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: iosModalEnter 0.34s var(--ios-spring-sheet) forwards;
   color: #f8fafc;
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+}
+
+.modal.closing {
+  animation: iosModalExit 0.22s var(--ios-spring-sheet) forwards;
 }
 
 .modal::-webkit-scrollbar {

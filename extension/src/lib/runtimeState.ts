@@ -236,7 +236,7 @@ class RuntimeStateManager {
           semanticState: 'ACTING',
           animation: 'working',
           expression: 'small-attentive',
-          popupMessage: cleanMsg.length > 22 ? `${cleanMsg.slice(0, 20)}...` : cleanMsg,
+          popupMessage: cleanMsg.length > 60 ? `${cleanMsg.slice(0, 56)}…` : cleanMsg,
           showTapAffordance: false,
           isBusy: true
         };

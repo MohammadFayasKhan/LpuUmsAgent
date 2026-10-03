@@ -41,13 +41,22 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
   toast,
   onDismiss
 }) => {
+  const [isExiting, setIsExiting] = React.useState(false);
+
+  const handleDismiss = React.useCallback(() => {
+    setIsExiting(true);
+    setTimeout(() => {
+      onDismiss(toast.id);
+    }, 200);
+  }, [onDismiss, toast.id]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      onDismiss(toast.id);
+      handleDismiss();
     }, toast.duration || 3000);
 
     return () => clearTimeout(timer);
-  }, [toast, onDismiss]);
+  }, [toast.duration, handleDismiss]);
 
   const typeClass =
     toast.type === 'success'
@@ -59,11 +68,11 @@ const ToastItem: React.FC<{ toast: ToastMessage; onDismiss: (id: string) => void
       : styles.info;
 
   return (
-    <div className={`${styles.toast} ${typeClass}`}>
+    <div className={`${styles.toast} ${typeClass} ${isExiting ? styles.toastExiting : ''}`}>
       <span className={styles.toastText}>{toast.text}</span>
       <button
         className={styles.closeBtn}
-        onClick={() => onDismiss(toast.id)}
+        onClick={handleDismiss}
         aria-label="Dismiss notification"
       >
         ✕

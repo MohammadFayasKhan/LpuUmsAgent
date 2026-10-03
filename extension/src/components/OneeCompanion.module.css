@@ -84,20 +84,22 @@
   transform: translateX(-50%);
   background: var(--surface);
   border: 1px solid var(--border-color);
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-  padding: 3px 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  padding: 4px 10px;
   border-radius: var(--radius-sm);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 600;
   color: var(--text-primary);
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.3;
   width: max-content;
-  max-width: 96px;
+  max-width: 160px;
   overflow: visible;
   text-align: center;
   pointer-events: none;
   z-index: 10;
-  animation: bubbleFadeIn 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation: iosBubbleIn 0.3s var(--ios-spring-bounce) forwards;
 }
 
 .captionArrow {
@@ -112,10 +114,10 @@
   border-top: 4px solid var(--border-color);
 }
 
-@keyframes bubbleFadeIn {
+@keyframes iosBubbleIn {
   from {
     opacity: 0;
-    transform: translate(-50%, 4px) scale(0.92);
+    transform: translate(-50%, 6px) scale(0.88);
   }
   to {
     opacity: 1;

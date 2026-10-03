@@ -291,10 +291,10 @@
 .actionLabel {
   font-size: 12px;
   color: var(--text-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 160px;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+  max-width: 100%;
 }
 
 .controlButtons {
@@ -696,18 +696,19 @@
  * directly from the authenticated UMS DOM.
  */
 .finalResponseCard {
-  background: rgba(255, 255, 255, 0.90);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid rgba(16, 185, 129, 0.28);
   border-radius: var(--radius-lg);
-  padding: 14px 16px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   box-shadow: 0 4px 20px -2px rgba(16, 185, 129, 0.08), 0 1px 3px rgba(0, 0, 0, 0.02);
-  transition: all var(--transition-spring);
+  transition: all var(--ios-spring-snappy), transform var(--ios-spring-press);
   margin-top: 4px;
+  animation: iosCardEnter 380ms var(--ios-spring-sheet) both;
 }
 
 .finalResponseCard.waiting {
@@ -890,61 +891,130 @@
   font-weight: 700;
 }
 
-.verifiedBadge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #059669;
-  background: rgba(16, 185, 129, 0.09);
-  border: 1px solid rgba(16, 185, 129, 0.24);
-  padding: 3.5px 10px;
-  border-radius: 9999px;
-  width: fit-content;
-  margin-top: 6px;
-  letter-spacing: 0.1px;
-}
-
-.verifiedCheck {
-  font-weight: 800;
-  font-size: 12px;
-}
-
-.verificationFooter {
+/* Compact Verification & Metadata Bar */
+.compactFooterBar {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  font-size: 11px;
-  color: var(--text-secondary, #475569);
-  border-top: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
-  padding-top: 8px;
-  margin-top: 6px;
+  gap: 4px;
+  border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.07));
+  padding-top: 6px;
+  margin-top: 4px;
   width: 100%;
   box-sizing: border-box;
 }
 
-.footerSourceRow {
+.footerTopRow {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
   width: 100%;
+}
+
+.verifiedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #059669;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.1px;
+  line-height: 1.2;
+}
+
+.verifiedCheck {
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.footerSourceRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--text-tertiary);
   min-width: 0;
+  max-width: 60%;
 }
 
 .footerSourceValue {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.footerMetaPills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  line-height: 1.2;
+  flex-wrap: wrap;
+}
+
+.footerMetaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.footerLabel {
+  color: var(--text-tertiary, #64748b);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.footerValue {
   color: var(--text-primary, #0f172a);
   font-weight: 600;
-  font-size: 11px;
-  word-break: break-word;
-  flex: 1;
-  min-width: 0;
+  font-size: 10px;
+}
+
+.footerDot {
+  color: var(--text-tertiary);
+  opacity: 0.45;
+  font-size: 9px;
+}
+
+.footerTime {
+  color: var(--text-tertiary);
+  font-weight: 500;
+}
+
+.executionCompleted {
+  color: #059669;
+  font-weight: 700;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* Fallback verificationFooter */
+.verificationFooter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 10.5px;
+  color: var(--text-secondary, #475569);
+  border-top: 1px solid var(--border-color, rgba(0, 0, 0, 0.08));
+  padding-top: 6px;
+  margin-top: 4px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .footerMetaGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  gap: 5px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
   width: 100%;
   min-width: 0;
 }
@@ -952,35 +1022,14 @@
 .footerItem {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
-}
-
-.footerLabel {
-  color: var(--text-secondary, #475569);
-  font-weight: 500;
-  font-size: 10.5px;
-  flex-shrink: 0;
-}
-
-.footerValue {
-  color: var(--text-primary, #0f172a);
-  font-weight: 600;
-  font-size: 11px;
-  word-break: break-word;
-}
-
-.executionCompleted {
-  color: #059669;
-  font-weight: 700;
-  font-size: 11px;
-  white-space: nowrap;
 }
 
 .actionBtnRow {
   display: flex;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 6px;
   align-items: stretch;
 }
 
@@ -990,15 +1039,15 @@
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(0, 0, 0, 0.08);
   color: var(--text-primary, #1e293b);
-  padding: 8px 14px;
+  padding: 6px 12px;
   border-radius: var(--radius-pill);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
-  transition: all var(--transition-spring), transform var(--transition-spring-press);
+  gap: 5px;
+  transition: all var(--ios-spring-snappy), transform var(--ios-spring-press);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
@@ -1010,7 +1059,7 @@
 }
 
 .copyBtn:active {
-  transform: scale(0.95);
+  transform: scale(0.96);
 }
 
 .copyBtn.copied {
@@ -1023,16 +1072,16 @@
   background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
   border: 1px solid rgba(124, 58, 237, 0.35);
   color: #ffffff !important;
-  padding: 8px 18px;
+  padding: 6px 16px;
   border-radius: var(--radius-pill);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   letter-spacing: 0.2px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 6px;
-  transition: all var(--transition-spring), transform var(--transition-spring-press);
+  transition: all var(--ios-spring-snappy), transform var(--ios-spring-press);
   flex: 1;
   justify-content: center;
   box-shadow: 0 3px 12px rgba(124, 58, 237, 0.32);
@@ -1041,7 +1090,7 @@
 .askOneeBtn:hover {
   background: linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%);
   box-shadow: 0 5px 18px rgba(124, 58, 237, 0.42);
-  transform: translateY(-1px) scale(1.02);
+  transform: translateY(-1px) scale(1.015);
   color: #ffffff !important;
 }
 
@@ -1073,19 +1122,21 @@
 
 
 /* Multi-Examination Result UI */
-/* Multi-Examination Result UI */
 .examCardList {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 280px;
+  min-height: 220px;
+  max-height: 480px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: var(--radius-md);
   border: 1px solid rgba(0, 0, 0, 0.06);
-  padding: 6px;
-  background: rgba(0, 0, 0, 0.025);
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.02);
   box-sizing: border-box;
   width: 100%;
+  scroll-behavior: smooth;
 }
 
 .examItemCard {
@@ -1094,8 +1145,8 @@
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: var(--radius-md);
-  padding: 11px 13px;
-  transition: all var(--transition-spring), transform var(--transition-spring-press);
+  padding: 10px 12px;
+  transition: all var(--ios-spring-snappy), transform var(--ios-spring-press);
   cursor: pointer;
   box-sizing: border-box;
   width: 100%;
@@ -1104,7 +1155,15 @@
   flex-direction: column;
   gap: 6px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  animation: iosCardEnter 340ms var(--ios-spring-snappy) both;
 }
+
+.examItemCard:nth-child(1) { animation-delay: 20ms; }
+.examItemCard:nth-child(2) { animation-delay: 50ms; }
+.examItemCard:nth-child(3) { animation-delay: 80ms; }
+.examItemCard:nth-child(4) { animation-delay: 110ms; }
+.examItemCard:nth-child(5) { animation-delay: 140ms; }
+.examItemCard:nth-child(6) { animation-delay: 170ms; }
 
 .examItemCard:hover {
   background: #ffffff;
@@ -1114,7 +1173,7 @@
 }
 
 .examItemCard:active {
-  transform: scale(0.98);
+  transform: scale(0.975);
 }
 
 .examItemCard.active {
@@ -1219,9 +1278,9 @@
   border-radius: 50%;
   color: var(--text-secondary);
   background: rgba(0, 0, 0, 0.04);
-  transition: transform 300ms cubic-bezier(0.16, 1, 0.3, 1),
-              background 150ms ease,
-              color 150ms ease;
+  transition: transform 340ms var(--ios-spring-sheet),
+              background 180ms ease,
+              color 180ms ease;
   user-select: none;
   flex-shrink: 0;
 }
@@ -1235,8 +1294,8 @@
 .examExpandableWrapper {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 300ms cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 220ms ease;
+  transition: grid-template-rows 360ms var(--ios-spring-sheet),
+              opacity 260ms var(--ios-spring-snappy);
   opacity: 0;
   width: 100%;
 }
@@ -1519,13 +1578,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 7px 10px;
+  padding: 8px 11px;
+  gap: 8px;
   background: #ffffff;
   border: 1px solid rgba(124, 58, 237, 0.2);
-  border-radius: 6px;
+  border-radius: var(--radius-sm, 10px);
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all var(--ios-spring-snappy), transform var(--ios-spring-press);
   text-align: left;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  animation: iosCardEnter 320ms var(--ios-spring-snappy) both;
 }
 
 :global(.dark) .subActionCardChip {
@@ -1534,14 +1596,19 @@
 }
 
 .subActionCardChip:hover {
-  background: rgba(124, 58, 237, 0.09);
+  background: rgba(124, 58, 237, 0.08);
   border-color: #7c3aed;
-  transform: translateX(2px);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.12);
+}
+
+.subActionCardChip:active {
+  transform: scale(0.975);
 }
 
 .subActionCardChipIcon {
-  font-size: 13px;
-  margin-right: 8px;
+  font-size: 14px;
+  margin-right: 4px;
   flex-shrink: 0;
 }
 
@@ -1549,17 +1616,18 @@
   display: flex;
   flex-direction: column;
   flex: 1;
-  gap: 2px;
+  gap: 3px;
   min-width: 0;
 }
 
 .subActionCardChipTitle {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--text-primary, #1d1d1f);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.35;
+  overflow: visible;
 }
 
 .subActionCardChipDate {
@@ -1568,7 +1636,7 @@
 }
 
 .subActionCardChipArrow {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: #7c3aed;
   margin-left: 6px;
@@ -1577,7 +1645,7 @@
 }
 
 .subActionCardChip:hover .subActionCardChipArrow {
-  transform: translateX(2px);
+  transform: translateX(3px);
 }
 
 .subActionChip {
@@ -1801,8 +1869,11 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 260px;
+  min-height: 200px;
+  max-height: 440px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 .classItemCard {
@@ -1816,7 +1887,8 @@
   flex-direction: column;
   gap: 4px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  transition: all var(--transition-spring), transform var(--transition-spring-press);
+  transition: all var(--ios-spring-snappy), transform var(--ios-spring-press);
+  animation: iosCardEnter 320ms var(--ios-spring-snappy) both;
 }
 
 .classItemCard:hover {
@@ -1895,8 +1967,11 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 280px;
+  min-height: 200px;
+  max-height: 440px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 .facultyItemCard {
@@ -1910,7 +1985,8 @@
   flex-direction: column;
   gap: 4px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  transition: all var(--transition-spring), transform var(--transition-spring-press);
+  transition: all var(--ios-spring-snappy), transform var(--ios-spring-press);
+  animation: iosCardEnter 320ms var(--ios-spring-snappy) both;
 }
 
 .facultyItemCard:hover {
@@ -1957,11 +2033,14 @@
 
 .timetableGridWrap {
   overflow-x: auto;
-  max-height: 260px;
+  min-height: 200px;
+  max-height: 440px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(8px);
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 .timetableMiniTable {

@@ -66,9 +66,19 @@ export const BunkCalculatorModal: React.FC<BunkCalculatorModalProps> = ({
   const simNewPct =
     simNewTotal > 0 ? Number(((simNewAttended / simNewTotal) * 100).toFixed(2)) : 0;
 
+  const [isClosing, setIsClosing] = useState(false);
+
+  const handleClose = () => {
+    if (isClosing) return;
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 220);
+  };
+
   return (
-    <div className={styles.overlay} onClick={onClose}>
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+    <div className={`${styles.overlay} ${isClosing ? styles.closing : ''}`} onClick={handleClose}>
+      <div className={`${styles.modal} ${isClosing ? styles.closing : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div className={styles.titleGroup}>
             <span className={styles.badge}>
@@ -77,7 +87,7 @@ export const BunkCalculatorModal: React.FC<BunkCalculatorModalProps> = ({
             <h2 className={styles.title}>{title}</h2>
             <p className={styles.subtitle}>{subtitle}</p>
           </div>
-          <button className={styles.closeBtn} onClick={onClose} aria-label="Close">
+          <button className={styles.closeBtn} onClick={handleClose} aria-label="Close">
             ✕
           </button>
         </div>
