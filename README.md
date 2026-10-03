@@ -12,8 +12,9 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![IndexedDB](https://img.shields.io/badge/Storage-IndexedDB_Local--First-7C3AED?style=flat-square)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
-[![Vitest](https://img.shields.io/badge/Vitest-217_Passing-22c55e?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev/)
-[![Pytest](https://img.shields.io/badge/Pytest-16_Passing-22c55e?style=flat-square&logo=pytest&logoColor=white)](https://pytest.org/)
+[![Vitest](https://img.shields.io/badge/Vitest-239_Passing-22c55e?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Pytest](https://img.shields.io/badge/Pytest-22_Passing-22c55e?style=flat-square&logo=pytest&logoColor=white)](https://pytest.org/)
+[![Voice Agent](https://img.shields.io/badge/Voice_Agent-Multimodal_Computer_Use-7c3aed?style=flat-square)](https://groq.com/)
 [![Playwright](https://img.shields.io/badge/E2E-Playwright_Verified-2EAD33?style=flat-square&logo=playwright&logoColor=white)](https://playwright.dev/)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
 
@@ -199,6 +200,32 @@ Classes Needed   =  ceil( (T * Total - Attended) / (1 - T) )
 
 ---
 
+### 11. Voice + Agentic Computer Use Layer 🗣️✨
+
+ONEE turns natural student speech into verified browser execution. Rather than a superficial "mic button + chatbot TTS", ONEE is an interactive voice-driven agent where students speak naturally, ONEE acknowledges, plans, visibly acts on UMS, narrates meaningful milestones in real time, extracts actual portal data, verifies the result, and speaks the verified answer:
+
+```
+LISTEN → TRANSCRIBE → UNDERSTAND → PLAN → NARRATE → GROUND → MOVE → ACT → WAIT_FOR_RENDER → OBSERVE → EXTRACT → VALIDATE → VERIFY → SPEAK RESULT
+```
+
+- **Three Adaptive Voice Modes:**
+  - **Voice Off (Default):** Normal silent typed chat and visual browser agent for quiet study rooms or libraries.
+  - **Voice Assist:** Spoken query input with spoken final answers; intermediate navigation narration is silenced.
+  - **Live Agent:** Complete multimodal experience — real-time narration of semantic milestones while the physical cursor operates UMS.
+- **Two Speech Lanes (Zero-Latency + Expressive Output):**
+  - **Lane 1 (Instant Local Narration):** Browser `window.speechSynthesis` speaks instant short cues (*"Sure, I'll check that on UMS"*, *"Opening your examination schedule"*, *"Verifying details"*) with near-zero network delay.
+  - **Lane 2 (Expressive Verified Speech):** Groq `canopylabs/orpheus-v1-english` generates expressive vocal-directed audio for rich conversational answers and verified final results.
+- **Dedicated Credential & Rate-Limit Isolation:**
+  - Dedicated Voice API key (`GROQ_VOICE_API_KEY`) and separate backend endpoints (`/api/voice/transcribe`, `/api/voice/speak`) isolate speech transcription & synthesis completely from the LLM reasoning account.
+  - Server-side only: keys are never exposed in the client extension.
+- **Barge-In & Voice Interruption:**
+  - If the student speaks or clicks the mic while ONEE is talking, speech cancels immediately and transitions into `LISTENING`.
+  - Spoken commands (*"Stop"*, *"Cancel that"*, *"Hold on"*) instantly stop TTS, safely cancel active browser execution, release locks, and update the companion avatar to `CANCELLED`.
+- **Truthful Execution Integrity:**
+  - Voice narration strictly reflects actual execution state — it never claims *"I found your seat"* or *"Your attendance is 81%"* until DOM extraction and algebraic validation have succeeded.
+
+---
+
 ## 🏗️ Architecture & Execution Flow
 
 ```
@@ -228,6 +255,12 @@ Classes Needed   =  ceil( (T * Total - Attended) / (1 - T) )
 │                     ONEE CHROME SIDE PANEL (sidepanel.html)                  │
 │  React 18 + TypeScript + Apple Human Interface Guidelines Design Tokens     │
 │                                                                             │
+│  ├─ Voice Subsystem (extension/src/voice/)                                  │
+│  │   ├─ VoiceController.ts (Microphone lifecycle, barge-in, interruption)    │
+│  │   ├─ VoiceQueue.ts (Sentence chunking, priority queue, execution guard)  │
+│  │   ├─ NarrationPolicy.ts (Semantic state-to-speech mapping & truthfulness) │
+│  │   ├─ NarrationManager.ts (Central RuntimeState subscriber)                │
+│  │   └─ Providers (Native SpeechRecognition/Synthesis + Groq Whisper/Orpheus)│
 │  ├─ useUmsConnection.ts (Active tab tracking & automatic reconnection)      │
 │  ├─ useAgentController.ts (Autonomous perception-action loop manager)      │
 │  │   └─ WAIT_FOR_RENDER stage & terminal state gating (READY/FAILED/etc)   │
@@ -244,7 +277,7 @@ Classes Needed   =  ceil( (T * Total - Attended) / (1 - T) )
 │  ├─ scrollUtils.ts (Two-phase reveal scroll & preview text sanitization)    │
 │  └─ OneeCompanion.tsx (Procedural SVG 3D avatar & context speech)            │
 └─────────────────────────────────────┬───────────────────────────────────────┘
-                                      │ Minimal Grounded Context (POST /api/chat)
+                                      │ Minimal Context & Audio (REST / SSE)
                                       ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    ONEE BACKEND (FastAPI / Groq Cloud)                      │
@@ -252,7 +285,9 @@ Classes Needed   =  ceil( (T * Total - Attended) / (1 - T) )
 │                                                                             │
 │  ├─ /api/chat (Token streaming with grounded academic context)              │
 │  ├─ /api/agent/plan (Computer Use next-action planner with waitForRender)   │
-│  └─ Groq Service (qwen/qwen3.8-27b → qwen/qwen3.6-27b → gpt-oss-120b)       │
+│  ├─ /api/voice/transcribe (Groq Whisper large-v3-turbo STT fallback)        │
+│  ├─ /api/voice/speak (Groq Orpheus expressive audio synthesis)              │
+│  └─ Groq Service (Dedicated Agent & Voice API Keys)                         │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 

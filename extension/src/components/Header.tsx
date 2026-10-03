@@ -16,6 +16,7 @@ import React from 'react';
 import { ConnectionStatus, AgentState } from '../shared/types';
 import { RuntimeConnectionState } from '../services/connectionManager';
 import { OneeCompanion } from './OneeCompanion';
+import { useVoiceAgent } from '../voice';
 import styles from './Header.module.css';
 
 interface HeaderProps {
@@ -64,6 +65,33 @@ export const Header: React.FC<HeaderProps> = ({
     }
   };
 
+  const { voiceMode, setVoiceMode } = useVoiceAgent();
+
+  const getVoiceModeDetails = () => {
+    switch (voiceMode) {
+      case 'LIVE_AGENT':
+        return {
+          label: 'Live Voice',
+          pillClass: styles.voicePillLive,
+          icon: '🗣️'
+        };
+      case 'ASSIST':
+        return {
+          label: 'Voice Assist',
+          pillClass: styles.voicePillAssist,
+          icon: '🎙️'
+        };
+      case 'OFF':
+      default:
+        return {
+          label: 'Voice Off',
+          pillClass: styles.voicePillOff,
+          icon: '🔇'
+        };
+    }
+  };
+
+  const voiceDetails = getVoiceModeDetails();
   const badge = getStatusBadge();
 
   return (
@@ -95,6 +123,32 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className={styles.actions}>
+        {/* Voice Mode Selector Pill */}
+        <button
+          className={`${styles.voicePill} ${voiceDetails.pillClass}`}
+          onClick={() => {
+            const nextMode =
+              voiceMode === 'LIVE_AGENT'
+                ? 'ASSIST'
+                : voiceMode === 'ASSIST'
+                ? 'OFF'
+                : 'LIVE_AGENT';
+            setVoiceMode(nextMode);
+          }}
+          title={`Voice Mode: ${
+            voiceMode === 'LIVE_AGENT'
+              ? 'Live Agent (Speaks updates as Computer Use happens)'
+              : voiceMode === 'ASSIST'
+              ? 'Voice Assist (Speaks final answers only)'
+              : 'Voice Off (Silent typed chat)'
+          }. Tap to switch.`}
+          aria-label="Toggle voice mode"
+          type="button"
+        >
+          <span style={{ fontSize: '11px' }}>{voiceDetails.icon}</span>
+          <span>{voiceDetails.label}</span>
+        </button>
+
         <div className={styles.statusPill} title={`Status: ${badge.label}`}>
           <span className={`${styles.dot} ${badge.dotClass}`} />
           <span className={styles.statusLabel}>{badge.label}</span>

@@ -20,6 +20,7 @@ from .schemas.chat import ChatRequest, ChatResponse
 from .schemas.planner import PlanActionRequest, PlanActionResponse
 from .agent.agent import onee_agent
 from .agent.planner import plan_next_action
+from .voice.router import router as voice_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,6 +42,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+# Include dedicated voice API router
+app.include_router(voice_router)
 
 @app.get("/health", status_code=status.HTTP_200_OK)
 async def health_check():

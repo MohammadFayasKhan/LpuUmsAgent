@@ -13,7 +13,10 @@ from typing import Optional
 
 class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
+    GROQ_VOICE_API_KEY: str = ""
     GROQ_MODEL: str = "qwen/qwen3.8-27b"
+    GROQ_WHISPER_MODEL: str = "whisper-large-v3-turbo"
+    GROQ_TTS_MODEL: str = "canopylabs/orpheus-v1-english"
     HOST: str = "0.0.0.0"
     PORT: int = 8000
 

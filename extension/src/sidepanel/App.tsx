@@ -20,6 +20,8 @@ import { useChatAgent } from '../hooks/useChatAgent';
 import { useAgentController } from '../hooks/useAgentController';
 import { markPrivacyNoticeSeen } from '../services/storage';
 import { verifiedExaminationRepo } from '../services/repositories';
+import { routeUserIntent } from '../services/intentRouter';
+import { voiceController } from '../voice';
 
 import { Header } from '../components/Header';
 import { ConnectionState } from '../components/ConnectionState';
@@ -107,16 +109,28 @@ export const App: React.FC = () => {
     toggleDebugMode,
     resetAgentState
   } = useAgentController(
-    (_extractedAttendance: AttendanceSummary) => {
+    (extractedAttendance: AttendanceSummary) => {
       addToast('Attendance updated', 'success');
       triggerSuccessConfetti();
       refresh();
+      if (extractedAttendance.totalCourses > 0) {
+        voiceController.speakText(
+          `Attendance verified for ${extractedAttendance.totalCourses} courses. Overall attendance is ${Math.round(extractedAttendance.overallPercentage)} percent.`,
+          true
+        );
+      }
     },
     'default',
     (extractedExam: ExaminationSummary) => {
       setExamination(extractedExam);
       addToast('Examination schedule verified', 'success');
       triggerSuccessConfetti();
+      if (extractedExam.totalExams > 0) {
+        voiceController.speakText(
+          `Examination schedule verified. Found ${extractedExam.totalExams} scheduled exams.`,
+          true
+        );
+      }
     }
   );
 
@@ -162,13 +176,14 @@ export const App: React.FC = () => {
   /*
    * Session boundary check:
    * If the student gets redirected to the UMS login page or logs out,
-   * immediately reset any active agent state so the previous session
-   * does not leak into the next login.
+   * immediately reset any active agent state and stop speech.
    */
   useEffect(() => {
     if (status === 'LOGIN_PAGE' || status === 'NOT_CONNECTED' || status === 'HUMAN_VERIFICATION') {
       resetAgentState();
       setExamination(null);
+      voiceController.stopSpeaking();
+      voiceController.setActiveExecutionId(null);
     }
   }, [status, resetAgentState]);
 
@@ -184,23 +199,56 @@ export const App: React.FC = () => {
   };
 
   /*
-   * When the student submits a message, we check if it asks to open or check attendance.
-   * If so, we trigger the browser agent to navigate UMS in addition to chatting.
+   * Dispatches student input into both browser Computer Use and chat assistant.
+   * If the intent involves examinations, seating, timetable, or attendance navigation,
+   * the autonomous agent starts visibly executing on UMS with live voice narration.
    */
-  const handleSendMessage = async (text: string) => {
-    const textLower = text.toLowerCase();
-    if (
-      textLower.includes('go to') ||
-      textLower.includes('navigate') ||
-      textLower.includes('open attendance') ||
-      textLower.includes('find attendance') ||
-      textLower.includes('check attendance') ||
-      textLower.includes('check my attendance')
-    ) {
-      await startGoal(text);
-    }
-    await sendMessage(text);
-  };
+  const handleSendMessage = useCallback(
+    async (text: string) => {
+      const textLower = text.toLowerCase();
+      const routed = routeUserIntent(text, {
+        latestAttendance: attendance,
+        latestExamination: examination
+      });
+
+      const isAgentAction =
+        routed.capability === 'EXAM_DATE_SHEET' ||
+        routed.capability === 'SEATING_PLAN' ||
+        routed.capability === 'SAMPLE_PAPER' ||
+        routed.capability === 'TIMETABLE' ||
+        textLower.includes('go to') ||
+        textLower.includes('navigate') ||
+        textLower.includes('open attendance') ||
+        textLower.includes('find attendance') ||
+        textLower.includes('check attendance') ||
+        textLower.includes('check my attendance') ||
+        textLower.includes('open date sheet') ||
+        textLower.includes('find my seat') ||
+        textLower.includes('where is my seat');
+
+      if (isAgentAction) {
+        voiceController.acknowledgeGoal(text, 'active-voice-goal');
+        await startGoal(text);
+      }
+      await sendMessage(text);
+    },
+    [attendance, examination, startGoal, sendMessage]
+  );
+
+  /*
+   * Register voice command handlers with VoiceController so spoken input enters
+   * the exact same agent & intent pipeline as typed input.
+   */
+  useEffect(() => {
+    voiceController.registerHandlers(
+      async (transcript: string) => {
+        await handleSendMessage(transcript);
+      },
+      () => {
+        stopAgent();
+      }
+    );
+  }, [handleSendMessage, stopAgent]);
 
   const chatSectionRef = useRef<HTMLDivElement>(null);
   const mainContentRef = useRef<HTMLElement>(null);

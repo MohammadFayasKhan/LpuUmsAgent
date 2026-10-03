@@ -25,6 +25,7 @@ import { ChatMessage as ChatMessageType, AgentState, AttendanceSummary, Examinat
 import { ChatMessage } from './ChatMessage';
 import { OneeCompanion } from './OneeCompanion';
 import { generateContextualSuggestions } from '../services/suggestionGenerator';
+import { useVoiceAgent } from '../voice';
 import styles from './ChatView.module.css';
 
 interface ChatViewProps {
@@ -51,6 +52,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [inputText, setInputText] = useState<string>('');
   const [canScrollLeft, setCanScrollLeft] = useState<boolean>(false);
   const [canScrollRight, setCanScrollRight] = useState<boolean>(false);
+
+  const {
+    interimTranscript,
+    isListening,
+    isSpeaking,
+    toggleListening
+  } = useVoiceAgent();
 
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -497,11 +505,24 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       {/* Composer */}
       <div className={styles.composerWrapper}>
+        {(isListening || isSpeaking || interimTranscript) && (
+          <div className={styles.voiceBar}>
+            <div className={styles.voiceWave}>
+              <span className={styles.voiceBarDot} />
+              <span className={styles.voiceBarDot} />
+              <span className={styles.voiceBarDot} />
+            </div>
+            <span className={styles.voiceStatusText}>
+              {interimTranscript ? interimTranscript : isSpeaking ? 'ONEE is speaking... (click mic to interrupt)' : 'Listening... speak naturally'}
+            </span>
+          </div>
+        )}
+
         <div className={styles.composer}>
           <textarea
             ref={textareaRef}
             className={styles.input}
-            placeholder="Ask ONEE anything..."
+            placeholder={isListening ? 'Listening to your voice...' : 'Ask ONEE anything or speak...'}
             value={inputText}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
@@ -509,6 +530,34 @@ export const ChatView: React.FC<ChatViewProps> = ({
             disabled={isTyping}
             aria-label="Message input"
           />
+
+          {/* Voice Input & Barge-in Control */}
+          <button
+            className={`${styles.micButton} ${isListening ? styles.micListening : isSpeaking ? styles.micSpeaking : ''}`}
+            onClick={toggleListening}
+            title={isListening ? 'Stop listening' : isSpeaking ? 'Stop speaking (Barge-in)' : 'Speak with ONEE (Voice Agent)'}
+            aria-label={isListening ? 'Stop listening' : 'Voice input'}
+            type="button"
+          >
+            {isListening ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" rx="2" />
+              </svg>
+            ) : isSpeaking ? (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                <line x1="23" y1="9" x2="17" y2="15" />
+                <line x1="17" y1="9" x2="23" y2="15" />
+              </svg>
+            ) : (
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                <line x1="12" y1="19" x2="12" y2="22" />
+              </svg>
+            )}
+          </button>
+
           <button
             className={`${styles.sendButton} ${inputText.trim() ? styles.sendActive : ''}`}
             onClick={handleSend}
