@@ -61,6 +61,13 @@ export interface CourseAttendance {
   dutyLeave?: number;
   lastAttended?: string;
   dataQuality?: 'valid' | 'warning' | 'high' | 'medium' | 'low';
+  /**
+   * Verified-data provenance. Records produced by the live attendance DOM
+   * parser carry 'ums-attendance-dom'. A record WITHOUT verified UMS DOM
+   * provenance must never enter the verified dataset, response composer, or
+   * suggestion engine.
+   */
+  source?: string;
   sessions?: DetailedSessionRecord[];
 }
 
@@ -136,7 +143,7 @@ export interface SamplePaperResult {
   pdfUrl?: string | null;
   paperUrl?: string | null;
   fileName?: string | null;
-  actionTaken: 'opened_in_tab' | 'downloaded' | 'preview_ready';
+  actionTaken: 'opened_in_tab' | 'downloaded' | 'preview_ready' | 'clicked_unverified';
   verified: boolean;
 }
 
@@ -153,6 +160,15 @@ export interface ExtractionDiagnostics {
   }>;
   discoveryStrategiesUsed: string[];
   pageExpectedCount?: number;
+  /** Collection-stage counts; kept in diagnostics rather than the production UI. */
+  collectorCount?: number;
+  uniqueCount?: number;
+  validatedCount?: number;
+  traversalCompleted?: boolean;
+  scrollContainersChecked?: number;
+  targetVerified?: boolean;
+  bottomVerified?: boolean;
+  topVerified?: boolean;
 }
 
 export interface ExaminationSummary {
@@ -218,6 +234,7 @@ export interface TimetableSummary {
   homeSection: string; // e.g. "K3P24WM"
   printedOn?: string;
   slots: TimetableSlot[];
+  byDay?: Record<string, TimetableSlot[]>;
   courses: CourseFacultyRecord[];
   totalSlots: number;
   totalCourses: number;
@@ -234,7 +251,7 @@ export interface TimetableValidationResult {
   coursesCount: number;
 }
 
-export type AgentCapability = 'ATTENDANCE' | 'EXAM_DATE_SHEET' | 'SEATING_PLAN' | 'SAMPLE_PAPER' | 'TIMETABLE';
+export type AgentCapability = 'ATTENDANCE' | 'EXAM_DATE_SHEET' | 'SEATING_PLAN' | 'SAMPLE_PAPER' | 'TIMETABLE' | 'CONVERSATION';
 
 export interface BoundingBox {
   x: number;

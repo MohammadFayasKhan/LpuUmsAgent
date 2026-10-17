@@ -10,6 +10,7 @@ import {
   SpeechSynthesisOptions,
   AvailableVoice
 } from '../VoiceTypes';
+import { transformSpeechIdentity, chunkSpeechText } from '../VoiceProvider';
 
 export class NativeSpeechSynthesisProvider implements ISpeechSynthesisProvider {
   public readonly name = 'native-speech-synthesis';
@@ -17,6 +18,7 @@ export class NativeSpeechSynthesisProvider implements ISpeechSynthesisProvider {
   private isCurrentlySpeaking: boolean = false;
   private watchdogInterval: any = null;
   private cachedVoices: AvailableVoice[] = [];
+  private cancelled: boolean = false;
 
   public getCurrentUtterance(): SpeechSynthesisUtterance | null {
     return this.currentUtterance;
@@ -91,78 +93,98 @@ export class NativeSpeechSynthesisProvider implements ISpeechSynthesisProvider {
     return englishVoice || voices[0] || null;
   }
 
-  public speak(text: string, options?: SpeechSynthesisOptions): Promise<void> {
-    return new Promise((resolve, reject) => {
-      if (!this.isSupported()) {
-        const err = new Error('SpeechSynthesis is not supported in this browser environment');
-        options?.onError?.(err);
-        return reject(err);
-      }
+  public async speak(text: string, options?: SpeechSynthesisOptions): Promise<void> {
+    if (!this.isSupported()) {
+      const err = new Error('SpeechSynthesis is not supported in this browser environment');
+      options?.onError?.(err);
+      throw err;
+    }
 
-      const trimmed = text.trim();
-      if (!trimmed) {
-        options?.onEnd?.();
-        return resolve();
-      }
+    const sanitized = transformSpeechIdentity(text);
+    const trimmed = sanitized.trim();
+    if (!trimmed) {
+      options?.onEnd?.();
+      return;
+    }
 
-      // Stop any active utterance before starting a new one
-      this.stop();
+    this.stop();
+    this.cancelled = false;
+    this.isCurrentlySpeaking = true;
 
-      try {
-        const utterance = new SpeechSynthesisUtterance(trimmed);
-        this.currentUtterance = utterance;
-        this.isCurrentlySpeaking = true;
+    // Chunk text <= 170 characters so Chrome never stalls or silences mid-sentence
+    const chunks = chunkSpeechText(trimmed, 170);
+    const bestVoice = this.findBestVoice(options?.voiceURI);
+    let started = false;
 
-        const bestVoice = this.findBestVoice(options?.voiceURI);
-        if (bestVoice) {
-          utterance.voice = bestVoice;
-        }
+    try {
+      for (let i = 0; i < chunks.length; i++) {
+        if (this.cancelled) break;
+        const chunk = chunks[i];
 
-        utterance.rate = options?.rate ?? 1.05;
-        utterance.pitch = options?.pitch ?? 1.0;
-        utterance.volume = options?.volume ?? 1.0;
-
-        utterance.onstart = () => {
-          this.isCurrentlySpeaking = true;
-          this.startWatchdog();
-          options?.onStart?.();
-        };
-
-        utterance.onend = () => {
-          this.isCurrentlySpeaking = false;
-          this.stopWatchdog();
-          this.currentUtterance = null;
-          options?.onEnd?.();
-          resolve();
-        };
-
-        utterance.onerror = (event: any) => {
-          this.isCurrentlySpeaking = false;
-          this.stopWatchdog();
-          this.currentUtterance = null;
-          // 'canceled' or 'interrupted' is normal when user interrupts
-          if (event.error === 'canceled' || event.error === 'interrupted') {
-            options?.onEnd?.();
+        await new Promise<void>((resolve) => {
+          if (this.cancelled) {
             resolve();
             return;
           }
-          const err = new Error(`SpeechSynthesis error: ${event.error}`);
-          options?.onError?.(err);
-          resolve(); // Resolve rather than unhandled rejection so queues don't crash
-        };
 
-        window.speechSynthesis.speak(utterance);
-      } catch (err: any) {
-        this.isCurrentlySpeaking = false;
-        this.stopWatchdog();
-        this.currentUtterance = null;
-        options?.onError?.(err);
-        resolve();
+          if (typeof window !== 'undefined' && window.speechSynthesis?.paused) {
+            window.speechSynthesis.resume();
+          }
+
+          const utterance = new SpeechSynthesisUtterance(chunk);
+          this.currentUtterance = utterance;
+
+          if (bestVoice) {
+            utterance.voice = bestVoice;
+          }
+
+          utterance.rate = options?.rate ?? 1.05;
+          utterance.pitch = options?.pitch ?? 1.0;
+          utterance.volume = options?.volume ?? 1.0;
+
+          utterance.onstart = () => {
+            if (!started) {
+              started = true;
+              options?.onStart?.();
+            }
+            this.startWatchdog();
+          };
+
+          utterance.onend = () => {
+            this.stopWatchdog();
+            this.currentUtterance = null;
+            resolve();
+          };
+
+          utterance.onerror = (event: any) => {
+            this.stopWatchdog();
+            this.currentUtterance = null;
+            if (event.error === 'canceled' || event.error === 'interrupted' || this.cancelled) {
+              resolve();
+              return;
+            }
+            console.warn('[NativeSpeechSynthesis] Utterance error:', event.error);
+            resolve();
+          };
+
+          window.speechSynthesis.speak(utterance);
+          if (typeof window !== 'undefined' && window.speechSynthesis?.paused) {
+            window.speechSynthesis.resume();
+          }
+        });
       }
-    });
+    } finally {
+      this.isCurrentlySpeaking = false;
+      this.stopWatchdog();
+      this.currentUtterance = null;
+      if (!this.cancelled) {
+        options?.onEnd?.();
+      }
+    }
   }
 
   public stop(): void {
+    this.cancelled = true;
     if (this.isSupported()) {
       try {
         window.speechSynthesis.cancel();

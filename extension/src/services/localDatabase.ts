@@ -60,6 +60,10 @@ export interface VerifiedAttendanceRecord {
   capturedAt: number;
   source: 'UMS_DOM';
   verified: boolean;
+  /** Registration number of the student this snapshot was captured for. */
+  registrationNumber?: string;
+  /** Student name captured with the snapshot — fallback account identity. */
+  studentName?: string;
   subjects: {
     code: string;
     percentage: number;
@@ -84,7 +88,7 @@ export interface StorageMetrics {
 }
 
 import { PersonalizationProfile } from './personalizationStore';
-import { ExaminationSummary } from '../shared/types';
+import { ExaminationSummary, TimetableSummary } from '../shared/types';
 import { cleanPreviewSnippet } from '../lib/scrollUtils';
 
 export interface VerifiedExaminationRecord {
@@ -97,8 +101,18 @@ export interface VerifiedExaminationRecord {
   examination: ExaminationSummary;
 }
 
+export interface VerifiedTimetableRecord {
+  id: string; // e.g. latest_${accountId} or executionId
+  accountId: string;
+  executionId?: string;
+  capturedAt: number;
+  source: 'UMS_DOM';
+  verified: boolean;
+  timetable: TimetableSummary;
+}
+
 const DB_NAME = 'ONEE_LOCAL_DB';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 const STORES = {
   CONVERSATIONS: 'conversations',
@@ -106,6 +120,7 @@ const STORES = {
   EXECUTIONS: 'agentExecutions',
   VERIFIED_ATTENDANCE: 'verifiedAttendance',
   VERIFIED_EXAMINATION: 'verifiedExamination',
+  VERIFIED_TIMETABLE: 'verifiedTimetable',
   PERSONALIZATION: 'personalization'
 } as const;
 
@@ -165,6 +180,13 @@ class LocalDatabase {
         // 6. Verified Examination store
         if (!db.objectStoreNames.contains(STORES.VERIFIED_EXAMINATION)) {
           const store = db.createObjectStore(STORES.VERIFIED_EXAMINATION, { keyPath: 'id' });
+          store.createIndex('accountId', 'accountId', { unique: false });
+          store.createIndex('capturedAt', 'capturedAt', { unique: false });
+        }
+
+        // 7. Verified Timetable store
+        if (!db.objectStoreNames.contains(STORES.VERIFIED_TIMETABLE)) {
+          const store = db.createObjectStore(STORES.VERIFIED_TIMETABLE, { keyPath: 'id' });
           store.createIndex('accountId', 'accountId', { unique: false });
           store.createIndex('capturedAt', 'capturedAt', { unique: false });
         }
@@ -380,12 +402,28 @@ class LocalDatabase {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORES.VERIFIED_ATTENDANCE, 'readwrite');
       const store = tx.objectStore(STORES.VERIFIED_ATTENDANCE);
-      // Save specific execution record AND update latest record for this account
-      store.put(record);
-      store.put({
-        ...record,
-        id: `latest_${record.accountId}`
-      });
+      const index = store.index('accountId');
+      const req = index.getAll(record.accountId);
+      req.onsuccess = () => {
+        // Prune older historical copies for this account to prevent accumulating stale datasets
+        for (const old of req.result || []) {
+          if (old.id !== `latest_${record.accountId}` && old.id !== record.id) {
+            store.delete(old.id);
+          }
+        }
+        store.put(record);
+        store.put({
+          ...record,
+          id: `latest_${record.accountId}`
+        });
+      };
+      req.onerror = () => {
+        store.put(record);
+        store.put({
+          ...record,
+          id: `latest_${record.accountId}`
+        });
+      };
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -402,6 +440,34 @@ class LocalDatabase {
     });
   }
 
+  /**
+   * Removes every cached attendance snapshot for an account. Called when a
+   * snapshot turns out to belong to a DIFFERENT UMS login than the one now
+   * active: a stale record under the shared 'default' key must never
+   * rehydrate into the new student's side panel.
+   */
+  public async deleteVerifiedAttendance(accountId: string = 'default'): Promise<void> {
+    try {
+      const db = await this.getDB();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORES.VERIFIED_ATTENDANCE, 'readwrite');
+        const store = tx.objectStore(STORES.VERIFIED_ATTENDANCE);
+        const index = store.index('accountId');
+        const req = index.getAll(accountId);
+        req.onsuccess = () => {
+          for (const old of req.result || []) {
+            store.delete(old.id);
+          }
+        };
+        req.onerror = () => reject(req.error);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    } catch (err) {
+      console.warn('[ONEE DB] deleteVerifiedAttendance failed:', err);
+    }
+  }
+
   /*
    * Saves the verified examination schedule snapshot extracted directly from the UMS DOM.
    */
@@ -410,11 +476,28 @@ class LocalDatabase {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORES.VERIFIED_EXAMINATION, 'readwrite');
       const store = tx.objectStore(STORES.VERIFIED_EXAMINATION);
-      store.put(record);
-      store.put({
-        ...record,
-        id: `latest_${record.accountId}`
-      });
+      const index = store.index('accountId');
+      const req = index.getAll(record.accountId);
+      req.onsuccess = () => {
+        // Prune older historical copies for this account
+        for (const old of req.result || []) {
+          if (old.id !== `latest_${record.accountId}` && old.id !== record.id) {
+            store.delete(old.id);
+          }
+        }
+        store.put(record);
+        store.put({
+          ...record,
+          id: `latest_${record.accountId}`
+        });
+      };
+      req.onerror = () => {
+        store.put(record);
+        store.put({
+          ...record,
+          id: `latest_${record.accountId}`
+        });
+      };
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
     });
@@ -425,6 +508,52 @@ class LocalDatabase {
     return new Promise((resolve, reject) => {
       const tx = db.transaction(STORES.VERIFIED_EXAMINATION, 'readonly');
       const store = tx.objectStore(STORES.VERIFIED_EXAMINATION);
+      const req = store.get(`latest_${accountId}`);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  /*
+   * Saves the verified student timetable snapshot extracted directly from the UMS DOM.
+   */
+  public async saveVerifiedTimetable(record: VerifiedTimetableRecord): Promise<void> {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORES.VERIFIED_TIMETABLE, 'readwrite');
+      const store = tx.objectStore(STORES.VERIFIED_TIMETABLE);
+      const index = store.index('accountId');
+      const req = index.getAll(record.accountId);
+      req.onsuccess = () => {
+        // Prune older historical copies for this account
+        for (const old of req.result || []) {
+          if (old.id !== `latest_${record.accountId}` && old.id !== record.id) {
+            store.delete(old.id);
+          }
+        }
+        store.put(record);
+        store.put({
+          ...record,
+          id: `latest_${record.accountId}`
+        });
+      };
+      req.onerror = () => {
+        store.put(record);
+        store.put({
+          ...record,
+          id: `latest_${record.accountId}`
+        });
+      };
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  public async getLatestVerifiedTimetable(accountId: string = 'default'): Promise<VerifiedTimetableRecord | null> {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORES.VERIFIED_TIMETABLE, 'readonly');
+      const store = tx.objectStore(STORES.VERIFIED_TIMETABLE);
       const req = store.get(`latest_${accountId}`);
       req.onsuccess = () => resolve(req.result || null);
       req.onerror = () => reject(req.error);
@@ -514,6 +643,108 @@ class LocalDatabase {
     });
   }
 
+  /**
+   * Prunes unwanted stale/duplicate historical records, leaving only the active verified dataset per account.
+   */
+  public async pruneStaleDatasets(accountId?: string): Promise<number> {
+    try {
+      const db = await this.getDB();
+      return new Promise((resolve) => {
+        const tx = db.transaction([STORES.VERIFIED_ATTENDANCE, STORES.VERIFIED_EXAMINATION], 'readwrite');
+        let pruned = 0;
+
+        const pruneStore = (storeName: string) => {
+          const store = tx.objectStore(storeName);
+          const req = store.getAll();
+          req.onsuccess = () => {
+            const records: any[] = req.result || [];
+            const accounts = new Set<string>();
+            for (const r of records) {
+              if (r.accountId && (!accountId || r.accountId === accountId)) {
+                accounts.add(r.accountId);
+              }
+            }
+
+            for (const acc of accounts) {
+              const accRecords = records.filter((r) => r.accountId === acc);
+              if (accRecords.length <= 1) continue;
+
+              const latestKey = `latest_${acc}`;
+              const hasExplicitLatest = accRecords.some((r) => r.id === latestKey);
+
+              for (const r of accRecords) {
+                if (hasExplicitLatest) {
+                  if (r.id !== latestKey) {
+                    store.delete(r.id);
+                    pruned++;
+                  }
+                } else {
+                  const newest = accRecords.reduce((max, curr) =>
+                    (curr.capturedAt || 0) > (max.capturedAt || 0) ? curr : max
+                  );
+                  if (r.id !== newest.id) {
+                    store.delete(r.id);
+                    pruned++;
+                  }
+                }
+              }
+            }
+          };
+        };
+
+        pruneStore(STORES.VERIFIED_ATTENDANCE);
+        pruneStore(STORES.VERIFIED_EXAMINATION);
+
+        tx.oncomplete = () => resolve(pruned);
+        tx.onerror = () => resolve(0);
+      });
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
+   * Selectively purges verified datasets (attendance, exams) for the account or whole machine.
+   */
+  public async clearVerifiedContext(accountId?: string): Promise<void> {
+    const db = await this.getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(
+        [STORES.VERIFIED_ATTENDANCE, STORES.VERIFIED_EXAMINATION, STORES.VERIFIED_TIMETABLE],
+        'readwrite'
+      );
+      if (accountId) {
+        const attStore = tx.objectStore(STORES.VERIFIED_ATTENDANCE);
+        const attReq = attStore.index('accountId').getAll(accountId);
+        attReq.onsuccess = () => {
+          for (const a of attReq.result || []) attStore.delete(a.id);
+          attStore.delete(`latest_${accountId}`);
+        };
+
+        const examStore = tx.objectStore(STORES.VERIFIED_EXAMINATION);
+        const examReq = examStore.index('accountId').getAll(accountId);
+        examReq.onsuccess = () => {
+          for (const e of examReq.result || []) examStore.delete(e.id);
+          examStore.delete(`latest_${accountId}`);
+        };
+
+        const ttStore = tx.objectStore(STORES.VERIFIED_TIMETABLE);
+        const ttReq = ttStore.index('accountId').getAll(accountId);
+        ttReq.onsuccess = () => {
+          for (const t of ttReq.result || []) ttStore.delete(t.id);
+          ttStore.delete(`latest_${accountId}`);
+        };
+      } else {
+        tx.objectStore(STORES.VERIFIED_ATTENDANCE).clear();
+        tx.objectStore(STORES.VERIFIED_EXAMINATION).clear();
+        tx.objectStore(STORES.VERIFIED_TIMETABLE).clear();
+      }
+
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
   /*
    * Students should always have full control over what is saved on their machine.
    * These helper functions let the settings panel wipe chat history, agent runs,
@@ -521,6 +752,9 @@ class LocalDatabase {
    */
   public async getStorageMetrics(accountId?: string): Promise<StorageMetrics> {
     try {
+      // Auto-prune duplicate historical snapshots so students never see accumulated stale datasets
+      await this.pruneStaleDatasets(accountId);
+
       const db = await this.getDB();
       const countStore = (storeName: string, indexName?: string, query?: any): Promise<number> => {
         return new Promise((resolve) => {
@@ -533,12 +767,17 @@ class LocalDatabase {
         });
       };
 
-      const [conversationCount, messageCount, executionCount, datasetCount] = await Promise.all([
+      const [conversationCount, messageCount, executionCount, attendanceDatasets, examDatasets] = await Promise.all([
         countStore(STORES.CONVERSATIONS, accountId ? 'accountId' : undefined, accountId),
         countStore(STORES.MESSAGES, accountId ? 'accountId' : undefined, accountId),
         countStore(STORES.EXECUTIONS, accountId ? 'accountId' : undefined, accountId),
-        countStore(STORES.VERIFIED_ATTENDANCE, accountId ? 'accountId' : undefined, accountId)
+        countStore(STORES.VERIFIED_ATTENDANCE, accountId ? 'accountId' : undefined, accountId),
+        countStore(STORES.VERIFIED_EXAMINATION, accountId ? 'accountId' : undefined, accountId)
       ]);
+
+      // Count active distinct verified datasets (e.g. 1 attendance dataset, 1 examination dataset)
+      const datasetCount = (attendanceDatasets > 0 ? (accountId ? 1 : attendanceDatasets) : 0) +
+                           (examDatasets > 0 ? (accountId ? 1 : examDatasets) : 0);
 
       return { conversationCount, messageCount, executionCount, datasetCount };
     } catch {
@@ -603,6 +842,7 @@ class LocalDatabase {
           STORES.EXECUTIONS,
           STORES.VERIFIED_ATTENDANCE,
           STORES.VERIFIED_EXAMINATION,
+          STORES.VERIFIED_TIMETABLE,
           STORES.PERSONALIZATION
         ],
         'readwrite'
@@ -641,6 +881,13 @@ class LocalDatabase {
           examStore.delete(`latest_${accountId}`);
         };
 
+        const ttStore = tx.objectStore(STORES.VERIFIED_TIMETABLE);
+        const ttReq = ttStore.index('accountId').getAll(accountId);
+        ttReq.onsuccess = () => {
+          for (const t of ttReq.result || []) ttStore.delete(t.id);
+          ttStore.delete(`latest_${accountId}`);
+        };
+
         const persStore = tx.objectStore(STORES.PERSONALIZATION);
         persStore.delete(accountId);
       } else {
@@ -649,6 +896,7 @@ class LocalDatabase {
         tx.objectStore(STORES.EXECUTIONS).clear();
         tx.objectStore(STORES.VERIFIED_ATTENDANCE).clear();
         tx.objectStore(STORES.VERIFIED_EXAMINATION).clear();
+        tx.objectStore(STORES.VERIFIED_TIMETABLE).clear();
         tx.objectStore(STORES.PERSONALIZATION).clear();
       }
 

@@ -16,10 +16,17 @@ from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from .config import settings
-from .schemas.chat import ChatRequest, ChatResponse
+from .schemas.chat import ChatRequest, ChatResponse, SuggestionRequest, SuggestionResponse
 from .schemas.planner import PlanActionRequest, PlanActionResponse
+from .schemas.semantic import (
+    SemanticResolutionRequest,
+    SemanticResolutionResponse,
+    VerifiedResponseRequest,
+    VerifiedResponseResponse,
+)
 from .agent.agent import onee_agent
 from .agent.planner import plan_next_action
+from .services.semantic_service import semantic_service
 from .voice.router import router as voice_router
 
 logging.basicConfig(
@@ -66,6 +73,8 @@ async def chat_endpoint(request: ChatRequest):
         response = await onee_agent.run(
             user_message=request.message,
             attendance=request.attendance,
+            examination=request.examination,
+            timetable=request.timetable,
             history=request.history
         )
         return response
@@ -86,6 +95,8 @@ async def chat_stream_endpoint(request: ChatRequest):
             async for event in onee_agent.stream_run(
                 user_message=request.message,
                 attendance=request.attendance,
+                examination=request.examination,
+                timetable=request.timetable,
                 history=request.history
             ):
                 payload = json.dumps(event)
@@ -108,6 +119,38 @@ async def chat_stream_endpoint(request: ChatRequest):
         }
     )
 
+@app.post("/api/chat/suggestions", response_model=SuggestionResponse, status_code=status.HTTP_200_OK)
+async def suggestions_endpoint(request: SuggestionRequest):
+    """
+    Dynamic context-aware suggestions endpoint powered by Groq LLM.
+    """
+    try:
+        suggestions = await onee_agent.generate_suggestions(
+            user_message=request.last_user_query or "",
+            assistant_response=request.last_assistant_response or "",
+            attendance=request.attendance,
+            examination=request.examination,
+            timetable=request.timetable,
+            history=request.history
+        )
+        return SuggestionResponse(
+            suggestions=suggestions,
+            modelUsed=settings.GROQ_MODEL
+        )
+    except Exception as e:
+        logger.exception("Error generating suggestions")
+        fallback_suggestions = onee_agent._generate_contextual_heuristic_suggestions(
+            user_message=request.last_user_query or "",
+            assistant_response=request.last_assistant_response or "",
+            attendance=request.attendance,
+            examination=request.examination,
+            timetable=request.timetable
+        )
+        return SuggestionResponse(
+            suggestions=fallback_suggestions,
+            modelUsed="heuristic-fallback"
+        )
+
 @app.post("/api/plan-action", response_model=PlanActionResponse, status_code=status.HTTP_200_OK)
 async def plan_action_endpoint(request: PlanActionRequest):
     """
@@ -121,6 +164,36 @@ async def plan_action_endpoint(request: PlanActionRequest):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to plan action: {str(e)}"
+        )
+
+@app.post("/api/intent/resolve", response_model=SemanticResolutionResponse, status_code=status.HTTP_200_OK)
+async def resolve_intent_endpoint(request: SemanticResolutionRequest):
+    """
+    Semantic Intent & Capability Resolution endpoint powered by Groq.
+    Identifies intent, capability, entities, goal, and spoken acknowledgement text.
+    """
+    try:
+        return await semantic_service.resolve_intent(request)
+    except Exception as e:
+        logger.exception("Error in semantic intent resolution")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to resolve semantic intent: {str(e)}"
+        )
+
+@app.post("/api/chat/verified-response", response_model=VerifiedResponseResponse, status_code=status.HTTP_200_OK)
+async def verified_response_endpoint(request: VerifiedResponseRequest):
+    """
+    Generates a conversational response strictly grounded in verified UMS DOM data.
+    Guarantees zero cross-capability bleed and produces TTS spoken summaries <= 190 characters.
+    """
+    try:
+        return await semantic_service.generate_verified_response(request)
+    except Exception as e:
+        logger.exception("Error generating verified response")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate verified response: {str(e)}"
         )
 
 if __name__ == "__main__":

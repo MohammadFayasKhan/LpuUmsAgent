@@ -307,6 +307,102 @@ describe('actionEngine', () => {
     expect(cursorRoot?.style.opacity).toBe('0');
   });
 
+  it('collects virtualized date-sheet cards through the real inner scroller and returns to the top', async () => {
+    document.body.innerHTML = `
+      <div class="exam-stats">Total Exam: 3</div>
+      <div id="examScroller" class="runtime-shell-viewport"></div>
+    `;
+    const scroller = document.getElementById('examScroller') as HTMLElement;
+    let scrollTop = 0;
+    Object.defineProperty(scroller, 'clientHeight', { value: 200, configurable: true });
+    Object.defineProperty(scroller, 'scrollHeight', { value: 800, configurable: true });
+    Object.defineProperty(scroller, 'scrollTop', {
+      configurable: true,
+      get: () => scrollTop,
+      set: (value: number) => { scrollTop = Math.max(0, Math.min(600, Number(value) || 0)); }
+    });
+
+    const renderVisibleCard = () => {
+      const card = scrollTop < 250
+        ? ['CSE408', '06-Oct-2026', '10:00 - 11:30']
+        : scrollTop < 500
+        ? ['INT373', '08-Oct-2026', '10:00 - 11:30']
+        : ['CSE472', '10-Oct-2026', '14:00 - 17:00'];
+      scroller.innerHTML = `<div class="exam-card"><h4>${card[0]} - End Term</h4><span>Date: ${card[1]}</span><span>Time: ${card[2]}</span></div>`;
+      Array.from(scroller.querySelectorAll('*')).forEach((el) => {
+        (el as HTMLElement).getBoundingClientRect = () => ({
+          top: 100, left: 100, width: 400, height: 120, bottom: 220, right: 500, x: 100, y: 100, toJSON: () => {}
+        });
+      });
+    };
+    scroller.addEventListener('scroll', renderVisibleCard);
+    renderVisibleCard();
+    (scroller as HTMLElement).getBoundingClientRect = () => ({
+      top: 80, left: 80, width: 480, height: 200, bottom: 280, right: 560, x: 80, y: 80, toJSON: () => {}
+    });
+
+    const result = await executeAgentAction({
+      action: 'extractExamination',
+      reason: 'Reading the complete examination date sheet',
+      goal: 'Show my complete examination date sheet'
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.examination?.verified).toBe(true);
+    expect(result.examination?.exams.map((exam) => exam.courseCode)).toEqual(['CSE408', 'INT373', 'CSE472']);
+    expect(result.examination?.diagnostics?.bottomVerified).toBe(true);
+    expect(result.examination?.diagnostics?.topVerified).toBe(true);
+    expect(scrollTop).toBe(0);
+  });
+
+  it('falls back to the page scroller when UMS mounts only one virtualized card at a time', async () => {
+    document.body.innerHTML = `
+      <div class="exam-stats">Total Exam: 3</div>
+      <div id="pageExamList"></div>
+    `;
+    const pageList = document.getElementById('pageExamList') as HTMLElement;
+    const pageRoot = document.documentElement;
+    let pageTop = 0;
+
+    Object.defineProperty(document, 'scrollingElement', { value: pageRoot, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 200, configurable: true });
+    Object.defineProperty(pageRoot, 'clientHeight', { value: 200, configurable: true });
+    Object.defineProperty(pageRoot, 'scrollHeight', { value: 800, configurable: true });
+    Object.defineProperty(pageRoot, 'scrollTop', {
+      configurable: true,
+      get: () => pageTop,
+      set: (value: number) => { pageTop = Math.max(0, Math.min(600, Number(value) || 0)); }
+    });
+
+    const renderVisibleCard = () => {
+      const card = pageTop < 250
+        ? ['CSE408', '06-Oct-2026', '10:00 - 11:30']
+        : pageTop < 500
+        ? ['INT373', '08-Oct-2026', '10:00 - 11:30']
+        : ['CSE472', '10-Oct-2026', '14:00 - 17:00'];
+      pageList.innerHTML = `<div class="exam-card"><h4>${card[0]} - End Term</h4><span>Date: ${card[1]}</span><span>Time: ${card[2]}</span></div>`;
+      Array.from(pageList.querySelectorAll('*')).forEach((el) => {
+        (el as HTMLElement).getBoundingClientRect = () => ({
+          top: 100, left: 100, width: 400, height: 120, bottom: 220, right: 500, x: 100, y: 100, toJSON: () => {}
+        });
+      });
+    };
+    window.addEventListener('scroll', renderVisibleCard);
+    renderVisibleCard();
+
+    const result = await executeAgentAction({
+      action: 'extractExamination',
+      reason: 'Reading the complete examination date sheet',
+      goal: 'Show my complete examination date sheet'
+    });
+
+    expect(result.examination?.verified).toBe(true);
+    expect(result.examination?.exams.map((exam) => exam.courseCode)).toEqual(['CSE408', 'INT373', 'CSE472']);
+    expect(result.examination?.diagnostics?.bottomVerified).toBe(true);
+    expect(result.examination?.diagnostics?.topVerified).toBe(true);
+    expect(pageTop).toBe(0);
+  });
+
   it('extracts timetable with smooth verification animations and returns complete timetable summary', async () => {
     document.body.innerHTML = `
       <span>Student Time Table</span>
@@ -416,7 +512,7 @@ describe('actionEngine', () => {
 
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
-  });
+  }, 10000);
 
   it('scrolls within internal SSRS ReportViewer container down to faculty directory without scrolling page', async () => {
     document.body.innerHTML = `

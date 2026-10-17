@@ -19,7 +19,8 @@ import {
   MessageRecord,
   AgentExecutionRecord,
   VerifiedAttendanceRecord,
-  VerifiedExaminationRecord
+  VerifiedExaminationRecord,
+  VerifiedTimetableRecord
 } from './localDatabase';
 import { PersonalizationProfile } from './personalizationStore';
 
@@ -162,6 +163,44 @@ export class VerifiedExaminationRepository implements IVerifiedExaminationReposi
     return new Promise((resolve, reject) => {
       const tx = db.transaction('verifiedExamination', 'readwrite');
       const store = tx.objectStore('verifiedExamination');
+      if (accountId) {
+        const req = store.index('accountId').getAll(accountId);
+        req.onsuccess = () => {
+          for (const item of req.result || []) store.delete(item.id);
+          store.delete(`latest_${accountId}`);
+        };
+      } else {
+        store.clear();
+      }
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+}
+
+/*
+ * Keeps the latest verified student timetable snapshot parsed from UMS.
+ */
+export interface IVerifiedTimetableRepository {
+  saveVerifiedTimetable(record: VerifiedTimetableRecord): Promise<void>;
+  getLatestVerifiedTimetable(accountId?: string): Promise<VerifiedTimetableRecord | null>;
+  clearContext(accountId?: string): Promise<void>;
+}
+
+export class VerifiedTimetableRepository implements IVerifiedTimetableRepository {
+  public async saveVerifiedTimetable(record: VerifiedTimetableRecord): Promise<void> {
+    return localDatabase.saveVerifiedTimetable(record);
+  }
+
+  public async getLatestVerifiedTimetable(accountId: string = 'default'): Promise<VerifiedTimetableRecord | null> {
+    return localDatabase.getLatestVerifiedTimetable(accountId);
+  }
+
+  public async clearContext(accountId?: string): Promise<void> {
+    const db = await (localDatabase as any).getDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('verifiedTimetable', 'readwrite');
+      const store = tx.objectStore('verifiedTimetable');
       if (accountId) {
         const req = store.index('accountId').getAll(accountId);
         req.onsuccess = () => {
@@ -418,6 +457,7 @@ export const chatRepo = new ChatRepository();
 export const agentHistoryRepo = new AgentHistoryRepository();
 export const verifiedContextRepo = new VerifiedContextRepository();
 export const verifiedExaminationRepo = new VerifiedExaminationRepository();
+export const verifiedTimetableRepo = new VerifiedTimetableRepository();
 export const personalizationRepo = new PersonalizationRepository();
 export const settingsRepo = new SettingsRepository();
 export const sessionRepo = new SessionRepository();

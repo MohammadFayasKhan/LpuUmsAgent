@@ -18,6 +18,7 @@ import { detectUmsState } from './umsDetector';
 import { parseUmsAttendance } from './umsAttendanceParser';
 import { parseExamDateSheet } from './examination/examDateSheetParser';
 import { findDateSheetLinkElement, detectExaminationPage } from './examination/examinationDetector';
+import { detectTimetablePage, parseStudentTimeTable } from './timetable/timetableParser';
 import { observePage } from './pageObserver';
 import { executeAgentAction, cancelActiveExecution } from './actionEngine';
 import { hideCursor, showCursor } from './aiCursorOverlay';
@@ -28,11 +29,12 @@ import {
   ExtensionMessage,
   UmsResponsePayload
 } from '../shared/messages';
-import { ConnectionStatus, AttendanceSummary, ExaminationSummary } from '../shared/types';
+import { ConnectionStatus, AttendanceSummary, ExaminationSummary, TimetableSummary } from '../shared/types';
 
 let lastStatus: ConnectionStatus = 'NOT_CONNECTED';
 let lastAttendance: AttendanceSummary | null = null;
 let lastExamination: ExaminationSummary | null = null;
+let lastTimetable: TimetableSummary | null = null;
 let scanTimeout: number | null = null;
 
 /*
@@ -105,6 +107,13 @@ function navigateToExams(): boolean {
  */
 function scanCurrentPage(): UmsResponsePayload {
   const detection = detectUmsState(document, window.location);
+  // Whoever is signed in right now — shipped with every authenticated payload
+  // so the side panel can tell cached snapshots of a PREVIOUS account apart
+  // from the student currently on screen.
+  const studentProfile = {
+    studentName: detection.studentName,
+    registrationNumber: detection.registrationNumber
+  };
 
   if (!detection.isUmsDomain) {
     lastStatus = 'NOT_CONNECTED';
@@ -136,24 +145,45 @@ function scanCurrentPage(): UmsResponsePayload {
     };
   }
 
-  // 1. Check for Examination Date Sheet / Seating Plan
+  // 1. Check for Student Time Table
+  const timetableDetection = detectTimetablePage(document, window.location);
+  const timetable = parseStudentTimeTable(document);
+  if (timetable && timetable.slots && timetable.slots.length > 0) {
+    lastTimetable = timetable;
+    lastStatus = 'READY';
+    return {
+      status: 'READY',
+      studentProfile,
+      timetable,
+      examination: lastExamination || undefined,
+      attendance: lastAttendance || undefined,
+      hasAttendanceLink: findAttendanceLinkElement() !== null,
+      hasExamLink: false,
+      hasTimetableLink: true
+    };
+  }
+
+  // 2. Check for Examination Date Sheet / Seating Plan
   const examPageDetection = detectExaminationPage(document, window.location);
   const examination = parseExamDateSheet(document);
   if (examination && examination.exams.length > 0) {
     lastExamination = examination;
   }
 
-  // 2. Attempt to parse the structured attendance table from the active DOM
+  // 3. Attempt to parse the structured attendance table from the active DOM
   const attendance = parseUmsAttendance(document);
   if (attendance && attendance.courses.length > 0) {
     lastStatus = 'READY';
     lastAttendance = attendance;
     return {
       status: 'READY',
+      studentProfile,
       attendance,
       examination: examination || lastExamination || undefined,
+      timetable: timetable || lastTimetable || undefined,
       hasAttendanceLink: true,
-      hasExamLink: examPageDetection.hasDateSheetLink
+      hasExamLink: examPageDetection.hasDateSheetLink,
+      hasTimetableLink: timetableDetection.hasTimetableGrid || timetableDetection.isTimetablePage
     };
   }
 
@@ -161,25 +191,32 @@ function scanCurrentPage(): UmsResponsePayload {
     lastStatus = 'READY';
     return {
       status: 'READY',
+      studentProfile,
       examination,
       attendance: lastAttendance || undefined,
+      timetable: timetable || lastTimetable || undefined,
       hasAttendanceLink: findAttendanceLinkElement() !== null,
-      hasExamLink: true
+      hasExamLink: true,
+      hasTimetableLink: timetableDetection.hasTimetableGrid || timetableDetection.isTimetablePage
     };
   }
 
-  // The student is authenticated on the UMS dashboard, but has not opened attendance or exam view yet
+  // The student is authenticated on the UMS dashboard, but has not opened attendance, timetable, or exam view yet
   lastStatus = 'NO_ATTENDANCE_ON_PAGE';
   const hasAttendanceLink = findAttendanceLinkElement() !== null;
   const hasExamLink = examPageDetection.hasDateSheetLink;
 
   return {
     status: 'NO_ATTENDANCE_ON_PAGE',
+    studentProfile,
     errorMessage:
-      'ONEE is connected to your LPU UMS session. Open Academics > View Attendance or Examination Date Sheet in your UMS tab and ONEE will read it automatically.',
+      'ONEE is connected to your LPU UMS session. Open Academics > View Attendance, Student Time Table, or Examination Date Sheet in your UMS tab and ONEE will read it automatically.',
     hasAttendanceLink,
     hasExamLink,
-    examination: lastExamination || undefined
+    hasTimetableLink: timetableDetection.hasTimetableGrid || timetableDetection.isTimetablePage,
+    timetable: lastTimetable || undefined,
+    examination: lastExamination || undefined,
+    attendance: lastAttendance || undefined
   };
 }
 
@@ -188,6 +225,7 @@ function scanCurrentPage(): UmsResponsePayload {
  */
 function notifyStatusChange() {
   const payload = scanCurrentPage();
+  payload.sourceUrl = window.location.href;
   try {
     chrome.runtime.sendMessage({
       type: MESSAGE_TYPES.UMS_STATUS_UPDATE,
@@ -236,6 +274,7 @@ chrome.runtime.onMessage.addListener(
       message.type === MESSAGE_TYPES.TRIGGER_PAGE_SCAN
     ) {
       const result = scanCurrentPage();
+      result.sourceUrl = window.location.href;
       sendResponse(result);
       return false;
     }

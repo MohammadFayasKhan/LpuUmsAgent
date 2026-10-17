@@ -30,16 +30,17 @@ import {
   FinalResponseData,
   SamplePaperResult,
   SuggestedSubAction,
-  TimetableSummary
+  TimetableSummary,
+  AgentCapability
 } from '../shared/types';
 import { MESSAGE_TYPES } from '../shared/messages';
-import { planNextAction } from '../services/api';
+import { planNextAction, SemanticExecutionContext } from '../services/api';
 import { hybridGrounding, createGroundedTarget, MIN_ACTION_CONFIDENCE } from '../content/hybridGrounding';
 import { agentMotion } from '../content/agentMotion';
 import { validateAttendanceSummary, getLowestAttendanceSubject } from '../shared/attendanceCalculator';
 import { sendTabMessageWithAutoRecovery, broadcastTabMessage, closeDuplicateLpuTabs, openSeatingPlanTab, openTimetableTab, getActiveLpuTab } from '../services/tabMessenger';
 import { routeUserIntent } from '../services/intentRouter';
-import { verifiedExaminationRepo } from '../services/repositories';
+import { verifiedExaminationRepo, verifiedTimetableRepo } from '../services/repositories';
 import {
   validateExaminationSummary,
   getNextExam,
@@ -52,9 +53,45 @@ import {
   AgentExecutionRecord,
   VerifiedAttendanceRecord
 } from '../services/localDatabase';
+import { runtimeState } from '../lib/runtimeState';
+
+export interface AgentGoalExecutionResult {
+  isSuccess: boolean;
+  finalResponse?: FinalResponseData;
+  attendance?: AttendanceSummary;
+  examination?: ExaminationSummary;
+  timetable?: TimetableSummary;
+  taskOutcome: 'success' | 'data_unavailable' | 'failed';
+}
 
 const MAX_STEPS = 15;
 const MAX_ACTION_RETRIES = 3;
+
+function routeGoalFromSemanticContext(goal: string, semanticContext?: SemanticExecutionContext) {
+  const fallbackRoute = routeUserIntent(goal);
+  const capabilityBySemanticName: Record<string, AgentCapability> = {
+    attendance: 'ATTENDANCE',
+    examination: 'EXAM_DATE_SHEET',
+    seating_plan: 'SEATING_PLAN',
+    sample_papers: 'SAMPLE_PAPER',
+    timetable: 'TIMETABLE'
+  };
+  const semanticCapability = semanticContext?.capability
+    ? capabilityBySemanticName[semanticContext.capability]
+    : undefined;
+
+  if (!semanticCapability) return fallbackRoute;
+
+  const semanticCourse = semanticContext?.entities?.courseCode;
+  return {
+    ...fallbackRoute,
+    capability: semanticCapability,
+    targetCourseCode: semanticCourse || fallbackRoute.targetCourseCode,
+    resolvedCourseCode: semanticCourse || fallbackRoute.resolvedCourseCode,
+    confidence: 1,
+    reasoning: 'Groq semantic resolution'
+  };
+}
 
 function generateUUID(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -74,10 +111,18 @@ function buildFinalResponse(
   const goalLower = goal.toLowerCase();
   const lowest = getLowestAttendanceSubject(attendance.courses);
   const highest = attendance.courses.filter((c) => c.percentage === 100).map((c) => c.code);
+  const courseMatch = goal.match(/\b([a-z]{2,5})\s*(\d{3,4}[a-z]?)\b/i);
+  const requestedCode = courseMatch ? `${courseMatch[1]}${courseMatch[2]}`.toUpperCase() : null;
+  const requestedCourse = requestedCode
+    ? attendance.courses.find((course) =>
+        (course.code || '').replace(/\s+/g, '').toUpperCase() === requestedCode
+      )
+    : undefined;
+  const focusCourse = requestedCourse || lowest;
 
-  const lowestDelivered = lowest ? (lowest.delivered ?? lowest.total) : 0;
-  const lowestAttended = lowest ? lowest.attended : 0;
-  const safeBuffer = lowest ? Math.max(0, Math.floor((lowestAttended - 0.75 * lowestDelivered) / 0.75)) : 0;
+  const lowestDelivered = focusCourse ? (focusCourse.delivered ?? focusCourse.total) : 0;
+  const lowestAttended = focusCourse ? focusCourse.attended : 0;
+  const safeBuffer = focusCourse ? Math.max(0, Math.floor((lowestAttended - 0.75 * lowestDelivered) / 0.75)) : 0;
 
   // Case 1: Specific question about skip / bunk
   if (goalLower.includes('skip') || goalLower.includes('bunk') || goalLower.includes('leave') || goalLower.includes('miss')) {
@@ -87,14 +132,14 @@ function buildFinalResponse(
     return {
       status: 'READY',
       type: 'safe_bunk',
-      title: `${lowest?.code || 'Attendance'} → ${safeBuffer} class safe`,
-      subjectCode: lowest?.code,
-      subjectName: lowest?.name,
-      percentage: lowest?.percentage,
+      title: `${focusCourse?.code || 'Attendance'} → ${safeBuffer} class safe`,
+      subjectCode: focusCourse?.code,
+      subjectName: focusCourse?.name,
+      percentage: focusCourse?.percentage,
       attended: lowestAttended,
       delivered: lowestDelivered,
       safeBuffer,
-      explanation: `You're at ${lowestAttended}/${lowestDelivered} (${lowest?.percentage}%) right now.`,
+      explanation: `You're at ${lowestAttended}/${lowestDelivered} (${focusCourse?.percentage}%) right now.`,
       details: {
         bunkCalculations: [
           `After 1 absence: ${lowestAttended}/${lowestDelivered + 1} = ${after1AbsencePct}%`,
@@ -199,10 +244,23 @@ function buildExaminationFinalResponse(
     };
   });
 
-  // 1. Check for specific course query
-  const targetCourse = examination.exams.find((e) =>
-    goalLower.includes(e.courseCode.toLowerCase())
-  );
+  // 1. Check for specific course query (resilient to spaces like "INT 373" and date filters like "18 Oct")
+  const codeMatch = goal.match(/\b([A-Z]{2,5})\s*(\d{3,4}[A-Z]?)\b/i);
+  const targetCode = codeMatch ? `${codeMatch[1]}${codeMatch[2]}`.toUpperCase() : null;
+  const dateMatch = goal.match(/\b(\d{1,2})\s*(?:st|nd|rd|th)?\s*(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\b/i);
+  const targetDateSnippet = dateMatch ? `${dateMatch[1]} ${dateMatch[2].slice(0, 3)}`.toLowerCase() : null;
+
+  let candidateExams = targetCode
+    ? examination.exams.filter((e) => (e.courseCode || '').replace(/\s+/g, '').toUpperCase() === targetCode)
+    : [];
+
+  if (targetDateSnippet && candidateExams.length > 1) {
+    const dateFiltered = candidateExams.filter((e) =>
+      (e.examDate || '').toLowerCase().includes(targetDateSnippet)
+    );
+    if (dateFiltered.length > 0) candidateExams = dateFiltered;
+  }
+  const targetCourse = candidateExams[0] || (targetCode ? examination.exams.find((e) => (e.courseCode || '').replace(/\s+/g, '').toUpperCase() === targetCode) : undefined);
 
   const targetCourseSubAction =
     targetCourse && targetCourse.samplePaper?.available
@@ -219,16 +277,37 @@ function buildExaminationFinalResponse(
       : undefined;
 
   if (targetCourse) {
+    const isSeatingInquiry =
+      goalLower.includes('seat') ||
+      goalLower.includes('room') ||
+      goalLower.includes('hall') ||
+      goalLower.includes('venue') ||
+      goalLower.includes('where');
+
     const hasPaper = targetCourse.samplePaper?.available;
+
+    let seatExplanation = '';
+    if (targetCourse.seat && !['assigned', 'awaited', 'nil', 'na', 'null'].includes(targetCourse.seat.toLowerCase())) {
+      seatExplanation = `Your assigned seat is **${targetCourse.seat}** in Room ${targetCourse.room || targetCourse.venue}.`;
+    } else if (targetCourse.room && targetCourse.room.toLowerCase() !== 'awaited') {
+      seatExplanation = `Your examination hall is confirmed at Room ${targetCourse.room} (${targetCourse.venue || 'Block'}). Individual physical seat/bench numbers are allocated inside the hall and posted on the door chart outside on the morning of the exam.`;
+    } else {
+      seatExplanation = `Room and seating allocation for ${targetCourse.courseCode} (${targetCourse.examDate}) is currently awaited.`;
+    }
+
+    const explanation = isSeatingInquiry
+      ? `${seatExplanation} Timing: ${targetCourse.startTime || 'TBD'}${targetCourse.endTime ? ` - ${targetCourse.endTime}` : ''}.${targetCourse.reportingTime ? ` (Reporting: ${targetCourse.reportingTime})` : ''}`
+      : `Your ${targetCourse.courseCode} examination is scheduled on ${targetCourse.examDate} at ${targetCourse.startTime || 'TBD'}${targetCourse.venue ? ` in ${targetCourse.venue}` : ''}${targetCourse.room ? `, Room ${targetCourse.room}` : ''}.${hasPaper ? ' 📄 Official sample question paper is available.' : ''}`;
+
     return {
       status: 'READY',
-      type: 'next_exam',
-      title: `Exam Schedule: ${targetCourse.courseCode}`,
-      capability: 'EXAM_DATE_SHEET',
+      type: isSeatingInquiry ? 'seating_plan' : 'next_exam',
+      title: isSeatingInquiry ? `Seating Allocation: ${targetCourse.courseCode}` : `Exam Schedule: ${targetCourse.courseCode}`,
+      capability: isSeatingInquiry ? 'SEATING_PLAN' : 'EXAM_DATE_SHEET',
       subjectCode: targetCourse.courseCode,
       subjectName: targetCourse.courseName || targetCourse.courseCode,
       highlightText: `${targetCourse.courseCode} · ${targetCourse.examDate}`,
-      explanation: `Your ${targetCourse.courseCode} examination is scheduled on ${targetCourse.examDate} at ${targetCourse.startTime || 'TBD'}${targetCourse.venue ? ` in ${targetCourse.venue}` : ''}${targetCourse.room ? `, Room ${targetCourse.room}` : ''}${targetCourse.seat ? `, Seat ${targetCourse.seat}` : ''}.${hasPaper ? ' 📄 Official sample question paper is available.' : ''}`,
+      explanation,
       suggestedSubAction: targetCourseSubAction,
       suggestedSubActions: suggestedSubActions.length > 0 ? suggestedSubActions : undefined,
       details: {
@@ -238,7 +317,7 @@ function buildExaminationFinalResponse(
         totalCourses: verifiedExamCount,
         venue: targetCourse.venue,
         room: targetCourse.room,
-        seat: targetCourse.seat,
+        seat: targetCourse.seat || (targetCourse.room && targetCourse.room.toLowerCase() !== 'awaited' ? 'Allocated inside hall' : 'Awaited'),
         reportingTime: targetCourse.reportingTime,
         mode: targetCourse.mode
       },
@@ -440,7 +519,8 @@ function verifyActionOutcome(
 export function useAgentController(
   onAttendanceExtracted?: (attendance: AttendanceSummary) => void,
   accountId: string = 'default',
-  onExaminationExtracted?: (examination: ExaminationSummary) => void
+  onExaminationExtracted?: (examination: ExaminationSummary) => void,
+  onTimetableExtracted?: (timetable: TimetableSummary) => void
 ) {
   const [state, setState] = useState<AgentState>({
     status: 'idle',
@@ -629,12 +709,12 @@ export function useAgentController(
   /**
    * Main Hybrid Perception-Action-Verification State Machine.
    * Every invocation creates a completely fresh execution identity with no state bleed.
-   */
+  */
   const startGoal = useCallback(
-    async (goal: string) => {
+    async (goal: string, customExecutionId?: string, semanticContext?: SemanticExecutionContext) => {
       if (!goal.trim() || isRunningRef.current) return;
 
-      const routed = routeUserIntent(goal);
+      const routed = routeGoalFromSemanticContext(goal, semanticContext);
       const isExamGoal =
         routed.capability === 'EXAM_DATE_SHEET' ||
         routed.capability === 'SEATING_PLAN' ||
@@ -643,11 +723,13 @@ export function useAgentController(
 
       resetCampusModalCooldown();
       const taskId = generateUUID();
-      const executionId = isTimetableGoal
-        ? `TIMETABLE-${generateUUID()}`
-        : isExamGoal
-        ? `EXAMINATION-${generateUUID()}`
-        : generateUUID();
+      const executionId =
+        customExecutionId ||
+        (isTimetableGoal
+          ? `TIMETABLE-${generateUUID()}`
+          : isExamGoal
+          ? `EXAMINATION-${generateUUID()}`
+          : generateUUID());
       activeRunIdRef.current = executionId;
       isRunningRef.current = true;
       isPausedRef.current = false;
@@ -670,6 +752,11 @@ export function useAgentController(
       let validatedExamination: ExaminationSummary | undefined;
       let validatedTimetable: TimetableSummary | undefined;
       let completedFinalResponse: FinalResponseData | undefined;
+      // Terminal failures must survive the common completion block below. The
+      // previous implementation set a precise failure response here, then
+      // overwrote it with the generic "records not detected" fallback after
+      // leaving the loop.
+      let terminalFailureResponse: FinalResponseData | undefined;
       let retryContext: { lastFailedAction?: string; attemptCount?: number; reason?: string } | undefined;
 
       const initialFinalResponse: FinalResponseData = isTimetableGoal
@@ -891,6 +978,20 @@ export function useAgentController(
            * If student specifically asked for a sample paper, target the exam card control.
            */
           if (routed.capability === 'SAMPLE_PAPER') {
+            const isExamPage = Boolean(
+              observation.isExamPage ||
+              observation.url?.includes('seatingplan') ||
+              observation.url?.includes('/examination/conduct/')
+            );
+
+            if (!isExamPage) {
+              addActivity('ACT', 'Opening Examination Date Sheet', 'Navigating to Seating Plan to access official sample question papers...', 'in_progress');
+              await openSeatingPlanTab();
+              await agentMotion.wait(1200);
+              step++;
+              continue;
+            }
+
             const targetCourse = routed.targetCourseCode || '';
             setState((prev) => ({ ...prev, status: 'locating' }));
             addActivity('LOCATE', `Finding Sample Question Paper for ${targetCourse || 'scheduled course'}`, 'Scanning examination cards on active page...', 'in_progress');
@@ -1079,7 +1180,7 @@ export function useAgentController(
                 addActivity('VALIDATE', 'Validating timetable data', 'Verifying course timings, rooms, and faculty cabin assignments...', 'in_progress');
 
                 const validation = validateTimetableSummary(timetable);
-                if (validation.valid || timetable.slots.length > 0) {
+                if (validation.valid || timetable.slots.length > 0 || timetable.courses.length > 0) {
                   validatedTimetable = timetable;
                   const response = { ...buildTimetableFinalResponse(goal, timetable), timetable };
                   completedFinalResponse = response;
@@ -1087,6 +1188,14 @@ export function useAgentController(
 
                   addActivity('VALIDATE', `✓ Verified ${timetable.slots.length} weekly classes`, `${timetable.courses.length} courses (${timetable.totalCredits} credits). Home section: ${timetable.homeSection}`, 'completed');
                   addActivity('DONE', 'Time table verified', finalSummary, 'completed');
+
+                  if (onTimetableExtracted) {
+                    try {
+                      onTimetableExtracted(timetable);
+                    } catch (cbErr) {
+                      console.warn('onTimetableExtracted callback error:', cbErr);
+                    }
+                  }
 
                   setState((prev) => ({
                     ...prev,
@@ -1129,6 +1238,8 @@ export function useAgentController(
                   finalResponse: failedFinalResponse,
                   finalResult: 'No timetable schedule was detected on current UMS page.'
                 }));
+                terminalFailureResponse = failedFinalResponse;
+                finalSummary = failedFinalResponse.explanation || 'No timetable schedule was detected on current UMS page.';
                 break;
               } else {
                 // Advance step to give page more time to render
@@ -1156,8 +1267,8 @@ export function useAgentController(
                 await agentMotion.wait(1500);
                 step++;
                 continue;
-              } else if (step >= 6) {
-                // If the navbar link could not be opened after multiple attempts, fallback to tab opening
+              } else if (step >= 2) {
+                // If the navbar link could not be opened after attempts, immediately open timetable tab
                 addActivity('ACT', 'Opening Time Table report tab', 'Opening frmStudentTimeTable.aspx...', 'in_progress');
                 await openTimetableTab();
                 await agentMotion.wait(1500);
@@ -1177,17 +1288,41 @@ export function useAgentController(
            * we extract and validate the examination records.
            */
           if (isExamGoal) {
-            const isDashboard =
-              observation.url?.toLowerCase().includes('studentdashboard') ||
-              observation.pageType?.toLowerCase().includes('dashboard');
+            const observedUrl = observation.url?.toLowerCase() || '';
+            const hasDateSheetPath =
+              observedUrl.includes('seatingplan') ||
+              observedUrl.includes('/examination/conduct/') ||
+              observedUrl.includes('examinationdatesheet');
 
+            // PageObserver deliberately starts from "Student Dashboard" as its
+            // default label.  On the Angular seating-plan route it can retain
+            // that label for a render cycle even though the URL is already the
+            // live date-sheet page.  The canonical route must win over that
+            // transient label, otherwise we click the breadcrumb "Date Sheet"
+            // and never invoke the extractor.
+            const isDashboard =
+              !hasDateSheetPath && (
+                observedUrl.includes('studentdashboard') ||
+                observation.pageType?.toLowerCase().includes('dashboard')
+              );
+
+            // Date-sheet evidence is stronger than a navigation link or a
+            // planner guess. Once the live page exposes a seating-plan URL,
+            // parsed card/table signal, or a non-zero record count, extraction
+            // must run immediately and never click a breadcrumb labelled
+            // "Date Sheet" again.
+            const hasLiveDateSheetEvidence = Boolean(
+              observation.isExamPage ||
+              observation.isExamContentRendered ||
+              observation.hasExamTable ||
+              (observation.examRecordsCount || 0) > 0 ||
+              hasDateSheetPath ||
+              observation.pageType?.toLowerCase().includes('examination date sheet') ||
+              observation.pageType?.toLowerCase().includes('seating plan')
+            );
             const isSeatingPlanUrl =
               !isDashboard &&
-              (observation.isExamPage ||
-               observation.url?.toLowerCase().includes('seatingplan') ||
-               observation.url?.toLowerCase().includes('/examination/conduct/') ||
-               observation.url?.toLowerCase().includes('examinationdatesheet') ||
-               observation.pageStateId?.toLowerCase().includes('seatingplan'));
+              (hasLiveDateSheetEvidence || observation.pageStateId?.toLowerCase().includes('seatingplan'));
 
             if (isSeatingPlanUrl) {
               // Explicit UMS Loading state: Wait for records to render if not present
@@ -1240,7 +1375,7 @@ export function useAgentController(
 
               const examination: ExaminationSummary | undefined = extractResp?.actionResult?.examination;
 
-              if (examination && examination.exams.length > 0) {
+              if (examination && examination.exams.length > 0 && examination.verified) {
                 setState((prev) => ({ ...prev, status: 'validating' }));
                 addActivity('VALIDATE', 'Validating examination schedule', 'Verifying course dates, times, and venue integrity...', 'in_progress');
 
@@ -1259,62 +1394,41 @@ export function useAgentController(
                   issues: validation.issues
                 });
 
-                if (validation.valid) {
-                  validatedExamination = examination;
-                  if (onExaminationExtracted) {
-                    onExaminationExtracted(examination);
-                  }
-
-                  const next = getNextExam(examination.exams);
-                  const examCount = examination.exams.length;
-                  finalSummary = `Found ${examCount} scheduled examination${examCount === 1 ? '' : 's'}.`;
-                  if (next) {
-                    finalSummary += ` Next exam: **${next.courseCode}** on **${next.examDate}** (${next.startTime || 'TBD'}).`;
-                  }
-
-                  addActivity('VALIDATE', `✓ Verified ${examCount} examination${examCount === 1 ? '' : 's'}`, `Next: ${next?.courseCode || 'Scheduled'} on ${next?.examDate || 'TBD'}`, 'completed');
-                  addActivity('DONE', 'Date sheet verified', finalSummary, 'completed');
-                  try {
-                    await broadcastTabMessage({ type: MESSAGE_TYPES.HIDE_CURSOR });
-                  } catch {}
-                  break;
-                } else {
-                  console.warn('[useAgentController] Examination validation issues:', validation.issues);
-
-                  // If incomplete collection (e.g. page reports multiple exams, but only 1 record discovered),
-                  // continue collection to capture remaining records only if step limit permits.
-                  const isIncompleteDataset = validation.issues.some((issue) =>
-                    issue.includes('Impossible state') || issue.includes('Incomplete dataset')
-                  );
-                  if (isIncompleteDataset && step < MAX_STEPS) {
-                    addActivity('VALIDATE', `Incomplete date sheet (${extractedExamCount}/${expectedExamCount} exams)`, 'Continuing collection to capture all scheduled examinations...', 'in_progress');
-                    await agentMotion.wait(400);
-                    step++;
-                    continue;
-                  }
-
-                  validatedExamination = examination;
-                  if (onExaminationExtracted) {
-                    onExaminationExtracted(examination);
-                  }
-                  const next = getNextExam(examination.exams);
-                  const examCount = examination.exams.length;
-                  finalSummary = `Found ${examCount} scheduled examination${examCount === 1 ? '' : 's'}.`;
-                  if (next) {
-                    finalSummary += ` Next exam: **${next.courseCode}** on **${next.examDate}** (${next.startTime || 'TBD'}).`;
-                  }
-                  addActivity('VALIDATE', `✓ Extracted ${examCount} examination${examCount === 1 ? '' : 's'}`, `Next: ${next?.courseCode || 'Scheduled'} on ${next?.examDate || 'TBD'}`, 'completed');
-                  addActivity('DONE', 'Date sheet verified', finalSummary, 'completed');
-                  try {
-                    await broadcastTabMessage({ type: MESSAGE_TYPES.HIDE_CURSOR });
-                  } catch {}
-                  break;
+                if (!validation.valid) {
+                  addActivity('VALIDATE', 'Date sheet collection incomplete', validation.issues.join(' '), 'error');
+                  throw new Error(`Examination validation failed: ${validation.issues.join(' ')}`);
                 }
+
+                validatedExamination = examination;
+                if (onExaminationExtracted) {
+                  onExaminationExtracted(examination);
+                }
+
+                const next = getNextExam(examination.exams);
+                const examCount = examination.exams.length;
+                finalSummary = `Found ${examCount} scheduled examination${examCount === 1 ? '' : 's'}.`;
+                if (next) {
+                  finalSummary += ` Next exam: **${next.courseCode}** on **${next.examDate}** (${next.startTime || 'TBD'}).`;
+                }
+
+                addActivity('VALIDATE', `✓ Verified ${examCount} examination${examCount === 1 ? '' : 's'}`, `Next: ${next?.courseCode || 'Scheduled'} on ${next?.examDate || 'TBD'}`, 'completed');
+                addActivity('DONE', 'Date sheet verified', finalSummary, 'completed');
+                try {
+                  await broadcastTabMessage({ type: MESSAGE_TYPES.HIDE_CURSOR });
+                } catch {}
+                break;
               } else {
-                // Extraction yielded 0 records on the seating plan page.
+                const extractionDiagnostics = examination?.diagnostics;
+                const failureDetail = examination?.exams.length
+                  ? `Found ${examination.exams.length} record(s), but full verification did not complete. ` +
+                    `Target: ${extractionDiagnostics?.targetVerified ? 'verified' : 'not verified'}, ` +
+                    `bottom: ${extractionDiagnostics?.bottomVerified ? 'verified' : 'not verified'}, ` +
+                    `top: ${extractionDiagnostics?.topVerified ? 'verified' : 'not verified'}.`
+                  : 'No scheduled examination records were detected on your UMS page.';
+                // Extraction yielded no verified records on the seating plan page.
                 // Stop immediately, release cursor, cancel timers, and transition to terminal FAILED state.
-                addActivity('VALIDATE', 'Date sheet records not detected', 'No scheduled examination records were detected on your UMS page.', 'error');
-                addActivity('DONE', 'Verification failed', 'No examination records detected. Check if your date sheet has been released.', 'error');
+                addActivity('VALIDATE', examination?.exams.length ? 'Date sheet collection incomplete' : 'Date sheet records not detected', failureDetail, 'error');
+                addActivity('DONE', 'Verification failed', failureDetail, 'error');
 
                 try {
                   await broadcastTabMessage({ type: MESSAGE_TYPES.STOP_ACTION });
@@ -1324,9 +1438,9 @@ export function useAgentController(
                 const failedFinalResponse: FinalResponseData = {
                   status: 'FAILED',
                   type: 'next_exam',
-                  title: 'Date sheet records not detected',
+                  title: examination?.exams.length ? 'Date sheet collection incomplete' : 'Date sheet records not detected',
                   capability: routed.capability,
-                  explanation: 'No scheduled examination records were detected on your UMS page. Check if your date sheet has been released.',
+                  explanation: failureDetail,
                   verification: {
                     verified: false,
                     source: 'UMS Examination Date Sheet',
@@ -1339,8 +1453,10 @@ export function useAgentController(
                   ...prev,
                   status: 'failed',
                   finalResponse: failedFinalResponse,
-                  finalResult: 'No scheduled examination records were detected on your UMS page.'
+                  finalResult: failureDetail
                 }));
+                terminalFailureResponse = failedFinalResponse;
+                finalSummary = failureDetail;
                 break;
               }
             }
@@ -1364,7 +1480,8 @@ export function useAgentController(
             observation,
             previousActionsRef.current,
             retryContext,
-            activeAbortControllerRef.current.signal
+            activeAbortControllerRef.current.signal,
+            semanticContext
           );
           activeAbortControllerRef.current = null;
 
@@ -1442,11 +1559,20 @@ export function useAgentController(
            * what ONEE is doing on their UMS portal.
            */
           const actionStartTime = Date.now();
-          setState((prev) => ({
-            ...prev,
-            status: 'moving',
-            currentAction: targetAction
-          }));
+          setState((prev) => {
+            const nextState: AgentState = {
+              ...prev,
+              status: 'moving',
+              currentAction: targetAction
+            };
+            runtimeState.update({
+              agentState: nextState,
+              attendance: validatedAttendance || null,
+              examination: validatedExamination || null,
+              timetable: validatedTimetable || null
+            });
+            return nextState;
+          });
 
           const humanReason = targetAction.reason || 'Interacting with UMS';
           addActivity('MOVE', `Moving cursor to ${humanReason}`, 'Executing deliberate cubic Bézier trajectory', 'in_progress');
@@ -1608,11 +1734,11 @@ export function useAgentController(
           }
         }
 
-        const isSuccess = Boolean(
+        const isSuccess = !terminalFailureResponse && Boolean(
           completedFinalResponse || validatedTimetable || validatedExamination || validatedAttendance
         );
 
-        let resolvedFinalResponse: FinalResponseData | undefined = finalResponseData;
+        let resolvedFinalResponse: FinalResponseData | undefined = terminalFailureResponse || finalResponseData;
 
         if (!resolvedFinalResponse) {
           if (step > MAX_STEPS) {
@@ -1654,14 +1780,26 @@ export function useAgentController(
           }
         }
 
-        setState((prev) => ({
-          ...prev,
-          status: isSuccess ? 'completed' : 'failed',
-          examination: validatedExamination || (routed.capability === 'SAMPLE_PAPER' ? prev.examination : isExamGoal ? undefined : prev.examination),
-          timetable: validatedTimetable || (isTimetableGoal ? undefined : prev.timetable),
-          finalResponse: resolvedFinalResponse,
-          finalResult: finalSummary || (isSuccess ? 'Agent task completed.' : 'Verification could not be completed.')
-        }));
+        setState((prev) => {
+          const nextState: AgentState = {
+            ...prev,
+            status: isSuccess ? 'completed' : 'failed',
+            examination: validatedExamination || (routed.capability === 'SAMPLE_PAPER' ? prev.examination : isExamGoal ? undefined : prev.examination),
+            timetable: validatedTimetable || (isTimetableGoal ? undefined : prev.timetable),
+            finalResponse: resolvedFinalResponse,
+            finalResult: finalSummary || (isSuccess ? 'Agent task completed.' : 'Verification could not be completed.')
+          };
+          runtimeState.update({
+            agentState: nextState,
+            attendance: validatedAttendance || null,
+            examination: validatedExamination || null,
+            timetable: validatedTimetable || null
+          });
+          return nextState;
+        });
+
+        // Mid-automation voice narration removed: The unified canonical response
+        // is generated after verification and spoken identically via VoiceQueue.
 
         // Persist execution trace into AgentHistoryStore
         try {
@@ -1687,6 +1825,11 @@ export function useAgentController(
               capturedAt: Date.now(),
               source: 'UMS_DOM',
               verified: true,
+              // Which student these numbers belong to — without this the
+              // snapshot stored under the shared 'default' key keeps
+              // re-hydrating after a different UMS account signs in.
+              registrationNumber: validatedAttendance.registrationNumber,
+              studentName: validatedAttendance.studentName,
               subjects: validatedAttendance.courses.map((c) => ({
                 code: c.code,
                 percentage: c.percentage,
@@ -1721,9 +1864,35 @@ export function useAgentController(
               console.warn('Failed to save verified examination to IndexedDB:', examErr);
             }
           }
+
+          // Persist verified timetable into VerifiedTimetableStore
+          if (validatedTimetable && ((validatedTimetable.slots && validatedTimetable.slots.length > 0) || (validatedTimetable.courses && validatedTimetable.courses.length > 0))) {
+            try {
+              await verifiedTimetableRepo.saveVerifiedTimetable({
+                id: executionId,
+                accountId,
+                executionId,
+                capturedAt: Date.now(),
+                source: 'UMS_DOM',
+                verified: true,
+                timetable: validatedTimetable
+              });
+            } catch (ttErr) {
+              console.warn('Failed to save verified timetable to IndexedDB:', ttErr);
+            }
+          }
         } catch (dbErr) {
           console.warn('Failed to save execution trace to IndexedDB:', dbErr);
         }
+
+        return {
+          isSuccess,
+          finalResponse: resolvedFinalResponse,
+          attendance: validatedAttendance || undefined,
+          examination: validatedExamination || undefined,
+          timetable: validatedTimetable || undefined,
+          taskOutcome: isSuccess ? 'success' : 'data_unavailable'
+        } as AgentGoalExecutionResult;
       } catch (err: any) {
         addActivity('DONE', 'Agent error', err.message || 'Unknown execution error', 'error');
         const failedFinalResponse: FinalResponseData = {
@@ -1745,6 +1914,11 @@ export function useAgentController(
           errorMessage: err.message,
           finalResponse: failedFinalResponse
         }));
+        return {
+          isSuccess: false,
+          finalResponse: failedFinalResponse,
+          taskOutcome: 'failed'
+        } as AgentGoalExecutionResult;
       } finally {
         isRunningRef.current = false;
         try {
@@ -1760,6 +1934,11 @@ export function useAgentController(
 
   return {
     state,
+    isRunning:
+      state.status !== 'idle' &&
+      state.status !== 'stopped' &&
+      state.status !== 'completed' &&
+      state.status !== 'failed',
     startGoal,
     stopAgent,
     pauseAgent,

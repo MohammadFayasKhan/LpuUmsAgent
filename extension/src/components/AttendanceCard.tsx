@@ -33,6 +33,17 @@ function getGreeting(name?: string): string {
   return timeGreeting;
 }
 
+function formatLastVerified(fetchedAt?: string | number): string {
+  if (fetchedAt === undefined || fetchedAt === null) return 'earlier';
+  const ms = typeof fetchedAt === 'number' ? fetchedAt : Date.parse(String(fetchedAt));
+  if (!Number.isFinite(ms)) return 'earlier';
+  const date = new Date(ms);
+  const sameDay = date.toDateString() === new Date().toDateString();
+  return sameDay
+    ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
 function getStatusMessage(attendance: AttendanceSummary): string {
   const pct = attendance.overallPercentage;
   if (pct >= 85) {
@@ -91,6 +102,14 @@ export const AttendanceCard: React.FC<AttendanceCardProps> = ({
           />
           <div className={styles.targetMarker} title="75% minimum threshold" style={{ left: '75%' }} />
         </div>
+
+        {/* A cached snapshot (identity-gated to THIS student) must never pose
+            as a fresh DOM read — say when it was actually captured. */}
+        {attendance.source !== 'live-ums-dom' && (
+          <span className={styles.cachedNote}>
+            Last verified {formatLastVerified(attendance.fetchedAt)} · open UMS attendance for a live refresh
+          </span>
+        )}
 
         <div className={styles.cardFooter}>
           {totalDelivered > 0 ? (

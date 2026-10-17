@@ -31,10 +31,11 @@ function createMockExam(code: string, date: string, time: string, extra?: Partia
 
 function buildMockExaminationFinalResponse(
   _goal: string,
-  examination: ExaminationSummary
+  examination: ExaminationSummary,
+  referenceDate: Date = new Date(2026, 9, 6, 8, 0, 0)
 ): FinalResponseData {
-  const nextExam = getNextExam(examination.exams);
-  const upcoming = getUpcomingExams(examination.exams);
+  const nextExam = getNextExam(examination.exams, referenceDate);
+  const upcoming = getUpcomingExams(examination.exams, referenceDate);
   const verifiedExamCount = examination.exams?.length || 0;
 
   return {

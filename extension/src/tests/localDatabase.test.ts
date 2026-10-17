@@ -182,6 +182,47 @@ describe('ONEE Local-First Database & Privacy Architecture', () => {
       const otherLatest = await localDatabase.getLatestVerifiedAttendance('student-99999');
       expect(otherLatest).toBeNull();
     });
+
+    it('deletes an account snapshot captured under a different UMS login', async () => {
+      const staleSnapshot: VerifiedAttendanceRecord = {
+        id: 'snapshot-stale',
+        accountId: 'default',
+        executionId: 'exec-stale',
+        capturedAt: Date.now(),
+        source: 'UMS_DOM',
+        verified: true,
+        registrationNumber: '12104999',
+        studentName: 'Previous Account',
+        subjects: [{ code: 'CSE329', percentage: 100, delivered: 9, attended: 9 }],
+        aggregate: { percentage: 100, delivered: 9, attended: 9, totalCourses: 1 }
+      };
+
+      await localDatabase.saveVerifiedAttendance(staleSnapshot);
+      expect(await localDatabase.getLatestVerifiedAttendance('default')).not.toBeNull();
+
+      await localDatabase.deleteVerifiedAttendance('default');
+      expect(await localDatabase.getLatestVerifiedAttendance('default')).toBeNull();
+    });
+
+    it('stores the student identity alongside the snapshot for account-switch checks', async () => {
+      const withIdentity: VerifiedAttendanceRecord = {
+        id: 'snapshot-identity',
+        accountId: 'default',
+        executionId: 'exec-identity',
+        capturedAt: 5,
+        source: 'UMS_DOM',
+        verified: true,
+        registrationNumber: '12104928',
+        studentName: 'Fayas Khan',
+        subjects: [{ code: 'CSE329', percentage: 100, delivered: 9, attended: 9 }],
+        aggregate: { percentage: 100, delivered: 9, attended: 9, totalCourses: 1 }
+      };
+
+      await localDatabase.saveVerifiedAttendance(withIdentity);
+      const latest = await localDatabase.getLatestVerifiedAttendance('default');
+      expect(latest?.registrationNumber).toBe('12104928');
+      expect(latest?.studentName).toBe('Fayas Khan');
+    });
   });
 
   describe('Data Lifecycle & Selective Purge Controls', () => {

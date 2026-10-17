@@ -90,6 +90,27 @@ export function detectHumanVerification(doc: Document = document): boolean {
 }
 
 /*
+ * Returns true for URLs that are unambiguously part of the AUTHENTICATED UMS
+ * experience (dashboard, attendance, examination, reports, timetable, ...).
+ *
+ * These pages can never be the login screen, even if a stray password input or
+ * a login-looking path fragment appears somewhere in the document. This guard
+ * prevents the side panel from showing "Sign In Required" while the student is
+ * already signed in on the dashboard.
+ */
+export function isAuthenticatedUmsUrl(url: string): boolean {
+  if (!url) return false;
+  try {
+    const parsed = new URL(url, 'https://ums.lpu.in');
+    if (!isLpuUmsHostname(parsed.hostname)) return false;
+    const path = parsed.pathname.toLowerCase();
+    return /studentdashboard|attendance|examination|datesheet|seatingplan|timetable|reports?\//.test(path);
+  } catch {
+    return false;
+  }
+}
+
+/*
  * Detects whether the student is on an unauthenticated login page.
  * We look for the standard UMS login form fields (#txtUName, #txtPassword).
  *
@@ -98,6 +119,11 @@ export function detectHumanVerification(doc: Document = document): boolean {
  */
 export function detectLoginPage(doc: Document = document, url: string = window.location.href): boolean {
   const path = (new URL(url, 'https://ums.lpu.in')).pathname.toLowerCase();
+
+  // Hard rule: an authenticated UMS section is never the login screen.
+  if (isAuthenticatedUmsUrl(url)) {
+    return false;
+  }
 
   if (path.includes('login') || path === '/' || path.includes('default.aspx')) {
     const hasLoginInputs =

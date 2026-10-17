@@ -228,23 +228,38 @@ function findAttendanceModalTrigger(doc: Document): HTMLElement | null {
  * Checks if a genuine, currently visible Attendance modal/table is active on screen.
  */
 function isAttendanceTableVisible(doc: Document): boolean {
-  const tables = Array.from(doc.querySelectorAll('table'));
-  for (const table of tables) {
-    if (!isElementVisible(table as HTMLElement)) continue;
-
-    const rect = table.getBoundingClientRect();
-    if (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test') {
-      if (rect.width < 150 || rect.height < 50) continue;
+  const docs: Document[] = [doc];
+  try {
+    const iframes = Array.from(doc.querySelectorAll('iframe, frame'));
+    for (const frame of iframes) {
+      try {
+        const frameDoc = (frame as HTMLIFrameElement).contentDocument;
+        if (frameDoc && !docs.includes(frameDoc)) {
+          docs.push(frameDoc);
+        }
+      } catch {}
     }
+  } catch {}
 
-    const text = (table.textContent || '').toLowerCase();
-    const hasDelivered = text.includes('delivered') || text.includes('conducted') || text.includes('duty leave');
-    const hasAttended = text.includes('attended') || text.includes('present') || text.includes('total attended');
-    const hasPercentage = text.includes('percentage') || text.includes('%');
-    const hasCourse = text.includes('course') || text.includes('subject');
+  for (const d of docs) {
+    const tables = Array.from(d.querySelectorAll('table'));
+    for (const table of tables) {
+      if (!isElementVisible(table as HTMLElement)) continue;
 
-    if (hasCourse && hasPercentage && (hasDelivered || hasAttended)) {
-      return true;
+      const rect = table.getBoundingClientRect();
+      if (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test') {
+        if (rect.width < 150 || rect.height < 50) continue;
+      }
+
+      const text = (table.textContent || '').toLowerCase();
+      const hasDelivered = text.includes('delivered') || text.includes('conducted') || text.includes('duty leave');
+      const hasAttended = text.includes('attended') || text.includes('present') || text.includes('total attended');
+      const hasPercentage = text.includes('percentage') || text.includes('%');
+      const hasCourse = text.includes('course') || text.includes('subject');
+
+      if (hasCourse && hasPercentage && (hasDelivered || hasAttended)) {
+        return true;
+      }
     }
   }
 

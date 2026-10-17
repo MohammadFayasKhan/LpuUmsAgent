@@ -121,7 +121,12 @@ function parseBlocks(raw: string): React.ReactNode[] {
         i++;
       }
       if (tableLines.length >= 2) {
-        const headers = tableLines[0].split('|').map((h) => h.trim()).filter(Boolean);
+        const headers = tableLines[0]
+          .trim()
+          .replace(/^\|/, '')
+          .replace(/\|$/, '')
+          .split('|')
+          .map((h) => h.trim());
         const hasSeparator = tableLines[1].includes('---');
         const rowLines = hasSeparator ? tableLines.slice(2) : tableLines.slice(1);
 
@@ -139,10 +144,19 @@ function parseBlocks(raw: string): React.ReactNode[] {
               </thead>
               <tbody>
                 {rowLines.map((rowStr, rIdx) => {
-                  const cells = rowStr.split('|').map((c) => c.trim()).filter(Boolean);
+                  const rawCells = rowStr
+                    .trim()
+                    .replace(/^\|/, '')
+                    .replace(/\|$/, '')
+                    .split('|')
+                    .map((c) => c.trim());
+                  const cells = [...rawCells];
+                  while (cells.length < headers.length) {
+                    cells.push('');
+                  }
                   return (
                     <tr key={rIdx} className={rIdx % 2 === 0 ? styles.trEven : styles.trOdd}>
-                      {cells.map((cell, cIdx) => (
+                      {cells.slice(0, headers.length).map((cell, cIdx) => (
                         <td key={cIdx} className={styles.td}>
                           {renderInline(cell)}
                         </td>
@@ -268,14 +282,113 @@ function parseBlocks(raw: string): React.ReactNode[] {
   return nodes;
 }
 
+/**
+ * Detects concatenated UMS ReportViewer / SSRS Course & Faculty Directory text dumps
+ * and transforms them into a clean GitHub-flavored Markdown table.
+ */
+export function formatConcatenatedSsrsTable(text: string): string {
+  if (!text || typeof text !== 'string') return text;
+
+  // Check if string contains the SSRS course directory signature
+  const headerMatch =
+    text.match(/Course\s*Code\s*Type\s*Course\s*Title\s*Lectures\s*Tutorial\s*Practical\s*Credits\s*Facul[^\n\r]*?\)/i) ||
+    text.match(/Course\s*Code\s*Type\s*Course\s*Title[^\n\r]*?/i);
+
+  if (!headerMatch || headerMatch.index === undefined) return text;
+
+  const headerEndIdx = headerMatch.index + headerMatch[0].length;
+  const beforeHeader = text.slice(0, headerMatch.index).trim();
+  const bodyText = text.slice(headerEndIdx).trim();
+
+  // Insert row delimiter between (AM|PM|NA) and the next course code
+  const preProcessed = bodyText.replace(
+    /(AM|PM|NA)(?=([A-Z]{2,4}\d{2,4})(PW|CR|TE|EM|OM|PE|UC|PC|OE|RE|SP|SE|BL|[A-Z]{2}))/g,
+    '$1\n[ROW] '
+  );
+
+  const rowPattern =
+    /([A-Z]{2,4}\d{2,4})\s*(PW|CR|TE|EM|OM|PE|UC|PC|OE|RE|SP|SE|BL|[A-Z]{2})\s*([A-Z0-9\s\-_/&]+?)\s*(\d)(\d)(\d)(\d)\s*(.*?)(?:Last Updated\s*::\s*([^\n\r]+?))?$/is;
+
+  const rawRows = preProcessed.split('\n[ROW]').map((s) => s.trim()).filter(Boolean);
+  const rows: Array<{
+    code: string;
+    type: string;
+    title: string;
+    ltp: string;
+    credits: string;
+    faculty: string;
+    lastUpdated: string;
+  }> = [];
+
+  for (const rawRow of rawRows) {
+    const cleanRow = rawRow.replace(/\s+/g, ' ');
+    const m = cleanRow.match(rowPattern);
+    if (m) {
+      const code = m[1].trim();
+      const type = m[2].trim();
+      const title = m[3].trim();
+      const l = m[4];
+      const t = m[5];
+      const p = m[6];
+      const credits = m[7];
+      let faculty = (m[8] || '').trim();
+      if (faculty.includes('(') && !faculty.includes(')')) {
+        faculty = faculty + ')';
+      }
+      faculty = faculty.replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
+      if (!faculty || faculty.toLowerCase() === 'na') {
+        faculty = 'Not Assigned / NA';
+      }
+
+      let lastUpdated = (m[9] || '').trim();
+      if (!lastUpdated || lastUpdated.toUpperCase() === 'NA') {
+        lastUpdated = 'NA';
+      }
+
+      rows.push({
+        code,
+        type,
+        title,
+        ltp: `${l}-${t}-${p}`,
+        credits,
+        faculty,
+        lastUpdated
+      });
+    }
+  }
+
+  if (rows.length === 0) return text;
+
+  const markdownRows = rows
+    .map(
+      (r) =>
+        `| **${r.code}** | ${r.type} | ${r.title} | ${r.ltp} | ${r.credits} | ${r.faculty} | ${r.lastUpdated} |`
+    )
+    .join('\n');
+
+  const totalCredits = rows.reduce((acc, r) => acc + (parseInt(r.credits, 10) || 0), 0);
+
+  return [
+    beforeHeader ? `${beforeHeader}\n\n` : '',
+    '### 📚 Registered Courses & Faculty Directory\n\n',
+    `Here is your official enrolled curriculum (**${rows.length} courses**, **${totalCredits} total credits**) verified from your authenticated UMS portal:\n\n`,
+    '| Course Code | Type | Course Title | L-T-P | Credits | Faculty & Cabin | Last Updated |\n',
+    '| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n',
+    markdownRows,
+    '\n\n> 💡 **Directory Note:** Faculty cabin locations and course credits are verified directly from your official UMS Student Time Table report.'
+  ].join('');
+}
+
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = memo(({
   content,
   isStreaming = false,
   className = ''
 }) => {
-  const sanitized = (content || '').replace(/—/g, '→');
+  const sanitized = formatConcatenatedSsrsTable((content || '').replace(/—/g, '→'));
   return (
-    <div className={`${styles.markdownRoot} ${className}`}>
+    <div
+      className={`${styles.markdownRoot} ${isStreaming ? styles.isStreaming : ''} ${className}`}
+    >
       {parseBlocks(sanitized)}
       {isStreaming && <span className={styles.streamingCursor} aria-hidden="true" />}
     </div>

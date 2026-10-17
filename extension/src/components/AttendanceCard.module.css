@@ -135,6 +135,12 @@
   opacity: 0.6;
 }
 
+.cachedNote {
+  font-size: 10.5px;
+  letter-spacing: 0.1px;
+  color: var(--text-tertiary);
+}
+
 .cardFooter {
   display: flex;
   justify-content: space-between;

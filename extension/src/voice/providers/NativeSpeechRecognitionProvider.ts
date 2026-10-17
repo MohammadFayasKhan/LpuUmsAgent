@@ -6,6 +6,7 @@
  */
 
 import { ISpeechRecognitionProvider } from '../VoiceTypes';
+import { logVoiceDiagnostic } from '../VoiceDiagnostics';
 
 // Declarations for Web Speech API in TypeScript
 type SpeechRecognitionType = any;
@@ -32,6 +33,7 @@ export class NativeSpeechRecognitionProvider implements ISpeechRecognitionProvid
   ): Promise<void> {
     if (!this.isSupported()) {
       const err = new Error('Browser SpeechRecognition API is not supported in this environment');
+      logVoiceDiagnostic('ERROR', this.name, { error: err.message }, undefined, err.message);
       onError(err);
       throw err;
     }
@@ -56,10 +58,27 @@ export class NativeSpeechRecognitionProvider implements ISpeechRecognitionProvid
       this.recognition.lang = 'en-US';
 
       let accumulatedFinal = '';
+      let emittedFinal = false;
+
+      // Every final transcript from this recognizer routes through a single guarded
+      // channel. If anything external (the controller) has already signalled that
+      // this utterance's final was accepted or superseded, the browser recognizer
+      // stays silent and never becomes the source of truth.
+      const emitFinalSilently = (text: string) => {
+        if (emittedFinal) return;
+        if (this.finalCallback) {
+          emittedFinal = true;
+          this.finalCallback(text.trim());
+        }
+      };
 
       this.recognition.onstart = () => {
         this.listening = true;
-        this.resetSilenceTimer();
+        logVoiceDiagnostic('LISTENING', this.name);
+
+        // Do not start the silence/cut-off timer until the student has actually
+        // spoken some interim content. A slow first word must never be treated as
+        // the end of the utterance.
       };
 
       this.recognition.onresult = (event: any) => {
@@ -76,31 +95,36 @@ export class NativeSpeechRecognitionProvider implements ISpeechRecognitionProvid
         }
 
         if (interimText && this.interimCallback) {
+          logVoiceDiagnostic('STT_PROCESSING', this.name, { interimText });
           this.interimCallback(interimText.trim());
         }
 
-        if (accumulatedFinal && this.finalCallback) {
-          // If we accumulated final speech, also notify interim listeners of total progress
-          this.interimCallback?.(accumulatedFinal + (interimText ? ' ' + interimText : ''));
+        // Do NOT pass any final text through the interim callback. Interim is for
+        // in-flight partials only; finals go through the guarded channel and are
+        // ultimately owned by the controller.
+        if (accumulatedFinal) {
+          emitFinalSilently(accumulatedFinal);
         }
       };
 
       this.recognition.onerror = (event: any) => {
         this.clearSilenceTimer();
         const errorMsg = event.error || 'Speech recognition error';
+        logVoiceDiagnostic('ERROR', this.name, { error: errorMsg }, undefined, errorMsg);
+
         // 'no-speech' is non-fatal if user paused, but if no speech accumulated, report clean end
         if (event.error === 'no-speech') {
-          if (accumulatedFinal) {
-            this.finalCallback?.(accumulatedFinal);
-          }
-          this.endCallback?.();
           this.listening = false;
+          if (accumulatedFinal) {
+            const finalText = accumulatedFinal;
+            accumulatedFinal = '';
+            emitFinalSilently(finalText);
+          }
           return;
         }
 
         if (event.error === 'aborted') {
           this.listening = false;
-          this.endCallback?.();
           return;
         }
 
@@ -113,9 +137,13 @@ export class NativeSpeechRecognitionProvider implements ISpeechRecognitionProvid
       this.recognition.onend = () => {
         this.clearSilenceTimer();
         this.listening = false;
-        if (accumulatedFinal && this.finalCallback) {
-          this.finalCallback(accumulatedFinal);
+
+        // One recognition instance per start(). Never re-arm here: a leftover
+        // recognizer would hold the microphone and block the next Groq capture.
+        if (accumulatedFinal) {
+          const finalText = accumulatedFinal;
           accumulatedFinal = '';
+          emitFinalSilently(finalText);
         }
         this.endCallback?.();
       };
@@ -144,14 +172,24 @@ export class NativeSpeechRecognitionProvider implements ISpeechRecognitionProvid
 
   public abort(): void {
     this.clearSilenceTimer();
-    if (this.recognition && this.listening) {
+    const recognition = this.recognition;
+    this.recognition = null;
+    this.listening = false;
+    this.interimCallback = undefined;
+    this.finalCallback = undefined;
+    this.errorCallback = undefined;
+    this.endCallback = undefined;
+    if (recognition) {
       try {
-        this.recognition.abort();
+        recognition.onresult = null;
+        recognition.onerror = null;
+        recognition.onend = null;
+        recognition.onstart = null;
+        recognition.abort();
       } catch {
-        // Ignore abort errors
+        // Ignore abort errors if already stopped
       }
     }
-    this.listening = false;
   }
 
   public isListening(): boolean {

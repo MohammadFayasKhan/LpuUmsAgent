@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ONEE - Enable Microphone Access</title>
+  <link rel="icon" type="image/png" href="/icons/icon-32.png">
+  <script type="module" crossorigin src="/assets/permission-Bct2z7Cn.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/modulepreload-polyfill-B5Qt9EMX.js">
+  <link rel="stylesheet" crossorigin href="/assets/permission-DYuVTkad.css">
+</head>
+<body>
+  <div class="permission-card">
+    <div class="mascot-badge">
+      <div class="pulse-ring"></div>
+      <div class="mascot-icon">🎙️</div>
+    </div>
+
+    <h1 class="title">Enable Voice Assistant</h1>
+    <p class="subtitle">Chrome requires a one-time microphone permission so you can speak directly with ONEE.</p>
+
+    <div id="status-box" class="status-box status-prompt">
+      <span class="status-dot"></span>
+      <span id="status-text">Click "Allow" when prompted by your browser above</span>
+    </div>
+
+    <button id="enable-btn" class="btn-allow" type="button">
+      <span>Allow Microphone Access</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+        <line x1="12" y1="19" x2="12" y2="22" />
+      </svg>
+    </button>
+
+    <div id="guide-box" class="guide-box hidden">
+      <p class="guide-title">If Chrome blocked the prompt:</p>
+      <ol class="guide-steps">
+        <li>Click the <strong>tune / lock icon</strong> on the left side of your address bar.</li>
+        <li>Switch <strong>Microphone</strong> to <strong>Allow</strong>.</li>
+        <li>Refresh this tab or click the button above.</li>
+      </ol>
+    </div>
+
+    <div class="footer-note">
+      🔒 Your speech is processed securely for academic navigation and timetable queries.
+    </div>
+  </div>
+
+</body>
+</html>

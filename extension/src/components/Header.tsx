@@ -16,7 +16,7 @@ import React from 'react';
 import { ConnectionStatus, AgentState } from '../shared/types';
 import { RuntimeConnectionState } from '../services/connectionManager';
 import { OneeCompanion } from './OneeCompanion';
-import { useVoiceAgent } from '../voice';
+import { useVoiceAgent, audioController, voiceController } from '../voice';
 import styles from './Header.module.css';
 
 interface HeaderProps {
@@ -68,27 +68,18 @@ export const Header: React.FC<HeaderProps> = ({
   const { voiceMode, setVoiceMode } = useVoiceAgent();
 
   const getVoiceModeDetails = () => {
-    switch (voiceMode) {
-      case 'LIVE_AGENT':
-        return {
-          label: 'Live Voice',
-          pillClass: styles.voicePillLive,
-          icon: '🗣️'
-        };
-      case 'ASSIST':
-        return {
-          label: 'Voice Assist',
-          pillClass: styles.voicePillAssist,
-          icon: '🎙️'
-        };
-      case 'OFF':
-      default:
-        return {
-          label: 'Voice Off',
-          pillClass: styles.voicePillOff,
-          icon: '🔇'
-        };
+    if (voiceMode === 'LIVE_AGENT') {
+      return {
+        label: 'Live Voice',
+        pillClass: styles.voicePillLive,
+        icon: '🗣️'
+      };
     }
+    return {
+      label: 'Voice Off',
+      pillClass: styles.voicePillOff,
+      icon: '🔇'
+    };
   };
 
   const voiceDetails = getVoiceModeDetails();
@@ -103,9 +94,8 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={onOpenHistory}
             title="Conversation History"
             aria-label="Conversation History"
-            style={{ marginRight: '-2px' }}
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
           </button>
@@ -113,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({
         <OneeCompanion
           agentState={agentState}
           isChatTyping={isChatTyping}
-          size={32}
+          size={28}
           showCaption={false}
         />
         <div className={styles.brandTitle}>
@@ -123,30 +113,33 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       <div className={styles.actions}>
-        {/* Voice Mode Selector Pill */}
+        {/* Voice Mode Selector Pill: Exactly two user-facing modes */}
         <button
           className={`${styles.voicePill} ${voiceDetails.pillClass}`}
           onClick={() => {
-            const nextMode =
-              voiceMode === 'LIVE_AGENT'
-                ? 'ASSIST'
-                : voiceMode === 'ASSIST'
-                ? 'OFF'
-                : 'LIVE_AGENT';
+            const nextMode = voiceMode === 'LIVE_AGENT' ? 'OFF' : 'LIVE_AGENT';
+            // Switch the mode FIRST: VoiceQueue.updatePreferences runs synchronously
+            // inside setMode, so the confirmation utterance below is never enqueued
+            // against the previous (still disabled) queue and silently dropped.
             setVoiceMode(nextMode);
+            if (nextMode === 'LIVE_AGENT') {
+              audioController.unlockAudio().catch(() => {});
+              voiceController.speakText("Live Voice is active.", true, undefined, true);
+            }
           }}
           title={`Voice Mode: ${
             voiceMode === 'LIVE_AGENT'
-              ? 'Live Agent (Speaks updates as Computer Use happens)'
-              : voiceMode === 'ASSIST'
-              ? 'Voice Assist (Speaks final answers only)'
-              : 'Voice Off (Silent typed chat)'
-          }. Tap to switch.`}
+              ? 'Ultimate Live AI Voice Mode. Tap for Voice Off.'
+              : 'Voice Off. Tap for Ultimate Live AI Voice Mode.'
+          }`}
           aria-label="Toggle voice mode"
           type="button"
         >
-          <span style={{ fontSize: '11px' }}>{voiceDetails.icon}</span>
-          <span>{voiceDetails.label}</span>
+          <span style={{ fontSize: '11px', lineHeight: 1 }}>{voiceDetails.icon}</span>
+          <div className={styles.voiceTextGroup}>
+            <span className={styles.voiceTop}>{voiceMode === 'LIVE_AGENT' ? 'Ultimate' : 'Voice'}</span>
+            <span className={styles.voiceBottom}>{voiceMode === 'LIVE_AGENT' ? 'Live Voice' : 'Off'}</span>
+          </div>
         </button>
 
         <div className={styles.statusPill} title={`Status: ${badge.label}`}>
@@ -160,7 +153,7 @@ export const Header: React.FC<HeaderProps> = ({
           title="Refresh attendance"
           aria-label="Refresh attendance"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
           </svg>
         </button>
@@ -171,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
           title="Privacy and Local Data Management"
           aria-label="Privacy Info"
         >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
             <path d="M12 16v-4M12 8h.01" />
           </svg>

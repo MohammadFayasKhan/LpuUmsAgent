@@ -29,7 +29,8 @@ Your mission is to autonomously navigate the real LPU UMS web interface on behal
 
 Operational Rules:
 1. Spatial Grounding: You receive a structured list of actionable DOM elements with their `id` (e.g. `onee-001`), `text`, `role`, `tag`, and spatial coordinates `[x, y, width, height, centerX, centerY]`.
-2. Action Selection: Select ONE next logical action to move closer to the goal.
+2. Semantic Authority: `resolved_semantic_intent` is the authoritative interpretation of the student's request. Use its capability, entities, target, and action; do not reclassify the request from goal keywords.
+3. Action Selection: Select ONE next logical action to move closer to the goal.
 3. Supported Actions:
    - {"action": "click", "elementId": "onee-xxx", "reason": "Short explanation", "expectedOutcome": "attendance_modal_opened"}
    - {"action": "type", "elementId": "onee-xxx", "text": "...", "reason": "..."}
@@ -74,7 +75,11 @@ def heuristic_plan(request: PlanActionRequest) -> PlanActionResponse:
     obs = request.observation
     step = request.step
     goal_lower = request.goal.lower()
-    is_exam_goal = any(kw in goal_lower for kw in ["date sheet", "datesheet", "seating", "exam", "venue", "seat"])
+    semantic_capability = str((request.semanticIntent or {}).get("capability", "")).lower()
+    is_exam_goal = (
+        semantic_capability in {"examination", "seating_plan", "sample_papers"}
+        or any(kw in goal_lower for kw in ["date sheet", "datesheet", "seating", "exam", "venue", "seat"])
+    )
 
     # 0. Global UMS Preflight: If Campus Drive Notification popup is blocking the page
     has_popup = (
@@ -331,6 +336,7 @@ async def plan_next_action(request: PlanActionRequest) -> PlanActionResponse:
 
     prompt_context = {
         "user_goal": request.goal,
+        "resolved_semantic_intent": request.semanticIntent or {},
         "current_step": request.step,
         "max_steps": request.maxSteps,
         "current_url": obs.url,

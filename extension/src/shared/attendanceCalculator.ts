@@ -207,3 +207,40 @@ export function getLowestAttendanceSubject(
   }
   return lowest;
 }
+
+/**
+ * Decides whether a locally cached attendance snapshot may be shown for the
+ * student currently signed in on the UMS tab.
+ *
+ * The snapshot is persisted under a fixed 'default' key, so without an
+ * identity check a record captured while ANOTHER UMS account was signed in
+ * keeps re-hydrating after they log out and the real student logs in — the
+ * panel then shows someone else's numbers until the attendance modal is
+ * manually reopened.
+ *
+ * Identity is the registration number when both sides carry one; otherwise
+ * the student name (case-insensitive). When neither side can prove a
+ * mismatch, the snapshot is allowed — absence of evidence is not evidence
+ * of a different account, and hiding legitimately own data would be worse.
+ */
+export function isCachedAttendanceForStudent(
+  cached: { registrationNumber?: string; studentName?: string } | null | undefined,
+  live: { registrationNumber?: string; studentName?: string } | null | undefined
+): boolean {
+  if (!cached) return false;
+  if (!live) return true;
+
+  const cachedReg = (cached.registrationNumber || '').replace(/\s+/g, '').toUpperCase();
+  const liveReg = (live.registrationNumber || '').replace(/\s+/g, '').toUpperCase();
+  if (cachedReg && liveReg) {
+    return cachedReg === liveReg;
+  }
+
+  const cachedName = (cached.studentName || '').trim().toLowerCase();
+  const liveName = (live.studentName || '').trim().toLowerCase();
+  if (cachedName && liveName) {
+    return cachedName === liveName;
+  }
+
+  return true;
+}

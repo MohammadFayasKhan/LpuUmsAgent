@@ -16,6 +16,7 @@
  */
 
 import { SamplePaperResult } from '../shared/types';
+import { MESSAGE_TYPES } from '../shared/messages';
 import {
   showCursor,
   hideCursor,
@@ -175,6 +176,7 @@ export function findSamplePaperButtonForCourse(
   // Extract pure course code (e.g. "CSE408" from "CSE408 (End Term)")
   const codeMatch = courseCode.match(/([A-Z]{2,5}\s*\d{3,4}[A-Z]?)/i);
   const cleanCode = codeMatch ? codeMatch[1].replace(/\s+/g, '').toUpperCase() : courseCode.replace(/\s+/g, '').toUpperCase();
+  const normalizedCode = cleanCode.replace(/^CSC/, 'CSE');
 
   // Infer exam type if not provided directly
   const termMatch = courseCode.match(/\(([^)]+)\)/) || courseCode.match(/(mid\s*term|end\s*term|practical|theory)/i);
@@ -186,8 +188,8 @@ export function findSamplePaperButtonForCourse(
   let targetButton: HTMLElement | null = null;
 
   for (const card of cards) {
-    const text = card.textContent || '';
-    if (text.toUpperCase().includes(cleanCode)) {
+    const text = (card.textContent || '').toUpperCase();
+    if (text.includes(cleanCode) || text.includes(normalizedCode)) {
       if (effectiveExamType && !text.toLowerCase().includes(effectiveExamType.toLowerCase())) {
         continue;
       }
@@ -293,6 +295,10 @@ export async function executeOpenSamplePaper(
       buttons: 1
     };
 
+    // Record WHEN we clicked so download verification can look for a Chrome
+    // download item that started right after this instant.
+    const clickedAt = Date.now();
+
     try {
       if (typeof PointerEvent !== 'undefined') {
         buttonEl.dispatchEvent(new PointerEvent('pointerdown', { ...eventInit, pointerType: 'mouse' }));
@@ -318,15 +324,15 @@ export async function executeOpenSamplePaper(
     await agentMotion.wait(500);
     hideCursor();
 
-    return {
-      success: true,
+    // 6. VERIFY THE OUTCOME right after the action: ask the service worker
+    // whether Chrome recorded a fresh download (or opened the PDF in a tab).
+    // The result reports ONLY what was actually observed — no fabricated
+    // filenames, no unverified success claims.
+    return await verifySamplePaperOutcome(
+      clickedAt,
       courseCode,
-      pdfUrl: isDirectPdf ? href : undefined,
-      paperUrl: isDirectPdf ? href : undefined,
-      fileName: `${courseCode}_Sample_Paper.pdf`,
-      actionTaken: isDirectPdf ? 'preview_ready' : 'downloaded',
-      verified: true
-    };
+      isDirectPdf ? (href as string) : undefined
+    );
   } catch (err: any) {
     hideHighlight();
     hideCursor();
@@ -339,4 +345,85 @@ export async function executeOpenSamplePaper(
       verified: false
     };
   }
+}
+
+/**
+ * Ground-truth check performed immediately after the click.
+ *
+ * Chrome's download history (and open tabs) are only visible to the privileged
+ * service worker, so this asks it via VERIFY_RECENT_DOWNLOAD and reports back
+ * exactly what was observed:
+ *  - a fresh download           -> 'downloaded'  + REAL filename
+ *  - the PDF opened in a tab    -> 'opened_in_tab'
+ *  - direct PDF URL, unobserved -> 'preview_ready' (URL known, outcome not verified)
+ *  - nothing observable         -> 'clicked_unverified' with an honest error
+ */
+export async function verifySamplePaperOutcome(
+  clickedAt: number,
+  courseCode: string,
+  pdfUrl?: string
+): Promise<SamplePaperResult> {
+  const cleanCode = courseCode.replace(/\s+/g, '').toUpperCase();
+  const base = {
+    success: true,
+    courseCode,
+    pdfUrl: pdfUrl ?? undefined,
+    paperUrl: pdfUrl ?? undefined
+  };
+
+  const canAskWorker =
+    typeof chrome !== 'undefined' &&
+    typeof chrome.runtime !== 'undefined' &&
+    typeof chrome.runtime.sendMessage === 'function';
+
+  if (canAskWorker) {
+    // Downloads are registered within a couple of seconds of the click; probe twice.
+    for (const waitMs of [800, 1600]) {
+      await new Promise((r) => setTimeout(r, waitMs));
+      try {
+        const res = await chrome.runtime.sendMessage({
+          type: MESSAGE_TYPES.VERIFY_RECENT_DOWNLOAD,
+          since: clickedAt,
+          nameHint: cleanCode,
+          urlHint: pdfUrl
+        });
+        if (res?.found) {
+          if (res.openedInTab) {
+            return { ...base, actionTaken: 'opened_in_tab', verified: true, fileName: null };
+          }
+          const fileName = res.filename
+            ? String(res.filename).split(/[\\/]/).pop() || null
+            : null;
+          return {
+            ...base,
+            actionTaken: 'downloaded',
+            verified: true,
+            fileName
+          };
+        }
+      } catch {
+        break; // messaging unavailable — fall through to the honest fallback
+      }
+    }
+  }
+
+  if (pdfUrl) {
+    // The link itself is a verifiable PDF URL even though we could not observe
+    // the browser's reaction in this context.
+    return {
+      ...base,
+      actionTaken: 'preview_ready',
+      verified: false,
+      fileName: null
+    };
+  }
+
+  return {
+    ...base,
+    actionTaken: 'clicked_unverified',
+    verified: false,
+    fileName: null,
+    error:
+      'The sample paper control was clicked, but no download or opened tab could be verified for it.'
+  };
 }

@@ -14,7 +14,8 @@ import {
   detectHumanVerification,
   detectLoginPage,
   detectUmsState,
-  extractStudentProfile
+  extractStudentProfile,
+  isAuthenticatedUmsUrl
 } from '../content/umsDetector';
 
 describe('umsDetector', () => {
@@ -73,6 +74,40 @@ describe('umsDetector', () => {
       const doc = document.implementation.createHTMLDocument('Dashboard');
       doc.body.innerHTML = `<div><h1>Welcome to Student Dashboard</h1></div>`;
       expect(detectLoginPage(doc, 'https://ums.lpu.in/lpuums/StudentDashboard.aspx')).toBe(false);
+    });
+
+    it('identifies the real UMS login page URL (loginnew.aspx)', () => {
+      const doc = document.implementation.createHTMLDocument('Login');
+      doc.body.innerHTML = `<input type="password" id="txtPassword" />`;
+      expect(detectLoginPage(doc, 'https://ums.lpu.in/lpuums/loginnew.aspx')).toBe(true);
+    });
+
+    it('never classifies an authenticated UMS page as login even with a stray password input', () => {
+      const doc = document.implementation.createHTMLDocument('Dashboard');
+      // ASP.NET pages sometimes carry hidden inputs; the URL must win.
+      doc.body.innerHTML = `<div><input type="password" id="txtPassword" /><button id="btnLogin">x</button></div>`;
+      expect(detectLoginPage(doc, 'https://ums.lpu.in/lpuums/StudentDashboard.aspx')).toBe(false);
+      expect(
+        detectLoginPage(doc, 'https://ums.lpu.in/lpuums/Reports/frmStudentAttendance.aspx')
+      ).toBe(false);
+    });
+  });
+
+  describe('isAuthenticatedUmsUrl', () => {
+    it('recognizes authenticated UMS sections', () => {
+      expect(isAuthenticatedUmsUrl('https://ums.lpu.in/lpuums/StudentDashboard.aspx')).toBe(true);
+      expect(isAuthenticatedUmsUrl('https://ums.lpu.in/lpuums/Reports/frmStudentAttendance.aspx')).toBe(true);
+      expect(
+        isAuthenticatedUmsUrl('https://studentums.lpu.in/dashboard/examination/conduct/seatingplan')
+      ).toBe(true);
+      expect(isAuthenticatedUmsUrl('https://ums.lpu.in/lpuums/Reports/frmStudentTimeTable.aspx')).toBe(true);
+    });
+
+    it('rejects login pages and foreign URLs', () => {
+      expect(isAuthenticatedUmsUrl('https://ums.lpu.in/lpuums/loginnew.aspx')).toBe(false);
+      expect(isAuthenticatedUmsUrl('https://ums.lpu.in/')).toBe(false);
+      expect(isAuthenticatedUmsUrl('https://google.com/StudentDashboard.aspx')).toBe(false);
+      expect(isAuthenticatedUmsUrl('')).toBe(false);
     });
   });
 

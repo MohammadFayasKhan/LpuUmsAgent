@@ -21,15 +21,14 @@ import { getShortExamTypeTag } from '../shared/examinationCalculator';
 import { smoothScrollToReveal, smoothScrollOnCollapse } from '../lib/scrollUtils';
 import styles from './AgentControlPanel.module.css';
 
-const getExamKey = (exam: ExaminationRecord, fallbackIdx: number): string => {
-  if (exam.id) return `${exam.id}-${fallbackIdx}`;
+const getExamKey = (exam: ExaminationRecord): string => {
+  if (exam.id) return exam.id;
   const parts = [
     exam.courseCode,
     exam.examDate,
     exam.startTime || '',
     exam.examType || '',
-    exam.mode || '',
-    String(fallbackIdx)
+    exam.mode || ''
   ].filter(Boolean);
   return parts.join('-');
 };
@@ -199,14 +198,6 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <span className={styles.connectedText}>CONNECTED</span>
-            {agentState.activeModel && (
-              <span
-                className={`${styles.modelBadge} ${agentState.isFallbackModel ? styles.modelBadgeFallback : ''}`}
-                title={`Reasoning Model: ${agentState.activeModel}${agentState.isFallbackModel ? ' (Fallback)' : ''}`}
-              >
-                {agentState.isFallbackModel ? `↻ ${agentState.activeModel.split('/')[1] || agentState.activeModel}` : agentState.activeModel.split('/')[1] || agentState.activeModel}
-              </span>
-            )}
             {onToggleDebug && (
               <button
                 className={`${styles.debugToggle} ${agentState.debugMode ? styles.debugActive : ''}`}
@@ -931,8 +922,8 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                           </div>
 
                           <div className={styles.examCardList}>
-                            {examsToRender.map((exam, idx) => {
-                              const examKey = getExamKey(exam, idx);
+                            {examsToRender.map((exam) => {
+                              const examKey = getExamKey(exam);
                               const isExpanded = expandedExamId === examKey;
                               const isToday = (exam.status || '').toLowerCase().includes('today');
 
@@ -1169,17 +1160,72 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                   );
                 }
 
+                // Filter out any malformed slots or courses (e.g. from SSRS headers, footnotes, or cabin pseudo-codes)
+                const cleanSlots = (tt.slots || []).filter((s) => {
+                  if (!s || !s.courseCode) return false;
+                  const code = s.courseCode.trim().toUpperCase();
+                  if (
+                    code === 'ON10' ||
+                    code === 'CH13' ||
+                    code === 'CH16' ||
+                    code === 'CH8' ||
+                    code === 'CH11' ||
+                    code === 'CH7' ||
+                    code === 'CH1' ||
+                    code === 'WOW1' ||
+                    code === 'C2' ||
+                    code === 'TIME' ||
+                    code === 'TABLE'
+                  ) {
+                    return false;
+                  }
+                  if (!/^[A-Z]{2,5}\d{2,4}[A-Z0-9]?$/.test(code) && code !== 'PROJECT') return false;
+                  if (s.time && (s.time.length > 35 || /home section|printed on|course code|faculty|legends/i.test(s.time))) return false;
+                  return true;
+                });
+
+                const cleanCourses = (tt.courses || []).filter((c) => {
+                  if (!c || !c.courseCode) return false;
+                  const code = c.courseCode.trim().toUpperCase();
+                  if (
+                    code === 'ON10' ||
+                    code === 'CH13' ||
+                    code === 'CH16' ||
+                    code === 'CH8' ||
+                    code === 'CH11' ||
+                    code === 'CH7' ||
+                    code === 'CH1' ||
+                    code === 'WOW1' ||
+                    code === 'C2' ||
+                    code === 'TIME' ||
+                    code === 'TABLE'
+                  ) {
+                    return false;
+                  }
+                  return /^[A-Z]{2,5}\d{2,4}[A-Z0-9]?$/.test(code) || code === 'PROJECT';
+                });
+
+                const cleanTotalCredits = cleanCourses.reduce((sum, c) => sum + (c.credits || 0), 0);
+
+                const cleanTt: TimetableSummary = {
+                  ...tt,
+                  slots: cleanSlots,
+                  totalSlots: cleanSlots.length,
+                  courses: cleanCourses,
+                  totalCredits: cleanTotalCredits || tt.totalCredits
+                };
+
                 const todayName = getDayOfWeekName();
-                const todayClasses = getTodayClasses(tt);
-                const currentOrNext = getCurrentOrNextClass(tt);
+                const todayClasses = getTodayClasses(cleanTt);
+                const currentOrNext = getCurrentOrNextClass(cleanTt);
                 const activeSlot = currentOrNext.currentClass || currentOrNext.nextClass;
                 const isRunningNow = currentOrNext.isRunningNow;
 
                 // Filter classes based on selected timetableDay
                 const displayedSlots: TimetableSlot[] = (() => {
                   if (timetableDay === 'Today') return todayClasses;
-                  if (timetableDay === 'All') return tt.slots;
-                  return tt.slots.filter((s: TimetableSlot) => s.day === timetableDay);
+                  if (timetableDay === 'All') return cleanTt.slots;
+                  return cleanTt.slots.filter((s: TimetableSlot) => s.day === timetableDay);
                 })();
 
                 const days: ('Today' | TimetableDay | 'All')[] = [
@@ -1193,7 +1239,7 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                   'All'
                 ];
 
-                const uniqueTimes: string[] = Array.from(new Set(tt.slots.map((s: TimetableSlot) => s.time)));
+                const uniqueTimes: string[] = Array.from(new Set(cleanTt.slots.map((s: TimetableSlot) => s.time)));
 
                 return (
                   <div className={styles.timetableContainer}>
@@ -1206,10 +1252,10 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
                           <span className={styles.bigPercentage} style={{ fontSize: '18px' }}>
                             {(() => {
-                              let sec = (tt.homeSection || '').replace(/Legends.*$/i, '').trim();
+                              let sec = (cleanTt.homeSection || '').replace(/Legends.*$/i, '').trim();
                               if (!sec || /^(time|timetable|table|schedule|weekly|report|legends|legend)$/i.test(sec)) {
-                                const fallbackSlot = tt.slots?.find((s: TimetableSlot) => s.section && !/^(time|timetable|table|schedule|weekly|report|legends|legend)$/i.test(s.section));
-                                sec = fallbackSlot?.section || (tt.vid ? `VID: ${tt.vid}` : 'Enrolled');
+                                const fallbackSlot = cleanTt.slots?.find((s: TimetableSlot) => s.section && !/^(time|timetable|table|schedule|weekly|report|legends|legend)$/i.test(s.section));
+                                sec = (fallbackSlot?.section || (cleanTt.vid ? `VID: ${cleanTt.vid}` : 'Enrolled')).replace(/Legends.*$/i, '').trim();
                               }
                               return `Section ${sec}`;
                             })()}
@@ -1217,9 +1263,9 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                         </div>
                       </div>
                       <div className={styles.timetableMetaPill}>
-                        <span>🗓️ {tt.totalSlots} Classes/Wk</span>
+                        <span>🗓️ {cleanTt.totalSlots} Classes/Wk</span>
                         <span>•</span>
-                        <span>👨‍🏫 {tt.courses.length} Courses</span>
+                        <span>👨‍🏫 {cleanTt.courses.length} Courses</span>
                       </div>
                     </div>
 
@@ -1235,7 +1281,7 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                         className={`${styles.timetableViewBtn} ${timetableView === 'faculty' ? styles.timetableViewBtnActive : ''}`}
                         onClick={() => setTimetableView('faculty')}
                       >
-                        <span>👨‍🏫 Faculty ({tt.courses.length})</span>
+                        <span>👨‍🏫 Faculty ({cleanTt.courses.length})</span>
                       </button>
                       <button
                         className={`${styles.timetableViewBtn} ${timetableView === 'grid' ? styles.timetableViewBtnActive : ''}`}
@@ -1255,8 +1301,8 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                               d === 'Today'
                                 ? todayClasses.length
                                 : d === 'All'
-                                ? tt.slots.length
-                                : tt.slots.filter((s: TimetableSlot) => s.day === d).length;
+                                ? cleanTt.slots.length
+                                : cleanTt.slots.filter((s: TimetableSlot) => s.day === d).length;
                             return (
                               <button
                                 key={d}
@@ -1310,10 +1356,25 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
 
                         {/* List of Class Slots */}
                         {displayedSlots.length === 0 ? (
-                          <div style={{ padding: '16px', textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '12px' }}>
-                            {timetableDay === 'Today'
-                              ? `No scheduled classes today (${todayName})! Enjoy your free time or prepare for upcoming classes.`
-                              : `No scheduled classes for ${timetableDay}.`}
+                          <div className={styles.classEmptyNotice}>
+                            <div className={styles.classEmptyIcon}>🏖️</div>
+                            <div className={styles.classEmptyTitle}>
+                              No Scheduled Classes {timetableDay === 'Today' ? `Today (${todayName})` : `on ${timetableDay}`}
+                            </div>
+                            <div className={styles.classEmptySub}>
+                              {cleanTt.courses.length > 0
+                                ? `You have ${cleanTt.courses.length} registered courses (${cleanTt.totalCredits || 0} credits) in your curriculum. No time-table lecture or practical is scheduled for this day.`
+                                : 'No class slots scheduled for this day.'}
+                            </div>
+                            {cleanTt.courses.length > 0 && (
+                              <button
+                                type="button"
+                                className={styles.classEmptyBtn}
+                                onClick={() => setTimetableView('faculty')}
+                              >
+                                👨‍🏫 View Faculty & Cabins Directory ({cleanTt.courses.length}) →
+                              </button>
+                            )}
                           </div>
                         ) : (
                           <div className={styles.classCardList}>
@@ -1344,7 +1405,7 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                                   )}
                                   {slot.section && (
                                     <span className={styles.classPill}>
-                                      🏷️ Section: {slot.section}
+                                      🏷️ Section: {slot.section.replace(/Legends.*$/i, '').trim()}
                                     </span>
                                   )}
                                 </div>
@@ -1368,7 +1429,7 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                     {/* View 2: Faculty & Cabins Directory */}
                     {timetableView === 'faculty' && (
                       <div className={styles.facultyCardList}>
-                        {tt.courses.map((fac: CourseFacultyRecord) => (
+                        {cleanTt.courses.map((fac: CourseFacultyRecord) => (
                           <div key={fac.courseCode} className={styles.facultyItemCard}>
                             <div className={styles.facultyItemHeader}>
                               <div>
@@ -1431,7 +1492,7 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                                 <tr key={time}>
                                   <td style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>{time}</td>
                                   {dayCols.map((day) => {
-                                    const slot = tt.slots.find((s: TimetableSlot) => s.time === time && s.day === day);
+                                    const slot = cleanTt.slots.find((s: TimetableSlot) => s.time === time && s.day === day);
                                     if (!slot) return <td key={day} style={{ color: '#d1d5db', textAlign: 'center' }}>-</td>;
                                     return (
                                       <td key={day}>
@@ -1547,26 +1608,90 @@ export const AgentControlPanel: React.FC<AgentControlPanelProps> = ({
                     className={styles.askOneeBtn}
                     onClick={() => {
                       let prompt = '';
-                      if (finalResponse?.type === 'lowest_attendance') {
-                        prompt = `Tell me more about my ${finalResponse.subjectCode} attendance and what I should do next.`;
-                      } else if (finalResponse?.type === 'safe_bunk') {
-                        prompt = `Can you calculate a detailed bunk planner for all my subjects?`;
-                      } else if (
-                        finalResponse?.type === 'next_exam' ||
-                        finalResponse?.type === 'exam_date_sheet' ||
-                        finalResponse?.type === 'seating_plan' ||
-                        finalResponse?.capability === 'EXAM_DATE_SHEET' ||
-                        finalResponse?.capability === 'SEATING_PLAN'
+                      const cap = (finalResponse?.capability || (agentState as any)?.capability || (agentState.executionContext as any)?.capability) as string | undefined;
+                      const respType = finalResponse?.type as string | undefined;
+                      const subject = finalResponse?.subjectCode || (finalResponse as any)?.courseCode;
+
+                      // 1. SAMPLE PAPERS
+                      if (
+                        respType === 'sample_paper' ||
+                        cap === 'SAMPLE_PAPER' ||
+                        cap === 'SAMPLE_PAPERS' ||
+                        finalResponse?.title?.toLowerCase().includes('sample paper') ||
+                        finalResponse?.explanation?.toLowerCase().includes('sample paper')
                       ) {
-                        prompt = `Show my entire examination date sheet with upcoming dates and slots.`;
-                      } else if (
-                        finalResponse?.type === 'timetable' ||
-                        finalResponse?.capability === 'TIMETABLE'
-                      ) {
-                        prompt = `What is my timetable for tomorrow and which cabins are my teachers in?`;
-                      } else {
-                        prompt = `How can I maintain my attendance across all subjects?`;
+                        prompt = subject
+                          ? `How do I download the official sample question paper for ${subject}?`
+                          : `How do I download the official sample question papers for my upcoming exams?`;
                       }
+                      // 2. FACULTY DIRECTORY
+                      else if (
+                        respType === 'faculty_details' ||
+                        respType === 'faculty' ||
+                        cap === 'FACULTY' ||
+                        cap === 'FACULTY_DIRECTORY' ||
+                        finalResponse?.title?.toLowerCase().includes('faculty') ||
+                        finalResponse?.title?.toLowerCase().includes('teacher') ||
+                        finalResponse?.explanation?.toLowerCase().includes('cabin')
+                      ) {
+                        prompt = `List all teacher cabin locations, blocks, and contact details for my registered courses.`;
+                      }
+                      // 3. SEATING PLAN
+                      else if (
+                        respType === 'seating_plan' ||
+                        cap === 'SEATING_PLAN' ||
+                        finalResponse?.title?.toLowerCase().includes('seating') ||
+                        finalResponse?.title?.toLowerCase().includes('seat')
+                      ) {
+                        prompt = subject
+                          ? `Which examination room, hall, and seat number are confirmed for my ${subject} exam?`
+                          : `Which examination room, hall, and seat number are confirmed for my upcoming exam?`;
+                      }
+                      // 4. EXAM DATE SHEET
+                      else if (
+                        respType === 'next_exam' ||
+                        respType === 'exam_date_sheet' ||
+                        respType === 'all_exams' ||
+                        respType === 'upcoming_exams' ||
+                        cap === 'EXAM_DATE_SHEET' ||
+                        finalResponse?.title?.toLowerCase().includes('exam') ||
+                        finalResponse?.title?.toLowerCase().includes('date sheet')
+                      ) {
+                        prompt = `Show my complete examination date sheet with reporting times and syllabus overview.`;
+                      }
+                      // 5. TIMETABLE
+                      else if (
+                        respType === 'timetable' ||
+                        respType === 'timetable_today' ||
+                        respType === 'timetable_full' ||
+                        cap === 'TIMETABLE' ||
+                        finalResponse?.title?.toLowerCase().includes('timetable') ||
+                        finalResponse?.title?.toLowerCase().includes('class schedule')
+                      ) {
+                        prompt = `What is my class schedule for tomorrow and where are my faculty cabins?`;
+                      }
+                      // 6. ATTENDANCE & SAFE BUNKS
+                      else if (
+                        respType === 'lowest_attendance' ||
+                        respType === 'safe_bunk' ||
+                        respType === 'full_summary' ||
+                        cap === 'ATTENDANCE'
+                      ) {
+                        if (respType === 'lowest_attendance' && subject) {
+                          prompt = `Tell me more about my ${subject} attendance and how many classes I must attend to reach 75%.`;
+                        } else if (subject) {
+                          prompt = `How many classes can I safely skip in ${subject} to maintain my attendance above 75%?`;
+                        } else {
+                          prompt = `Analyze my attendance risk and tell me how many classes I can safely skip in each subject.`;
+                        }
+                      }
+                      // Contextual fallback (check subject)
+                      else if (subject) {
+                        prompt = `Tell me more about my status in ${subject} and what I should do next.`;
+                      } else {
+                        prompt = `Analyze my attendance risk and tell me how many classes I can safely skip in each subject.`;
+                      }
+
                       onAskOnee(prompt);
                     }}
                     title="Ask ONEE follow-up question"

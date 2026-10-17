@@ -74,6 +74,22 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
     }
   };
 
+  const handleClearContext = async () => {
+    if (isClearing) return;
+    setIsClearing(true);
+    try {
+      await localDatabase.clearVerifiedContext(accountId);
+      await loadMetrics();
+      setActionNotice('Saved verified datasets cleared.');
+      if (onDataCleared) onDataCleared();
+      setTimeout(() => setActionNotice(null), 2500);
+    } catch {
+      setActionNotice('Failed to clear saved datasets.');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
   const handleClearAll = async () => {
     if (isClearing) return;
     const confirmed = window.confirm(
@@ -183,6 +199,13 @@ export const PrivacyModal: React.FC<PrivacyModalProps> = ({
               disabled={isClearing || metrics.executionCount === 0}
             >
               Clear Agent Runs
+            </button>
+            <button
+              className={styles.purgeBtn}
+              onClick={handleClearContext}
+              disabled={isClearing || metrics.datasetCount === 0}
+            >
+              Clear Datasets
             </button>
             <button
               className={styles.dangerBtn}

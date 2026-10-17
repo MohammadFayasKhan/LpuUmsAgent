@@ -41,10 +41,17 @@ function parseNumber(str: string | null | undefined): number | null {
 
 /**
  * Parses attendance fraction format like "50/53", "6 / 7", "7/7".
+ * Date fragments such as "4/8/2026" or "30/09/2025" are explicitly rejected —
+ * mistaking a date for an attended/total fraction produced phantom "4/8 attended"
+ * values on every dashboard row in the regression screenshots.
  */
 function parseFraction(str: string): { attended: number; total: number } | null {
-  const match = str.match(/(\d+)\s*\/\s*(\d+)/);
-  if (match) {
+  const re = /(\d{1,3})\s*\/\s*(\d{1,3})/g;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(str)) !== null) {
+    const after = str.slice(match.index + match[0].length);
+    // "4/8/2026" → this fraction is a date fragment, keep scanning.
+    if (/^\s*\/\s*\d{2,4}/.test(after)) continue;
     const attended = parseInt(match[1], 10);
     const total = parseInt(match[2], 10);
     if (!isNaN(attended) && !isNaN(total) && total >= attended && total > 0) {
@@ -55,16 +62,42 @@ function parseFraction(str: string): { attended: number; total: number } | null 
 }
 
 /**
+ * Message / notification phrases that appear in UMS dashboard announcements
+ * ("Result for TERM2026 has been displayed", "Holiday on 19 ... declared",
+ * "LPU Welcomes ...") but never in a real course row. Any `CODE : text` match
+ * carrying one of these is a notification, not a subject.
+ */
+const NOTIFICATION_PHRASES = /\b(declared|displayed|announced|published|notification|rescheduled|admit\s*card|has\s+been|will\s+be|welcomes?|congratulat|celebration|holiday|syllabus|result|observed|celebrat)\b/i;
+
+/**
  * Strict course code validator for LPU UMS courses.
  * Validates course codes like CSE330, INT416, ECE140, CSEP401, CAP339, MTH101.
+ *
+ * Exported so the side panel can apply the SAME gate to cached/IndexedDB
+ * verified records and to suggestion inputs — a code that would not be
+ * accepted from the live attendance DOM can never enter verified context.
  */
-function isValidCourseCode(code: string): boolean {
+export function isValidCourseCode(code: string): boolean {
   if (!code) return false;
-  const clean = code.replace(/\s+/, '').toUpperCase();
-  // LPU course codes are 3 to 4 uppercase department letters followed by 3 digits (or 'P' + 3 digits for practicals)
-  if (!/^[A-Z]{3,4}\d{3}$/.test(clean)) {
+  const clean = code.replace(/\s+/g, '').toUpperCase();
+  // LPU course codes are 2 to 5 uppercase department letters followed by 2 to 4 digits (e.g. CSE330, INT416, PEAS01, PEVS01, CAP339, MTH101)
+  if (!/^[A-Z]{2,5}\d{2,4}[A-Z]?$/.test(clean)) {
     return false;
   }
+  // Reject codes whose LETTER PREFIX is an ordinary word or notification term.
+  // This is what kills phantoms like TERM2026, PARTY2026 and ON19 — they match
+  // the shape regex but their prefixes (TERM, PARTY, ON) are not LPU departments.
+  const letters = (clean.match(/^[A-Z]+/) || [''])[0];
+  const invalidPrefixes = new Set([
+    'YEAR', 'FEST', 'TERM', 'ROLL', 'PAGE', 'ROOM', 'HTTP', 'NEWS', 'POST', 'INFO',
+    'LINK', 'DATE', 'TIME', 'EXAM', 'NOTE', 'TEST', 'VIEW', 'GROUP', 'TOTAL', 'MORE',
+    'FROM', 'WITH', 'CODE', 'USER', 'NAME', 'FORM', 'PASS', 'CARD', 'HAPP', 'MESS',
+    'PARTY', 'ON', 'AT', 'IN', 'TO', 'OF', 'OR', 'NO', 'GO', 'UP', 'DO', 'MY', 'BE',
+    'RESULT', 'NOTICE', 'HOLIDAY', 'CLASS', 'TODAY', 'SEASON', 'EVENT', 'ROUND',
+    'WEEK', 'MONTH', 'MID', 'END', 'SEM', 'ATTEND', 'LEAVE', 'LECTURE', 'THEORY',
+    'PRACTICAL', 'DECLARED', 'UPDATE', 'ALERT', 'MESSAGE', 'CHAT', 'FEED', 'BANNER'
+  ]);
+  if (invalidPrefixes.has(letters)) return false;
   const blacklist = [
     'YEAR', 'FEST', 'TERM', 'ROLL', 'PAGE', 'ROOM', 'HTTP', 'NEWS', 'POST', 'INFO',
     'LINK', 'DATE', 'TIME', 'EXAM', 'NOTE', 'TEST', 'VIEW', 'GROUP', 'TOTAL', 'MORE',
@@ -76,16 +109,19 @@ function isValidCourseCode(code: string): boolean {
 
 /**
  * Validates extracted course data and assigns data quality status.
+ * Every record leaving this parser carries explicit DOM provenance so the
+ * response composer and suggestion engine can verify the record's origin.
  */
 function validateRecord(record: AttendanceRecord): AttendanceRecord {
-  if (record.total > 0 && record.attended <= record.total) {
-    const effectiveAttended = record.attended + (record.dutyLeave || 0);
-    const calculatedPct = (effectiveAttended / record.total) * 100;
-    if (Math.abs(calculatedPct - record.percentage) > 3.0 && record.percentage > 0) {
-      return { ...record, dataQuality: 'warning' };
+  const withProvenance: AttendanceRecord = { ...record, source: 'ums-attendance-dom' };
+  if (withProvenance.total > 0 && withProvenance.attended <= withProvenance.total) {
+    const effectiveAttended = withProvenance.attended + (withProvenance.dutyLeave || 0);
+    const calculatedPct = (effectiveAttended / withProvenance.total) * 100;
+    if (Math.abs(calculatedPct - withProvenance.percentage) > 3.0 && withProvenance.percentage > 0) {
+      return { ...withProvenance, dataQuality: 'warning' };
     }
   }
-  return { ...record, dataQuality: 'valid' };
+  return { ...withProvenance, dataQuality: 'valid' };
 }
 
 /**
@@ -229,10 +265,10 @@ function parseTables(doc: Document): { courses: AttendanceRecord[]; overallPerce
         continue;
       }
 
-      const codeMatch = rawCellText.match(/\b([A-Z]{3,4}\s*\d{3})\b/i);
+      const codeMatch = rawCellText.match(/\b([A-Z]{2,5}\s*\d{2,4}[A-Z]?)\b/i);
       if (!codeMatch) continue;
 
-      const code = codeMatch[1].replace(/\s+/, '').toUpperCase();
+      const code = codeMatch[1].replace(/\s+/g, '').toUpperCase();
       if (!isValidCourseCode(code)) continue;
 
       let name = code;
@@ -368,26 +404,67 @@ function attachDetailedSessions(doc: Document, records: AttendanceRecord[]): voi
  */
 function findMyCoursesContainer(doc: Document): HTMLElement | null {
   const headings = Array.from(doc.querySelectorAll('h1, h2, h3, h4, h5, h6, span, div, p, strong, b'));
-  for (const el of headings) {
+
+  /*
+   * Anchor selection is exact-first and leaf-first on purpose: a wrapper whose
+   * text merely STARTS with "My Courses" used to win (parents precede children
+   * in document order), making the ENTIRE dashboard — notifications, news
+   * cards, badges — the scan root. That is how notification text leaked into
+   * the course scan. The anchor must be the heading itself.
+   */
+  const isLabel = (el: Element, exact: boolean) => {
     const text = cleanText(el.textContent).toLowerCase();
-    if (text === 'my courses' || text.startsWith('my courses')) {
-      let box: HTMLElement | null = el.parentElement;
-      for (let d = 0; d < 4 && box && box !== doc.body; d++) {
-        if (
-          box.classList.contains('card') ||
-          box.classList.contains('panel') ||
-          box.classList.contains('section-box') ||
-          box.querySelector('.course-row') ||
-          box.querySelector('.row')
-        ) {
-          return box;
-        }
-        box = box.parentElement;
-      }
-      return el.parentElement;
+    if (exact) return text === 'my courses';
+    return text.startsWith('my courses') && text.length <= 120;
+  };
+  const anchor = headings.find((el) => isLabel(el, true)) || headings.find((el) => isLabel(el, false));
+  if (!anchor) return null;
+
+  let box: HTMLElement | null = anchor.parentElement;
+
+  /*
+   * Badge-anchored container (runs FIRST): the real contract of the My Courses
+   * section is the verified "ATTENDANCE : XX" badge INSIDE it — not a class
+   * name. UMS renders this card with inline styles (no .card/.panel/.row
+   * ancestors), so the class heuristic below used to fall through to the
+   * heading's immediate parent — a strip that carries no badge —
+   * parseDashboardMyCourses then bailed out, the scan reported
+   * NO_ATTENDANCE_ON_PAGE, and the side panel re-hydrated STALE cached numbers.
+   * Walk up and return the smallest ancestor holding BOTH the badge and at
+   * least one course-code row; the phantom gate in parseDashboardMyCourses
+   * still filters announcement text inside that container.
+   */
+  let badgeBox: HTMLElement | null = null;
+  for (let d = 0; d < 8 && box && box !== doc.body && box !== doc.documentElement; d++) {
+    const text = cleanText(box.textContent);
+    if (
+      /ATTENDANCE\s*:\s*\d/i.test(text) &&
+      /\b[A-Z]{2,5}\s*\d{2,4}[A-Z]?\s*[:\-–]/i.test(text)
+    ) {
+      badgeBox = box;
+      break;
     }
+    box = box.parentElement;
   }
-  return null;
+  if (badgeBox) {
+    return badgeBox;
+  }
+
+  box = anchor.parentElement;
+  for (let d = 0; d < 4 && box && box !== doc.body; d++) {
+    if (
+      box.classList.contains('card') ||
+      box.classList.contains('panel') ||
+      box.classList.contains('section-box') ||
+      box.querySelector('.course-row') ||
+      box.querySelector('.row')
+    ) {
+      return box;
+    }
+    box = box.parentElement;
+  }
+  const fallback = anchor.parentElement;
+  return fallback && fallback !== doc.body ? fallback : null;
 }
 
 function parseDashboardMyCourses(doc: Document): { courses: AttendanceRecord[]; overallPercentage?: number } | null {
@@ -411,10 +488,16 @@ function parseDashboardMyCourses(doc: Document): { courses: AttendanceRecord[]; 
 
   for (const el of allElements) {
     const directText = cleanText(el.textContent);
-    const match = directText.match(/\b([A-Z]{3,4}\s*\d{3})\s*[:\-–]\s*([A-Z0-9\s,\-_/&]+)/i);
+    const match = directText.match(/\b([A-Z]{2,5}\s*\d{2,4}[A-Z]?)\s*[:\-–]\s*([A-Z0-9\s,\-_/&]+)/i);
 
     if (match) {
-      const code = match[1].replace(/\s+/, '').toUpperCase();
+      // Phantom gate: announcement/news text ("TERM2026 : Result ... has been
+      // displayed", "... on 19 ... declared") is never a course row, even when
+      // its text happens to match the CODE : name shape.
+      if (NOTIFICATION_PHRASES.test(match[2]) || NOTIFICATION_PHRASES.test(match[0])) {
+        continue;
+      }
+      const code = match[1].replace(/\s+/g, '').toUpperCase();
       if (!isValidCourseCode(code)) continue;
       if (records.some((r) => r.code === code)) continue;
 
@@ -438,8 +521,8 @@ function parseDashboardMyCourses(doc: Document): { courses: AttendanceRecord[]; 
 
       while (rowBox && rowBox !== container && rowBox !== doc.body) {
         const cText = cleanText(rowBox.textContent);
-        const otherCodes = (cText.match(/\b[A-Z]{3,4}\s*\d{3}\b/gi) || []).map((c) =>
-          c.replace(/\s+/, '').toUpperCase()
+        const otherCodes = (cText.match(/\b[A-Z]{2,5}\s*\d{2,4}[A-Z]?\b/gi) || []).map((c) =>
+          c.replace(/\s+/g, '').toUpperCase()
         ).filter(isValidCourseCode);
         const uniqueFound = Array.from(new Set(otherCodes));
 
@@ -498,10 +581,10 @@ function parseCourseCards(doc: Document): AttendanceRecord[] {
 
   for (const card of cards) {
     const text = cleanText(card.textContent);
-    const codeMatch = text.match(/\b([A-Z]{3,4}\s*\d{3})\b/i);
+    const codeMatch = text.match(/\b([A-Z]{2,5}\s*\d{2,4}[A-Z]?)\b/i);
     if (!codeMatch) continue;
 
-    const code = codeMatch[1].replace(/\s+/, '').toUpperCase();
+    const code = codeMatch[1].replace(/\s+/g, '').toUpperCase();
     if (!isValidCourseCode(code)) continue;
     if (records.some((r) => r.code === code)) continue;
 

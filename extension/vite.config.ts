@@ -12,6 +12,9 @@ import { resolve } from 'path';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 
 export default defineConfig({
+  worker: {
+    format: 'es'
+  },
   plugins: [
     react(),
     viteStaticCopy({
@@ -23,6 +26,18 @@ export default defineConfig({
         {
           src: 'public/icons/*',
           dest: 'icons'
+        },
+        {
+          src: 'node_modules/onnxruntime-web/dist/ort-wasm*',
+          dest: 'wasm'
+        },
+        {
+          src: 'node_modules/@huggingface/transformers/dist/ort-wasm*',
+          dest: 'wasm'
+        },
+        {
+          src: 'node_modules/kokoro-js/voices/*',
+          dest: 'voices'
         }
       ]
     })
@@ -32,7 +47,9 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       input: {
-        sidepanel: resolve(__dirname, 'sidepanel.html')
+        sidepanel: resolve(__dirname, 'sidepanel.html'),
+        offscreen: resolve(__dirname, 'offscreen.html'),
+        permission: resolve(__dirname, 'permission.html')
       },
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
@@ -44,6 +61,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    include: ['src/tests/**/*.test.ts']
+    include: ['src/tests/**/*.test.{ts,tsx}'],
+    setupFiles: ['src/tests/setup.ts']
   }
 });

@@ -6,12 +6,22 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { parseExamDateSheet, findExaminationCardElements } from '../content/examination/examDateSheetParser';
+import { parseExamDateSheet, findExaminationCardElements, extractInstructions } from '../content/examination/examDateSheetParser';
 import { parseSeatingPlan } from '../content/examination/seatingPlanParser';
 import { isExaminationPage, findDateSheetLinkElement } from '../content/examination/examinationDetector';
 import { validateExaminationSummary } from '../content/examination/examinationValidator';
 
 describe('examDateSheetParser & seatingPlanParser', () => {
+  describe('instruction extraction', () => {
+    it('does not merge a flattened neighbouring exam card into MCQ instructions', () => {
+      const flattened =
+        '30 Multiple Choice Questions of 1 Mark eachCSE408 - Upcoming15 Dec 202609:30-12:30 ' +
+        '[Report 30 minutes before the start of exam]';
+
+      expect(extractInstructions(flattened)).toBe('30 Multiple Choice Questions of 1 Mark each');
+    });
+  });
+
   describe('Student UMS Seating Plan Table Parsing', () => {
     it('parses standard table rows on studentums.lpu.in', () => {
       const doc = document.implementation.createHTMLDocument('Seating Plan');
@@ -844,6 +854,43 @@ describe('examDateSheetParser & seatingPlanParser', () => {
       expect(summary?.exams[0].examDate).toBe('8 Oct 2026');
       expect(summary?.exams[0].room).toBe('34-201');
     });
+
+    it('collects every UMS entry from repeated headings when the viewport has no card classes', () => {
+      const doc = document.implementation.createHTMLDocument('Examination Date Sheet');
+      doc.body.innerHTML = `
+        <main>
+          <div class="stats"><span>Total Exam</span><strong>6</strong></div>
+          <div class="runtime-shell-viewport">
+            <section><h4>INT373 -</h4><p>14 Oct 2026</p><p>12:30-14:00 Report 30 minutes before</p><p>37-707 Theory Mid Term - All Subjective</p></section>
+            <section><h4>CSE408 -</h4><p>18 Oct 2026</p><p>09:00-10:30</p><p>38-810 Objective Type Mid Term - All MCQ Objective</p></section>
+            <section><h4>CSE408 -</h4><p>15 Dec 2026</p><p>Awaited Theory End Term - All MCQ</p></section>
+            <section><h4>CSE471 -</h4><p>17 Dec 2026</p><p>Awaited Theory End Term - All MCQ</p></section>
+            <section><h4>INT373 -</h4><p>19 Dec 2026</p><p>Awaited Theory End Term - All Subjective</p></section>
+            <section><h4>CSE472 -</h4><p>24 Dec 2026</p><p>Awaited Theory End Term - All MCQ</p></section>
+          </div>
+        </main>
+      `;
+
+      const summary = parseExamDateSheet(doc);
+      expect(summary?.exams).toHaveLength(6);
+      expect(summary?.exams.map((exam) => exam.courseCode)).toEqual([
+        'INT373', 'CSE408', 'CSE408', 'CSE471', 'INT373', 'CSE472'
+      ]);
+    });
+
+    it('falls back to document-order text ranges when UMS card structure is unavailable', () => {
+      const doc = document.implementation.createHTMLDocument('Examination Date Sheet');
+      doc.body.innerHTML = `
+        <div>Total Exam 3</div>
+        <div>INT373 - Upcoming 14 Oct 2026 12:30-14:00 Room 37-707 Theory Mid Term</div>
+        <div>CSE408 - Upcoming 18 Oct 2026 12:30-14:00 Room 38-810 Objective Mid Term</div>
+        <div>CSE408 - Upcoming 15 Dec 2026 09:30-12:30 Room Awaited Theory End Term</div>
+      `;
+
+      const summary = parseExamDateSheet(doc);
+      expect(summary?.exams).toHaveLength(3);
+      expect(summary?.exams.map((exam) => exam.courseCode)).toEqual(['INT373', 'CSE408', 'CSE408']);
+      expect(summary?.diagnostics?.discoveryStrategiesUsed).toContain('DOCUMENT_TEXT_RANGE_FALLBACK');
+    });
   });
 });
-

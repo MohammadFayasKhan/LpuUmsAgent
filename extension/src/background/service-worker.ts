@@ -163,4 +163,52 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     sendResponse({ success: true });
     return false;
   }
+
+  if (message.type === MESSAGE_TYPES.VERIFY_RECENT_DOWNLOAD) {
+    // Post-action ground truth: look for a download Chrome recorded right after
+    // the agent's click, or a tab that opened the exact PDF URL. Content scripts
+    // cannot see either, so this lives in the privileged worker.
+    const since = typeof message.since === 'number' ? message.since : Date.now() - 30000;
+    const nameHint = String(message.nameHint || '').toLowerCase();
+    const urlHint = String(message.urlHint || '').toLowerCase();
+
+    Promise.all([
+      chrome.downloads
+        .search({ orderBy: ['-startTime'], limit: 25 })
+        .catch(() => [] as chrome.downloads.DownloadItem[]),
+      chrome.tabs.query({}).catch(() => [] as chrome.tabs.Tab[])
+    ])
+      .then(([items, tabs]) => {
+        const cutoff = since - 3000; // clock-skew slack
+        const fresh = items.filter((it) => {
+          const started = it.startTime ? new Date(it.startTime).getTime() : 0;
+          return started >= cutoff;
+        });
+        const match = fresh.find((it) => {
+          const fn = (it.filename || '').toLowerCase();
+          const url = (it.url || '').toLowerCase();
+          if (nameHint && (fn.includes(nameHint) || url.includes(nameHint))) return true;
+          if (urlHint && url === urlHint) return true;
+          return fn.endsWith('.pdf') || url.endsWith('.pdf');
+        });
+        if (match) {
+          sendResponse({
+            found: true,
+            openedInTab: false,
+            filename: match.filename || '',
+            state: match.state || '',
+            url: match.url || ''
+          });
+          return;
+        }
+        const tab = tabs.find((t) => urlHint && (t.url || '').toLowerCase() === urlHint);
+        if (tab) {
+          sendResponse({ found: true, openedInTab: true, filename: '', url: tab.url || '' });
+          return;
+        }
+        sendResponse({ found: false });
+      })
+      .catch(() => sendResponse({ found: false }));
+    return true; // Keep channel open for async sendResponse
+  }
 });

@@ -16,7 +16,7 @@
   justify-content: flex-end;
   position: relative;
   flex-shrink: 0;
-  width: clamp(64px, 18vw, 92px);
+  max-width: 100%;
 }
 
 .avatarWrapper {
@@ -28,8 +28,6 @@
   justify-content: center;
   transition: transform var(--transition-fast);
   user-select: none;
-  width: clamp(64px, 18vw, 92px);
-  height: clamp(64px, 18vw, 92px);
 }
 
 .avatarWrapper:hover {

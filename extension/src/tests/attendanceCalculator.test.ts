@@ -15,7 +15,8 @@ import {
   calculateRequiredClasses,
   getLowestAttendanceSubject,
   evaluateAttendanceHealth,
-  validateAttendanceSummary
+  validateAttendanceSummary,
+  isCachedAttendanceForStudent
 } from '../shared/attendanceCalculator';
 import { AttendanceRecord } from '../shared/types';
 
@@ -187,6 +188,42 @@ describe('attendanceCalculator', () => {
       expect(lowest).not.toBeNull();
       expect(lowest?.code).toBe('CSE330');
       expect(lowest?.percentage).toBe(88);
+    });
+  });
+
+  /*
+   * REGRESSION (cross-account cached data): a snapshot saved while another
+   * UMS account was signed in must never be shown after the real student
+   * logs in — that is exactly what kept the panel on the previous account's
+   * numbers until the attendance modal was reopened.
+   */
+  describe('isCachedAttendanceForStudent', () => {
+    it('rejects a snapshot whose registration number differs from the signed-in student', () => {
+      const cached = { registrationNumber: '12104999', studentName: 'Other Student' };
+      const live = { registrationNumber: '12104928', studentName: 'Fayas Khan' };
+      expect(isCachedAttendanceForStudent(cached, live)).toBe(false);
+    });
+
+    it('accepts a snapshot matching the signed-in student regardless of case or spacing', () => {
+      const cached = { registrationNumber: ' 12104928 ', studentName: 'Fayas Khan' };
+      const live = { registrationNumber: '12104928', studentName: 'FAYAS KHAN' };
+      expect(isCachedAttendanceForStudent(cached, live)).toBe(true);
+    });
+
+    it('falls back to student-name comparison when registration numbers are unavailable', () => {
+      expect(
+        isCachedAttendanceForStudent({ studentName: 'Fayas Khan' }, { studentName: 'fayas khan' })
+      ).toBe(true);
+      expect(
+        isCachedAttendanceForStudent({ studentName: 'Other Student' }, { studentName: 'Fayas Khan' })
+      ).toBe(false);
+    });
+
+    it('cannot prove a mismatch when either side lacks identity — allows the snapshot', () => {
+      expect(isCachedAttendanceForStudent({ studentName: 'Fayas Khan' }, {})).toBe(true);
+      expect(isCachedAttendanceForStudent({}, { registrationNumber: '12104928' })).toBe(true);
+      expect(isCachedAttendanceForStudent(null, { registrationNumber: '12104928' })).toBe(false);
+      expect(isCachedAttendanceForStudent({ registrationNumber: '1' }, null)).toBe(true);
     });
   });
 });

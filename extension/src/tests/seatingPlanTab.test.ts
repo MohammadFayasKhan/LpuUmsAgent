@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { openSeatingPlanTab, closeDuplicateLpuTabs } from '../services/tabMessenger';
+import { openSeatingPlanTab, closeDuplicateLpuTabs, navigateToStudentDashboard, isStudentDashboardNavigationCommand, STUDENT_DASHBOARD_URL } from '../services/tabMessenger';
 
 describe('openSeatingPlanTab & closeDuplicateLpuTabs', () => {
   beforeEach(() => {
@@ -79,5 +79,31 @@ describe('openSeatingPlanTab & closeDuplicateLpuTabs', () => {
     expect(removedIds).toEqual([202]);
     expect(removedIds).not.toContain(101);
     expect(removedIds).not.toContain(102);
+  });
+});
+
+describe('navigateToStudentDashboard', () => {
+  it.each([
+    'Take me to HomePage',
+    'you take me back to the homepage',
+    'can you head back to homepage',
+    'go to my student dashboard'
+  ])('recognizes "%s" as a dashboard command', (command) => {
+    expect(isStudentDashboardNavigationCommand(command)).toBe(true);
+  });
+
+  it('reuses the current active tab for the UMS home page', async () => {
+    const update = vi.fn().mockResolvedValue({ id: 7, url: STUDENT_DASHBOARD_URL, active: true });
+    (globalThis as any).chrome = {
+      tabs: {
+        query: vi.fn().mockResolvedValue([{ id: 7, url: 'https://ums.lpu.in/lpuums/StudentAttendance.aspx', active: true }]),
+        update,
+        create: vi.fn()
+      }
+    };
+
+    await navigateToStudentDashboard();
+
+    expect(update).toHaveBeenCalledWith(7, { url: STUDENT_DASHBOARD_URL, active: true });
   });
 });

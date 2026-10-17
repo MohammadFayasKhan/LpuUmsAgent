@@ -20,6 +20,40 @@ export interface TabMessengerOptions {
   timeoutMs?: number;
 }
 
+export const STUDENT_DASHBOARD_URL = 'https://ums.lpu.in/LpuUms/StudentDashboard.aspx';
+
+/** Matches explicit requests to return to the UMS student home dashboard. */
+export function isStudentDashboardNavigationCommand(command: string): boolean {
+  return /\b(?:take|bring|go|navigate|open|return|head)\s+(?:me\s+)?(?:back\s+)?(?:to\s+)?(?:(?:the|my)\s+)?(?:home\s*page|homepage|home|student\s+dashboard|dashboard)\b/i.test(command);
+}
+
+/**
+ * Takes the student straight to the UMS home dashboard from any current page.
+ * The active browser tab is reused so the action feels like normal navigation;
+ * only when there is no active tab can the extension create a dashboard tab.
+ */
+export async function navigateToStudentDashboard(): Promise<chrome.tabs.Tab | null> {
+  if (typeof chrome === 'undefined' || !chrome.tabs) {
+    if (typeof window !== 'undefined') window.location.assign(STUDENT_DASHBOARD_URL);
+    return null;
+  }
+
+  try {
+    const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    const activeTab = activeTabs[0];
+    if (activeTab?.id) {
+      return await chrome.tabs.update(activeTab.id, {
+        url: STUDENT_DASHBOARD_URL,
+        active: true
+      });
+    }
+    return await chrome.tabs.create({ url: STUDENT_DASHBOARD_URL, active: true });
+  } catch (err) {
+    console.warn('[ONEE TabMessenger] Error navigating to Student Dashboard:', err);
+    return null;
+  }
+}
+
 /**
  * Finds the most relevant tab for ONEE automation.
  * Priority:

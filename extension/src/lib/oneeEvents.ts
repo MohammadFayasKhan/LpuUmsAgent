@@ -31,6 +31,7 @@ export type OneeVisualState =
   | 'WARNING'
   | 'ERROR'
   | 'RECONNECTING'
+  | 'SPEAKING'
   | 'CANCELLED';
 
 export type OneeAgentEventType =
@@ -47,7 +48,9 @@ export type OneeAgentEventType =
   | 'chat_responding'
   | 'chat_complete'
   | 'avatar_tap'
-  | 'avatar_hover';
+  | 'avatar_hover'
+  | 'onMicResult'
+  | 'executionTelemetry';
 
 export interface OneeReaction {
   state?: OneeVisualState;
@@ -101,6 +104,14 @@ class OneeEventBridge {
           animation: 'listening',
           expression: 'attentive-left',
           caption: customCaption || 'Listening 💬',
+          autoIdleDelayMs: 0
+        };
+      case 'SPEAKING':
+        return {
+          state,
+          animation: 'happy',
+          expression: 'joyful-wide',
+          caption: customCaption || 'Speaking 🔊',
           autoIdleDelayMs: 0
         };
       case 'USER_TYPING':
@@ -286,6 +297,8 @@ class OneeEventBridge {
           autoIdleDelayMs: 2000
         };
       case 'agent_idle':
+      case 'onMicResult':
+      case 'executionTelemetry':
       default:
         return this.getReactionForState('IDLE');
     }

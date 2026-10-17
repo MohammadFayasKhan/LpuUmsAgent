@@ -186,8 +186,8 @@ describe('examinationValidator', () => {
     });
 
     it('breaks same-day ties deterministically by start time', () => {
-      // Reference: October 15, 2026 at 10:00 AM (after CSE329 09:00 AM has passed)
-      const reference = new Date(2026, 9, 15, 10, 0, 0);
+      // Reference: October 15, 2026 at 12:30 PM (after CSE329's 09:00–12:00 exam has ended)
+      const reference = new Date(2026, 9, 15, 12, 30, 0);
       const next = getNextExam(sampleExams, reference);
 
       expect(next).not.toBeNull();

@@ -14,7 +14,7 @@
  */
 
 import { AnimationKey, ExpressionKey } from '../types/avatar';
-import { AgentState, AttendanceSummary, ExaminationSummary } from '../shared/types';
+import { AgentState, AttendanceSummary, ExaminationSummary, TimetableSummary } from '../shared/types';
 import { RuntimeConnectionState } from '../services/connectionManager';
 import { getNextExam } from '../content/examination/examinationValidator';
 
@@ -51,6 +51,7 @@ export interface OneeRuntimeState {
   agentState: AgentState | null;
   attendance: AttendanceSummary | null;
   examination?: ExaminationSummary | null;
+  timetable?: TimetableSummary | null;
   isUserTyping: boolean;
   isChatStreaming: boolean;
   lastUserMessage: string | null;
@@ -66,6 +67,8 @@ class RuntimeStateManager {
     connectionState: 'CONNECTED',
     agentState: null,
     attendance: null,
+    examination: null,
+    timetable: null,
     isUserTyping: false,
     isChatStreaming: false,
     lastUserMessage: null,

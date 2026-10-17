@@ -96,6 +96,10 @@ class PlanActionRequest(BaseModel):
     observation: PageObservationModel
     previousActions: List[Dict[str, Any]] = []
     retryContext: Optional[Dict[str, Any]] = None
+    semanticIntent: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Structured Groq intent resolved before browser planning"
+    )
 
 class PlanActionResponse(BaseModel):
     action: AgentActionModel

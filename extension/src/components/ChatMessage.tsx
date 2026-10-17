@@ -16,8 +16,8 @@
 import React, { memo } from 'react';
 import { ChatMessage as ChatMessageType } from '../shared/types';
 import { AvatarController } from './AvatarController';
-import { MarkdownRenderer } from './common/MarkdownRenderer';
-import { voiceController } from '../voice';
+import { MarkdownRenderer, formatConcatenatedSsrsTable } from './common/MarkdownRenderer';
+import { voiceController, audioController } from '../voice';
 import styles from './ChatMessage.module.css';
 
 interface ChatMessageProps {
@@ -26,13 +26,18 @@ interface ChatMessageProps {
 
 export const ChatMessage: React.FC<ChatMessageProps> = memo(({ message }) => {
   const isUser = message.sender === 'user' || message.role === 'user';
-  const textContent = (message.text || message.content || '').replace(/—/g, '→');
+  const rawContent = (message.text || message.content || '').replace(/—/g, '→');
+  const textContent = formatConcatenatedSsrsTable(rawContent);
 
   const handleSpeakAloud = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (textContent) {
-      voiceController.speakText(textContent, true);
-    }
+    audioController.unlockAudio().catch(() => {});
+    if (!textContent) return;
+
+    // Even the explicit replay button must never read the full chat markdown
+    // aloud (tables, headers and footers included). Sofia speaks the same
+    // derived greeting + answer + conclusion the live voice path uses.
+    voiceController.speakText(textContent, true, undefined, true);
   };
 
   return (

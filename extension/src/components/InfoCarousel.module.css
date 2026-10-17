@@ -1,0 +1,372 @@
+/*
+ * ONEE Launch Info Carousel — iOS-style frosted sheet.
+ *
+ * Design notes:
+ *  - The overlay fades in and the sheet rises with a spring curve so the
+ *    transition never snaps (no layout thrash, compositor-friendly:
+ *    only opacity/transform animate).
+ *  - Cards slide-fade in the travel direction; capability chips stagger in.
+ *  - prefers-reduced-motion collapses every animation to an instant swap.
+ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(15, 17, 21, 0.42);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  animation: overlayIn 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sheet {
+  position: relative;
+  width: min(360px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 22px 20px 18px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 26px;
+  box-shadow:
+    0 24px 64px -16px rgba(15, 17, 21, 0.35),
+    0 2px 8px rgba(15, 17, 21, 0.08);
+  text-align: center;
+  touch-action: pan-y;
+  user-select: none;
+  animation: sheetRise 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes sheetRise {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.skipButton {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary, #8e8e93);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.skipButton:hover {
+  color: var(--accent, #7c3aed);
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.avatarSlot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.avatarButton {
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: avatarFloat 3.2s ease-in-out infinite;
+}
+
+.avatarButton:hover {
+  transform: scale(1.05);
+}
+
+.avatarButton:active {
+  transform: scale(0.94);
+}
+
+@keyframes avatarFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.speechBubble {
+  position: relative;
+  max-width: 270px;
+  padding: 8px 13px;
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+  color: #ffffff;
+  border-radius: 15px;
+  box-shadow: 0 6px 18px -6px rgba(124, 58, 237, 0.55);
+  animation: bubblePop 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.speechText {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.speechTail {
+  position: absolute;
+  top: -5px;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border-radius: 3px;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+@keyframes bubblePop {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cardViewport {
+  overflow: hidden;
+  margin-top: 14px;
+  min-height: 178px;
+}
+
+.cardTrack {
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+  animation: cardEnter 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardEnter {
+  from {
+    opacity: 0;
+    transform: translateX(var(--enter-x, 24px));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text-primary, #1d1d1f);
+  letter-spacing: -0.01em;
+}
+
+.body {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text-secondary, #475569);
+}
+
+.chipGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  width: 100%;
+}
+
+.chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 8px 10px;
+  background: rgba(124, 58, 237, 0.06);
+  border: 1px solid rgba(124, 58, 237, 0.14);
+  border-radius: 13px;
+  text-align: left;
+  opacity: 0;
+  animation: chipIn 0.36s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes chipIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.chipIcon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.chipLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-primary, #1d1d1f);
+}
+
+.chipHint {
+  font-size: 9.5px;
+  color: var(--text-tertiary, #8e8e93);
+}
+
+.privacyLink {
+  margin-top: 2px;
+  border: none;
+  background: transparent;
+  color: var(--accent, #7c3aed);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+  transition: background 0.18s ease;
+}
+
+.privacyLink:hover {
+  background: rgba(124, 58, 237, 0.08);
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border: none;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(15, 17, 21, 0.18);
+  cursor: pointer;
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    background 0.24s ease, width 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dotActive {
+  width: 20px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+}
+
+.dot:hover {
+  transform: scale(1.2);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.backButton {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--text-secondary, #475569);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.24s ease, background 0.18s ease;
+}
+
+.backButton:hover {
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.backButton:active {
+  transform: scale(0.94);
+}
+
+.nextButton {
+  border: none;
+  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 26px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px -6px rgba(124, 58, 237, 0.55);
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.24s ease;
+  animation: nextPulse 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nextButton:hover {
+  transform: translateY(-1px) scale(1.03);
+  box-shadow: 0 12px 26px -6px rgba(124, 58, 237, 0.6);
+}
+
+.nextButton:active {
+  transform: scale(0.94);
+}
+
+@keyframes nextPulse {
+  from {
+    transform: scale(0.96);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .sheet,
+  .cardTrack,
+  .chip,
+  .speechBubble,
+  .avatarButton,
+  .nextButton {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .chip {
+    opacity: 1;
+    transform: none;
+  }
+}

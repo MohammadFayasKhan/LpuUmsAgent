@@ -21,12 +21,26 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { ChatMessage as ChatMessageType, AgentState, AttendanceSummary, ExaminationSummary } from '../shared/types';
+import { ChatMessage as ChatMessageType, AgentState, AttendanceSummary, ExaminationSummary, TimetableSummary } from '../shared/types';
 import { ChatMessage } from './ChatMessage';
+import { AvatarController } from './AvatarController';
 import { OneeCompanion } from './OneeCompanion';
 import { generateContextualSuggestions } from '../services/suggestionGenerator';
-import { useVoiceAgent } from '../voice';
+import { useVoiceAgent, audioController } from '../voice';
 import styles from './ChatView.module.css';
+
+/**
+ * Aesthetic pre-response reasoning phrases shown in the thinking bar while
+ * the pipeline resolves intent / runs the browser agent / composes the
+ * verified answer. Visual only — these states are never spoken and never
+ * contain internal diagnostics.
+ */
+const THINKING_PHRASES = [
+  'Understanding your question…',
+  'Reasoning through the details…',
+  'Gathering verified results…',
+  'Composing your response…'
+];
 
 interface ChatViewProps {
   messages: ChatMessageType[];
@@ -36,6 +50,7 @@ interface ChatViewProps {
   agentState?: AgentState;
   attendance?: AttendanceSummary | null;
   examination?: ExaminationSummary | null;
+  timetable?: TimetableSummary | null;
   scrollContainerRef?: React.RefObject<HTMLElement | null>;
 }
 
@@ -47,13 +62,30 @@ export const ChatView: React.FC<ChatViewProps> = ({
   agentState,
   attendance,
   examination,
+  timetable,
   scrollContainerRef
 }) => {
   const [inputText, setInputText] = useState<string>('');
   const [canScrollLeft, setCanScrollLeft] = useState<boolean>(false);
   const [canScrollRight, setCanScrollRight] = useState<boolean>(false);
+  const [thinkPhraseIdx, setThinkPhraseIdx] = useState<number>(0);
+
+  // Thinking bar is visible while ONEE is working on a reply that has not
+  // produced its first character yet.
+  const showThinkingBar =
+    isTyping && (messages.length === 0 || (messages[messages.length - 1]?.text || '') === '');
+
+  useEffect(() => {
+    if (!showThinkingBar) return;
+    setThinkPhraseIdx(0);
+    const timer = setInterval(() => {
+      setThinkPhraseIdx((i) => (i + 1) % THINKING_PHRASES.length);
+    }, 1700);
+    return () => clearInterval(timer);
+  }, [showThinkingBar]);
 
   const {
+    voiceState,
     interimTranscript,
     isListening,
     isSpeaking,
@@ -91,14 +123,33 @@ export const ChatView: React.FC<ChatViewProps> = ({
   }, [messages]);
 
   /*
+   * Find the last assistant response text so the suggestion generator can offer
+   * relevant next actions (e.g. after leave simulation or critical course alerts).
+   */
+  const lastAssistantResponse = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].sender === 'onee' && messages[i].text) {
+        return messages[i].text;
+      }
+    }
+    return null;
+  }, [messages]);
+
+  /*
    * Compute dynamic suggestions from verified attendance and examination dataset.
    */
   const activeSuggestions = useMemo(() => {
     if (suggestions && suggestions.length > 0) {
       return suggestions;
     }
-    return generateContextualSuggestions(attendance || null, lastUserQuery, examination || null);
-  }, [suggestions, attendance, lastUserQuery, examination]);
+    return generateContextualSuggestions(
+      attendance || null,
+      lastUserQuery,
+      examination || null,
+      timetable || null,
+      lastAssistantResponse
+    );
+  }, [suggestions, attendance, lastUserQuery, examination, timetable, lastAssistantResponse]);
 
 
   const getScrollContainer = useCallback(() => {
@@ -321,23 +372,33 @@ export const ChatView: React.FC<ChatViewProps> = ({
     if (!rail) return;
     isPointerDownRef.current = true;
     hasDraggedRef.current = false;
-    pointerStartXRef.current = e.clientX;
-    pointerStartScrollLeftRef.current = rail.scrollLeft;
-    try {
-      rail.setPointerCapture(e.pointerId);
-    } catch {}
+    const clientX = typeof e.clientX === 'number' ? e.clientX : (e as any).pageX || 0;
+    pointerStartXRef.current = clientX;
+    pointerStartScrollLeftRef.current = rail.scrollLeft || 0;
+    // NOTE: DO NOT call setPointerCapture here! Calling setPointerCapture on the container
+    // during pointerdown retargets subsequent pointerup/click events to the container,
+    // which completely breaks React onClick handlers on child suggestion chip buttons!
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!isPointerDownRef.current) return;
     const rail = suggestionRailRef.current;
     if (!rail) return;
-    const dx = e.clientX - pointerStartXRef.current;
-    if (Math.abs(dx) > 5) {
-      hasDraggedRef.current = true;
+    const clientX = typeof e.clientX === 'number' ? e.clientX : (e as any).pageX || 0;
+    const dx = clientX - pointerStartXRef.current;
+    // Require at least 8px intentional horizontal movement before treating as drag gesture
+    if (Math.abs(dx) > 8) {
+      if (!hasDraggedRef.current) {
+        hasDraggedRef.current = true;
+        try {
+          if (typeof rail.hasPointerCapture === 'function' && !rail.hasPointerCapture(e.pointerId)) {
+            rail.setPointerCapture(e.pointerId);
+          }
+        } catch {}
+      }
+      rail.scrollLeft = pointerStartScrollLeftRef.current - dx;
+      updateScrollIndicators();
     }
-    rail.scrollLeft = pointerStartScrollLeftRef.current - dx;
-    updateScrollIndicators();
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -346,8 +407,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
     const rail = suggestionRailRef.current;
     if (rail) {
       try {
-        rail.releasePointerCapture(e.pointerId);
+        if (typeof rail.hasPointerCapture === 'function' && rail.hasPointerCapture(e.pointerId)) {
+          rail.releasePointerCapture(e.pointerId);
+        }
       } catch {}
+    }
+    // If the user performed an intentional drag, keep hasDraggedRef true briefly to swallow the synthetic click
+    if (hasDraggedRef.current) {
+      setTimeout(() => {
+        hasDraggedRef.current = false;
+      }, 100);
     }
   };
 
@@ -356,9 +425,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
     const rail = suggestionRailRef.current;
     if (rail) {
       try {
-        rail.releasePointerCapture(e.pointerId);
+        if (typeof rail.hasPointerCapture === 'function' && rail.hasPointerCapture(e.pointerId)) {
+          rail.releasePointerCapture(e.pointerId);
+        }
       } catch {}
     }
+    hasDraggedRef.current = false;
   };
 
   /*
@@ -379,10 +451,90 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   /*
+   * Smooth horizontal scrolling for chevron arrow controls
+   */
+  const scrollRail = useCallback(
+    (direction: 'left' | 'right') => {
+      const rail = suggestionRailRef.current;
+      if (!rail) return;
+      const scrollAmount = Math.max(140, Math.floor(rail.clientWidth * 0.75));
+      rail.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+      setTimeout(updateScrollIndicators, 220);
+    },
+    [updateScrollIndicators]
+  );
+
+  /*
+   * Mic activation must NEVER yank the student's reading position.
+   *
+   * The old one-shot restore ran a single frame AFTER `await toggleListening()`
+   * and was skipped entirely when parked at the bottom — so any layout commit,
+   * focus scroll, or voice-bar insertion that landed after that frame yanked the
+   * panel to the top with nothing to correct it. The pin below:
+   *  - starts BEFORE the async activation begins,
+   *  - re-resolves the live container each tick (survives re-renders),
+   *  - keeps restoring for a short window that covers delayed layout commits,
+   *  - releases early the moment the student scrolls themselves.
+   */
+  const handleMicPress = useCallback(async () => {
+    const container = getScrollContainer();
+    const prevTop = container ? container.scrollTop : null;
+    const nearBottom = container
+      ? container.scrollHeight - container.scrollTop - container.clientHeight < 80
+      : true;
+
+    if (prevTop === null) {
+      await toggleListening();
+      return;
+    }
+
+    if (!nearBottom) {
+      isUserScrolledUpRef.current = true;
+    }
+
+    let pinned = true;
+    const releasePin = () => {
+      pinned = false;
+    };
+    const restore = () => {
+      if (!pinned) return;
+      const live = getScrollContainer();
+      if (live && Math.abs(live.scrollTop - prevTop) > 1) {
+        live.scrollTop = prevTop;
+      }
+    };
+
+    // The student always wins: any wheel/drag scroll releases the pin at once.
+    const liveForEvents = getScrollContainer();
+    liveForEvents?.addEventListener('wheel', releasePin, { passive: true });
+    liveForEvents?.addEventListener('touchmove', releasePin, { passive: true });
+
+    restore();
+    const restoreInterval = setInterval(restore, 120);
+    const restoreFrame = requestAnimationFrame(restore);
+
+    try {
+      await toggleListening();
+    } finally {
+      // Keep pinning briefly AFTER activation: voice-bar mount, focus changes,
+      // and interim-transcript growth all land in this window. Then stand down.
+      setTimeout(() => {
+        pinned = false;
+        clearInterval(restoreInterval);
+        cancelAnimationFrame(restoreFrame);
+        const live = getScrollContainer();
+        live?.removeEventListener('wheel', releasePin);
+        live?.removeEventListener('touchmove', releasePin);
+      }, 900);
+    }
+  }, [getScrollContainer, toggleListening]);
+
+  /*
    * Submitting a message from the composer.
    */
   const handleSend = () => {
     if (!inputText.trim() || isTyping) return;
+    audioController.unlockAudio().catch(() => {});
     isUserScrolledUpRef.current = false;
     onSendMessage(inputText.trim());
     setInputText('');
@@ -397,10 +549,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
    */
   const handleSuggestionClick = (chipText: string) => {
     if (hasDraggedRef.current) {
-      hasDraggedRef.current = false;
       return;
     }
     if (isTyping) return;
+    audioController.unlockAudio().catch(() => {});
     isUserScrolledUpRef.current = false;
     onSendMessage(chipText);
   };
@@ -429,15 +581,32 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <ChatMessage key={msg.id} message={msg} />
         ))}
 
-        {isTyping && messages[messages.length - 1]?.text === '' && (
-          <div className={styles.typingIndicator}>
-            <div className={styles.avatar}>
-              <span className={styles.avatarInner} />
+        {showThinkingBar && (
+          <div
+            className={styles.thinkingRow}
+            role="status"
+            aria-live="polite"
+            aria-label="ONEE is thinking"
+          >
+            {/* Cute little ONEE bot, alive while reasoning */}
+            <div className={styles.thinkingBot}>
+              <AvatarController size={26} animation="thinking" interactive={false} />
             </div>
-            <div className={styles.typingBubble}>
-              <span className={styles.typingDot} />
-              <span className={styles.typingDot} />
-              <span className={styles.typingDot} />
+
+            <div className={styles.thinkingPanel}>
+              <div className={styles.thinkingTextRow}>
+                <span key={thinkPhraseIdx} className={styles.thinkingPhrase}>
+                  {THINKING_PHRASES[thinkPhraseIdx]}
+                </span>
+                <span className={styles.thinkingDots} aria-hidden="true">
+                  <span className={styles.thinkingDot} />
+                  <span className={styles.thinkingDot} />
+                  <span className={styles.thinkingDot} />
+                </span>
+              </div>
+              <div className={styles.thinkingShimmerTrack} aria-hidden="true">
+                <div className={styles.thinkingShimmer} />
+              </div>
             </div>
           </div>
         )}
@@ -464,6 +633,42 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 aria-hidden="true"
               />
 
+              {canScrollLeft && (
+                <button
+                  type="button"
+                  className={styles.railScrollButtonLeft}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    scrollRail('left');
+                  }}
+                  aria-label="Scroll suggestions left"
+                  title="Scroll suggestions left"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="15 18 9 12 15 6" />
+                  </svg>
+                </button>
+              )}
+
+              {canScrollRight && (
+                <button
+                  type="button"
+                  className={styles.railScrollButtonRight}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    scrollRail('right');
+                  }}
+                  aria-label="Scroll suggestions right"
+                  title="Scroll suggestions right"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="9 18 15 12 9 6" />
+                  </svg>
+                </button>
+              )}
+
               <div
                 ref={suggestionRailRef}
                 className={styles.suggestionRail}
@@ -480,9 +685,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 {activeSuggestions.map((sug, idx) => (
                   <button
                     key={`${sug}-${idx}`}
+                    type="button"
                     className={styles.suggestionChip}
-                    onClick={() => handleSuggestionClick(sug)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSuggestionClick(sug);
+                    }}
                     disabled={isTyping}
+                    title={sug}
                   >
                     {sug}
                   </button>
@@ -498,6 +709,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
             agentState={agentState}
             attendance={attendance}
             isChatTyping={isTyping || Boolean(inputText.trim())}
+            size={activeSuggestions.length > 0 ? 44 : 56}
+            showCaption={activeSuggestions.length === 0}
             onTapInteract={() => textareaRef.current?.focus()}
           />
         </div>
@@ -505,24 +718,47 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
       {/* Composer */}
       <div className={styles.composerWrapper}>
-        {(isListening || isSpeaking || interimTranscript) && (
-          <div className={styles.voiceBar}>
-            <div className={styles.voiceWave}>
-              <span className={styles.voiceBarDot} />
-              <span className={styles.voiceBarDot} />
-              <span className={styles.voiceBarDot} />
-            </div>
-            <span className={styles.voiceStatusText}>
-              {interimTranscript ? interimTranscript : isSpeaking ? 'ONEE is speaking... (click mic to interrupt)' : 'Listening... speak naturally'}
-            </span>
+        {/*
+          The voice bar is ALWAYS mounted and floats as an overlay above the
+          composer. It used to mount/unmount above the composer, changing the
+          whole composer height on every mic press and yanking the scroll
+          position — the "flicker" seen on the second voice question. Overlay
+          + CSS transition = zero layout shift on press 1, 2, or N.
+        */}
+        <div
+          className={`${styles.voiceBar} ${
+            isListening || isSpeaking || interimTranscript || voiceState === 'TRANSCRIBING'
+              ? ''
+              : styles.voiceBarHidden
+          }`}
+        >
+          <div className={styles.voiceWave}>
+            <span className={styles.voiceBarDot} />
+            <span className={styles.voiceBarDot} />
+            <span className={styles.voiceBarDot} />
           </div>
-        )}
+          <span className={styles.voiceStatusText}>
+            {interimTranscript
+              ? interimTranscript
+              : isSpeaking
+              ? 'Speaking... (click mic to interrupt)'
+              : voiceState === 'TRANSCRIBING'
+              ? 'Processing your speech...'
+              : 'Listening... speak naturally'}
+          </span>
+        </div>
 
         <div className={styles.composer}>
           <textarea
             ref={textareaRef}
             className={styles.input}
-            placeholder={isListening ? 'Listening to your voice...' : 'Ask ONEE anything or speak...'}
+            placeholder={
+              voiceState === 'TRANSCRIBING'
+                ? 'Processing your speech...'
+                : isListening
+                ? 'Listening to your voice...'
+                : 'Ask ONEE anything or speak...'
+            }
             value={inputText}
             onChange={handleInput}
             onKeyDown={handleKeyDown}
@@ -534,7 +770,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           {/* Voice Input & Barge-in Control */}
           <button
             className={`${styles.micButton} ${isListening ? styles.micListening : isSpeaking ? styles.micSpeaking : ''}`}
-            onClick={toggleListening}
+            onClick={handleMicPress}
             title={isListening ? 'Stop listening' : isSpeaking ? 'Stop speaking (Barge-in)' : 'Speak with ONEE (Voice Agent)'}
             aria-label={isListening ? 'Stop listening' : 'Voice input'}
             type="button"

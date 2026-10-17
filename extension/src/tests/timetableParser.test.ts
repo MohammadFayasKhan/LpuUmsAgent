@@ -17,7 +17,11 @@ import {
   detectTimetablePage,
   findTimetableLinkElement,
   findAcademicsMenuElement,
-  findLmsMenuElement
+  findLmsMenuElement,
+  getClassesForDay,
+  isValidCourseCode,
+  isValidPeriodTimeString,
+  parseConcatenatedSsrsCourses
 } from '../content/timetable/timetableParser';
 
 describe('timetableParser', () => {
@@ -159,6 +163,16 @@ describe('timetableParser', () => {
               <td>Practical / G:0 C:INT373 / R: 37-904 / S:K3O2403</td>
               <td>Practical / G:0 C:INT373 / R: 37-909 / S:K3O2403</td>
               <td>Lecture / G:All C:INT373 / R: 37-902 / S:K3O2403</td>
+              <td>Project Work/ Other Weekly Activities. Check Schedule Below</td>
+              <td></td>
+            </tr>
+            <tr>
+              <td>01:40-02:30 PM</td>
+              <td>Practical / G:0 C:CSE330 / R: 37-911 / S:K3E0061</td>
+              <td>Lecture / G:All C:CSE408 / R: 34-808 / S:K3P24WM</td>
+              <td>Practical / G:0 C:CSE408 / R: 34-808 / S:K3P24WM</td>
+              <td></td>
+              <td></td>
               <td>Project Work/ Other Weekly Activities. Check Schedule Below</td>
               <td></td>
             </tr>
@@ -317,6 +331,30 @@ describe('timetableParser', () => {
       expect(peasSlot).toBeDefined();
       expect(peasSlot?.facultyName).toBe('Navneet Kumar Singh');
       expect(peasSlot?.facultyCabin).toBe('38-509-CH7');
+
+      // Regression Test for Screenshot Failure 1: Monday classes extraction
+      const mondayClasses = getClassesForDay(summary, 'Monday');
+      expect(mondayClasses.length).toBe(4);
+      expect(summary.byDay?.Monday.length).toBe(4);
+      expect(mondayClasses.map((s) => s.courseCode)).toEqual(['CSE472', 'CSE472', 'CSE329', 'CSE330']);
+      expect(mondayClasses[0].time).toBe('10:20-11:10 AM');
+      expect(mondayClasses[0].room).toBe('33-301');
+      expect(mondayClasses[1].time).toBe('11:10-12:00 AM');
+      expect(mondayClasses[1].room).toBe('33-301');
+      expect(mondayClasses[2].time).toBe('12:00-12:50 PM');
+      expect(mondayClasses[2].room).toBe('38-917');
+      expect(mondayClasses[3].time).toBe('01:40-02:30 PM');
+      expect(mondayClasses[3].room).toBe('37-911');
+
+      // Regression Test for Screenshot Failure 2: Tuesday classes extraction
+      const tuesdayClasses = getClassesForDay(summary, 'Tuesday');
+      expect(tuesdayClasses.length).toBe(5);
+      expect(summary.byDay?.Tuesday.length).toBe(5);
+      expect(tuesdayClasses.map((s) => s.courseCode)).toEqual(['CSE329', 'CSE329', 'CSE330', 'INT373', 'CSE408']);
+      expect(tuesdayClasses[0].time).toBe('09:30-10:20 AM');
+      expect(tuesdayClasses[0].room).toBe('38-917');
+      expect(tuesdayClasses[4].time).toBe('01:40-02:30 PM');
+      expect(tuesdayClasses[4].room).toBe('34-808');
     });
 
     it('parses cell with room number split across lines or spaces (e.g. 38- 917)', () => {
@@ -533,4 +571,278 @@ describe('timetableParser', () => {
       expect(lms?.textContent?.trim()).toBe('LMS');
     });
   });
+
+  describe('SSRS Corrupted Row & Pseudo-code Prevention', () => {
+    it('isValidCourseCode rejects pseudo-codes and non-course tokens', () => {
+      expect(isValidCourseCode('ON10')).toBe(false);
+      expect(isValidCourseCode('CH13')).toBe(false);
+      expect(isValidCourseCode('CH16')).toBe(false);
+      expect(isValidCourseCode('WOW1')).toBe(false);
+      expect(isValidCourseCode('C2')).toBe(false);
+      expect(isValidCourseCode('TIME')).toBe(false);
+      expect(isValidCourseCode('TABLE')).toBe(false);
+      expect(isValidCourseCode('LEGENDS')).toBe(false);
+      expect(isValidCourseCode('PRINTED')).toBe(false);
+
+      expect(isValidCourseCode('CSE329')).toBe(true);
+      expect(isValidCourseCode('CSE408')).toBe(true);
+      expect(isValidCourseCode('PEAS01')).toBe(true);
+      expect(isValidCourseCode('INT373')).toBe(true);
+      expect(isValidCourseCode('PROJECT')).toBe(true);
+    });
+
+    it('isValidPeriodTimeString rejects header banners, timestamps, and directory stamps', () => {
+      const headerStr =
+        'Mon Time Table for VID :12413692Home Section :K3P24WMLegends :C - Course Code, F - Faculty, G - Group, R - Room, S - SectionPage No1Printed On10/5/2026 1:33:19 PM';
+      expect(isValidPeriodTimeString(headerStr)).toBe(false);
+
+      const courseDump =
+        'Mon Course CodeTypeCourse TitleLecturesTutorialPracticalCreditsFacul ( Block - Room. No - Cabin No ) CSE329PWPRELUDE TO COMPETITIVE CODING2013Raj Karan Singh ( 26-207-WOW1 ) Last Updated :: Mar 9 2026 4:07PM';
+      expect(isValidPeriodTimeString(courseDump)).toBe(false);
+
+      expect(isValidPeriodTimeString('Printed On 10/5/2026 1:33:19 PM')).toBe(false);
+      expect(isValidPeriodTimeString('09:30-10:20 AM')).toBe(true);
+      expect(isValidPeriodTimeString('12:00-12:50 PM')).toBe(true);
+      expect(isValidPeriodTimeString('01:40-02:30 PM')).toBe(true);
+    });
+
+    it('parseConcatenatedSsrsCourses extracts all 9 courses with credits and cabins', () => {
+      const ssrsDump = `Course CodeTypeCourse TitleLecturesTutorialPracticalCreditsFacul ( Block - Room. No - Cabin No )
+CSE329PWPRELUDE TO COMPETITIVE CODING2013Raj Karan Singh ( 26-207-WOW1 ) Last Updated :: Mar 9 2026 4:07PM
+CSE330PWCOMPETITIVE CODING APPROACHES-TECHNIQUES2013Deepak Kumar ( 27-209-CH13 ) Last Updated :: Apr 26 2026 3:43PM
+CSE408CRDESIGN AND ANALYSIS OF ALGORITHMS3024Tejinder Thind ( 34-203-C2 ) Last Updated :: Dec 20 2025 4:24PM
+CSE443TESEMINAR ON SUMMER TRAINING0063 Last Updated :: NA
+CSE471EMDEEP LEARNING FOR COMPUTER VISION2023Abhishek Tiwari ( 33-205-CH16 ) Last Updated :: Jun 18 2026 4:36PM
+CSE472EMREINFORCEMENT LEARNING2023Abhishek Tiwari ( 33-205-CH16 ) Last Updated :: Jun 18 2026 4:37PM
+INT373CRPREPARATION FOR COMPETITIVE EXAMS2002Tarun Sharma ( 34-203-C2 ) Last Updated :: Dec 20 2025 4:48PM
+PEAS01CRSOFTSKILLS - I0021Aakash Kumar ( 33-204-CH8 ) Last Updated :: Dec 20 2025 5:35PM
+PEVS01CRVERBAL ABILITY0021Pankaj Saini ( 33-204-CH11 ) Last Updated :: Dec 20 2025 5:33PM`;
+
+      const courses = parseConcatenatedSsrsCourses(ssrsDump);
+      expect(courses.length).toBe(9);
+
+      const codes = courses.map((c) => c.courseCode);
+      expect(codes).toEqual([
+        'CSE329',
+        'CSE330',
+        'CSE408',
+        'CSE443',
+        'CSE471',
+        'CSE472',
+        'INT373',
+        'PEAS01',
+        'PEVS01'
+      ]);
+
+      expect(courses.find((c) => c.courseCode === 'CSE329')?.facultyCabin).toBe('26-207-WOW1');
+      expect(courses.find((c) => c.courseCode === 'CSE330')?.facultyCabin).toBe('27-209-CH13');
+      expect(courses.find((c) => c.courseCode === 'CSE471')?.facultyCabin).toBe('33-205-CH16');
+
+      const totalCreds = courses.reduce((acc, c) => acc + c.credits, 0);
+      expect(totalCreds).toBe(23);
+    });
+
+    it('does not parse SSRS header banner or course table rows as class slots in parseStudentTimeTable', () => {
+      const doc = document.implementation.createHTMLDocument('SSRS Report');
+      doc.body.innerHTML = `
+        <table id="ReportViewerControl_fixedTable">
+          <tr>
+            <td>
+              <table id="headerTable">
+                <tr>
+                  <td>Time Table for VID :12413692</td>
+                  <td>Home Section :K3P24WMLegends :C - Course Code, F - Faculty, G - Group, R - Room, S - SectionPage No1Printed On10/5/2026 1:33:19 PM</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <table id="gridMatrix">
+                <tr>
+                  <th>Timing</th>
+                  <th>Monday</th>
+                  <th>Tuesday</th>
+                </tr>
+                <tr>
+                  <td>09:30-10:20 AM</td>
+                  <td>-</td>
+                  <td>Lecture / G:All C:CSE329 / R: 38-917 / S:K4E0061</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <table id="courseDirectory">
+                <tr>
+                  <th>Course Code</th>
+                  <th>Type</th>
+                  <th>Course Title</th>
+                  <th>Lectures</th>
+                  <th>Tutorial</th>
+                  <th>Practical</th>
+                  <th>Credits</th>
+                  <th>Faculty ( Block - Room - Cabin No )</th>
+                </tr>
+                <tr>
+                  <td>CSE329</td>
+                  <td>PW</td>
+                  <td>PRELUDE TO COMPETITIVE CODING</td>
+                  <td>2</td>
+                  <td>0</td>
+                  <td>1</td>
+                  <td>3</td>
+                  <td>Raj Karan Singh ( 26-207-WOW1 ) Last Updated :: Mar 9 2026 4:07PM</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      `;
+
+      const summary = parseStudentTimeTable(doc);
+      expect(summary).not.toBeNull();
+      expect(summary?.vid).toBe('12413692');
+      expect(summary?.homeSection).toBe('K3P24WM');
+
+      // Slots should only contain the 1 real slot on Tuesday, NOT corrupt Monday slots
+      expect(summary?.slots.length).toBe(1);
+      expect(summary?.slots[0].courseCode).toBe('CSE329');
+      expect(summary?.slots[0].day).toBe('Tuesday');
+      expect(summary?.slots[0].time).toBe('09:30-10:20 AM');
+
+      // Ensure no slots have ON10 or CH13
+      const badCodes = summary?.slots.filter(
+        (s) => s.courseCode === 'ON10' || s.courseCode === 'CH13' || s.day === 'Monday'
+      );
+      expect(badCodes?.length).toBe(0);
+    });
+
+    it('extracts timetable from SSRS ReportViewer where matrix cells contain nested formatting tables', () => {
+      const doc = document.implementation.createHTMLDocument('Student Time Table');
+      doc.body.innerHTML = `
+        <span id="lblTitle">Student Time Table</span>
+        <div>Time Table for VID : 12413692 Home Section : K3P24WM</div>
+
+        <!-- Outer SSRS wrapper table -->
+        <table id="ReportViewerControl_fixedTable" border="0">
+          <tr>
+            <td>
+              <!-- Main weekly schedule grid table with nested formatting tables inside cells -->
+              <table id="weeklyScheduleGrid" border="1">
+                <tr>
+                  <th>Timing</th>
+                  <th>Monday</th>
+                  <th>Tuesday</th>
+                </tr>
+                <tr>
+                  <td>09:30-10:20 AM</td>
+                  <td>
+                    <!-- Nested table inside Monday cell -->
+                    <table class="ssrs-cell-table" border="0">
+                      <tr>
+                        <td>Lecture / G:All C:CSE329 / R: 38-917 / S:K4E0061</td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td>
+                    <!-- Nested table inside Tuesday cell -->
+                    <table class="ssrs-cell-table" border="0">
+                      <tr>
+                        <td>Lecture / G:All C:CSE408 / R: 37-711 / S:K3P24WM</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td>10:20-11:10 AM</td>
+                  <td></td>
+                  <td>
+                    <table class="ssrs-cell-table" border="0">
+                      <tr>
+                        <td>Practical / G:All C:INT306 / R: 34-602 / S:K3P24WM</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Course and faculty table -->
+              <table id="courseTable" border="1">
+                <tr>
+                  <th>Course Code</th>
+                  <th>Course Title</th>
+                  <th>Type</th>
+                  <th>Lectures</th>
+                  <th>Tutorial</th>
+                  <th>Practical</th>
+                  <th>Credits</th>
+                  <th>Faculty ( Block - Room - Cabin No )</th>
+                </tr>
+                <tr>
+                  <td>CSE329</td>
+                  <td>PRELUDE TO COMPETITIVE CODING</td>
+                  <td>Core</td>
+                  <td>2</td>
+                  <td>0</td>
+                  <td>1</td>
+                  <td>3</td>
+                  <td>Raj Karan Singh ( 26-207-WOW1 ) Last Updated :: Mar 9 2026 4:07PM</td>
+                </tr>
+                <tr>
+                  <td>CSE408</td>
+                  <td>ADVANCED DESIGN PATTERNS</td>
+                  <td>Core</td>
+                  <td>3</td>
+                  <td>0</td>
+                  <td>0</td>
+                  <td>3</td>
+                  <td>Abhishek Tiwari ( 33-205-CH16 ) Last Updated :: Jun 18 2026 4:36PM</td>
+                </tr>
+                <tr>
+                  <td>INT306</td>
+                  <td>DATABASE MANAGEMENT SYSTEMS</td>
+                  <td>Core</td>
+                  <td>3</td>
+                  <td>0</td>
+                  <td>2</td>
+                  <td>4</td>
+                  <td>Tejinder Thind ( 34-203-C2 ) Last Updated :: Dec 20 2025 10:14AM</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      `;
+
+      const summary = parseStudentTimeTable(doc);
+      expect(summary).not.toBeNull();
+      expect(summary?.vid).toBe('12413692');
+      expect(summary?.homeSection).toBe('K3P24WM');
+
+      // Verify that all 3 slots were successfully extracted despite nested tables in cells
+      expect(summary?.slots.length).toBe(3);
+      const mondaySlot = summary?.slots.find((s) => s.day === 'Monday');
+      expect(mondaySlot).toBeDefined();
+      expect(mondaySlot?.courseCode).toBe('CSE329');
+      expect(mondaySlot?.facultyName).toBe('Raj Karan Singh');
+      expect(mondaySlot?.facultyCabin).toBe('26-207-WOW1');
+
+      const tuesdaySlots = summary?.slots.filter((s) => s.day === 'Tuesday');
+      expect(tuesdaySlots?.length).toBe(2);
+      expect(tuesdaySlots?.[0].courseCode).toBe('CSE408');
+      expect(tuesdaySlots?.[0].facultyName).toBe('Abhishek Tiwari');
+      expect(tuesdaySlots?.[0].facultyCabin).toBe('33-205-CH16');
+
+      expect(tuesdaySlots?.[1].courseCode).toBe('INT306');
+      expect(tuesdaySlots?.[1].facultyName).toBe('Tejinder Thind');
+      expect(tuesdaySlots?.[1].facultyCabin).toBe('34-203-C2');
+
+      // Verify courses extracted
+      expect(summary?.courses.length).toBe(3);
+    });
+  });
 });
+
+

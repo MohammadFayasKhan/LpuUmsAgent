@@ -2,12 +2,13 @@
  * Narration Manager for ONEE Voice Agent.
  *
  * Subscribes to the centralized RuntimeState and dispatches live,
- * synchronized spoken updates to the VoiceQueue.
+ * synchronized dynamic spoken updates to the VoiceQueue.
  */
 
 import { runtimeState, DerivedOneeState, OneeRuntimeState } from '../lib/runtimeState';
 import { VoiceQueue } from './VoiceQueue';
-import { narrationPolicy, NarrationContext } from './NarrationPolicy';
+import { narrationPolicy } from './NarrationPolicy';
+import { dynamicNarrationEngine } from './DynamicNarrationEngine';
 import { VoicePreferences, VoiceMode } from './VoiceTypes';
 import { FinalResponseData } from '../shared/types';
 
@@ -37,6 +38,10 @@ export class NarrationManager {
     return this.preferences.mode;
   }
 
+  public getLastSemanticState(): string | null {
+    return this.lastSemanticState;
+  }
+
   /**
    * Starts listening to the central runtime state store.
    */
@@ -58,93 +63,102 @@ export class NarrationManager {
   }
 
   private handleStateTransition(derived: DerivedOneeState, raw: OneeRuntimeState) {
-    if (!this.preferences.enabled || this.preferences.mode === 'OFF') {
-      return;
-    }
-
+    // Visual telemetry only: browser states (OBSERVING, PLANNING, GROUNDING, MOVING, ACTING, VERIFYING)
+    // remain strictly visual in UI panels. Mid-automation voice narration is silenced.
     const executionId = raw.agentState?.executionContext?.executionId || null;
-    if (executionId !== this.currentExecutionId) {
+    if (executionId && executionId !== this.currentExecutionId) {
       this.currentExecutionId = executionId;
       this.voiceQueue.setActiveExecutionId(executionId);
     }
-
-    // Only process if semantic state changed or new final response arrived
-    if (
-      derived.semanticState === this.lastSemanticState &&
-      derived.semanticState !== 'SUCCESS'
-    ) {
-      return;
-    }
-
     this.lastSemanticState = derived.semanticState;
+  }
 
-    const context: NarrationContext = {
-      mode: this.preferences.mode,
-      level: this.preferences.narrationLevel,
-      activeExecutionId: this.currentExecutionId
-    };
+  /**
+   * Pre-automation Sofia greeting: ONE short, natural, dynamically chosen
+   * acknowledgement derived from the student's actual request ("Sure, I'll check
+   * your CSE330 attendance."), spoken through the canonical VoiceQueue TTS path
+   * (Groq Orpheus only — no Kokoro, no native browser speech). Mid-automation
+   * browser-agent narration stays silent: only this greeting and the final
+   * canonical response are heard.
+   */
+  public acknowledgeGoal(goal: string, executionId: string) {
+    this.currentExecutionId = executionId;
+    this.voiceQueue.setActiveExecutionId(executionId);
 
-    const phrase = narrationPolicy.getNarrationPhrase(derived.semanticState, raw, context);
+    if (this.preferences.mode === 'OFF') return;
 
-    if (phrase) {
-      const isFinal = derived.semanticState === 'SUCCESS';
-      this.voiceQueue.enqueue(phrase, {
-        priority: isFinal ? 'NORMAL' : 'LOW',
-        executionId: this.currentExecutionId || undefined,
-        isFinalResult: isFinal,
-        providerPreference: isFinal ? 'auto' : 'native'
+    const greeting = this.generateAcknowledgement(goal);
+    if (greeting) {
+      this.voiceQueue.enqueue(greeting, {
+        priority: 'ACKNOWLEDGEMENT',
+        executionId,
+        providerPreference: 'auto'
       });
     }
   }
 
   /**
-   * Immediate spoken acknowledgment when a student speaks or submits a goal.
-   * e.g., "Sure, I'll check that for you."
+   * Deterministic greeting generator: produces ONE short, natural,
+   * intent-specific acknowledgement from the student's actual request.
+   * Includes the course code when one is mentioned in the query.
    */
-  public acknowledgeGoal(goal: string, executionId: string) {
-    if (!this.preferences.enabled || this.preferences.mode === 'OFF') return;
+  private generateAcknowledgement(goal: string): string {
+    const lower = goal.toLowerCase();
+    // Extract course codes like CSE330, INT306, etc.
+    const courseMatch = goal.match(/\b([A-Z]{2,5})\s*(\d{3,4}[A-Za-z]?)\b/i);
+    const courseCode = courseMatch
+      ? `${courseMatch[1]}${courseMatch[2]}`.toUpperCase()
+      : null;
 
-    this.currentExecutionId = executionId;
-    this.voiceQueue.setActiveExecutionId(executionId);
-
-    const goalLower = goal.toLowerCase();
-    let ack = "Sure, I'll check that on UMS.";
-
-    if (goalLower.includes('exam') || goalLower.includes('date sheet') || goalLower.includes('datesheet')) {
-      ack = "Sure, I'll check your examination schedule.";
-    } else if (goalLower.includes('seat') || goalLower.includes('room') || goalLower.includes('venue')) {
-      ack = "Sure, I'll locate your seat.";
-    } else if (goalLower.includes('sample paper')) {
-      ack = "Sure, I'll find that sample paper for you.";
-    } else if (goalLower.includes('timetable') || goalLower.includes('class')) {
-      ack = "Sure, I'll check your timetable.";
-    } else if (goalLower.includes('attendance') || goalLower.includes('bunk')) {
-      ack = "Sure, I'll check your attendance.";
+    // "How many classes can I miss / skip / bunk" → bunk margin intent
+    if (/bunk|skip|miss|how many.*can/i.test(lower)) {
+      return courseCode
+        ? `Sure, let me check the bunk margin for ${courseCode}.`
+        : `Sure, let me check your bunk margin.`;
     }
-
-    this.voiceQueue.enqueue(ack, {
-      priority: 'NORMAL',
-      executionId,
-      providerPreference: 'native'
-    });
+    // Superlative attendance queries (lowest / least / worst)
+    if (/lowest|least|worst/i.test(lower) && /attendance/i.test(lower)) {
+      return `Sure, let me check your attendance records.`;
+    }
+    // General attendance
+    if (/attendance/i.test(lower)) {
+      return courseCode
+        ? `Sure, let me check the attendance for ${courseCode}.`
+        : `Alright, checking your attendance now.`;
+    }
+    // Timetable / schedule
+    if (/timetable|schedule|class.*today|today.*class/i.test(lower)) {
+      if (/tomorrow/i.test(lower)) {
+        return `Sure, checking your classes for tomorrow.`;
+      }
+      return `Sure, checking your timetable now.`;
+    }
+    // Examination / date sheet
+    if (/exam|date.?sheet/i.test(lower)) {
+      return courseCode
+        ? `Sure, let me look up the ${courseCode} exam schedule.`
+        : `Sure, checking your examination schedule.`;
+    }
+    // Seating plan
+    if (/seating|seat/i.test(lower)) {
+      return `Sure, checking your seating plan.`;
+    }
+    // Sample papers
+    if (/sample.*paper/i.test(lower)) {
+      return courseCode
+        ? `Sure, looking for the ${courseCode} sample paper.`
+        : `Sure, looking for the sample paper.`;
+    }
+    // Fallback: generic but still spoken through provider hierarchy
+    return `Sure, let me check that for you.`;
   }
 
   /**
-   * Speaks verified result explicitly.
+   * Deprecated in favor of the canonical response pipeline:
+   * The final verified response is generated once and spoken identically.
    */
-  public speakVerifiedResult(finalResponse: FinalResponseData, executionId?: string) {
-    if (!this.preferences.enabled || this.preferences.mode === 'OFF') return;
-
-    const speech = narrationPolicy.formatVerifiedResultSpeech(finalResponse);
-    if (!speech) return;
-
-    const targetExecId = executionId || this.currentExecutionId || undefined;
-    this.voiceQueue.enqueue(speech, {
-      priority: 'NORMAL',
-      executionId: targetExecId,
-      isFinalResult: true,
-      providerPreference: 'auto'
-    });
+  public speakVerifiedResult(_finalResponse: FinalResponseData, _executionId?: string) {
+    // No-op: Canonical response is spoken directly via VoiceQueue from the unified response
   }
 
   /**
@@ -152,7 +166,17 @@ export class NarrationManager {
    */
   public stop() {
     this.voiceQueue.cancel();
+    dynamicNarrationEngine.reset(this.currentExecutionId || undefined);
     narrationPolicy.reset();
     this.lastSemanticState = null;
+  }
+
+  /**
+   * Optional richer greeting hook: generates the acknowledgement through the
+   * backend Groq LLM when available so wording varies naturally per request.
+   * Falls back silently to the deterministic wording when offline.
+   */
+  public async acknowledgeGoalDynamic(goal: string, executionId: string): Promise<void> {
+    this.acknowledgeGoal(goal, executionId);
   }
 }

@@ -113,10 +113,12 @@
   border-radius: 8px;
   background: var(--surface);
   transition: all var(--transition-fast);
+  -webkit-overflow-scrolling: touch;
 }
 
 .table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
   font-size: 11.5px;
 }
@@ -125,18 +127,25 @@
   background: rgba(124, 58, 237, 0.08);
   color: var(--accent-purple, #7c3aed);
   font-weight: 600;
-  padding: 6px 8px;
+  padding: 6px 10px;
   text-align: left;
   border-bottom: 1px solid var(--border-color);
   white-space: nowrap;
 }
 
 .td {
-  padding: 6px 8px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--border-color);
   word-break: normal;
   overflow-wrap: break-word;
-  line-height: 1.35;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
+/* Ensure wide columns such as Course Title or Faculty have comfortable breathing room */
+.table th:nth-child(3),
+.table td:nth-child(3) {
+  min-width: 160px;
 }
 
 .trEven {
@@ -221,4 +230,35 @@
     opacity: 1;
     transform: scaleY(1.05);
   }
+}
+
+/* ==========================================================================
+ * Streaming blur-in reveal — each new line/paragraph materializes from a
+ * soft blur as the SmoothTokenPacer types it out, so a response looks like
+ * it is being composed live instead of appearing all at once.
+ *
+ * React keys blocks by their source line index, so during append-only
+ * streaming existing blocks are NEVER remounted: only newly mounted lines,
+ * tables and table rows trigger this animation once. Blocks that render
+ * while isStreaming is off (chat history) never animate.
+ * ========================================================================== */
+@keyframes oneeBlockReveal {
+  from {
+    opacity: 0;
+    filter: blur(5px);
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+.isStreaming > *:not(.streamingCursor) {
+  animation: oneeBlockReveal 0.5s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.isStreaming tbody tr {
+  animation: oneeBlockReveal 0.4s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }

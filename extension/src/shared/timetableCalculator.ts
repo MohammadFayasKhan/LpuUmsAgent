@@ -87,6 +87,18 @@ export function getTodayClasses(
 }
 
 /**
+ * Returns tomorrow's scheduled classes.
+ */
+export function getTomorrowClasses(
+  timetable: TimetableSummary,
+  targetDate: Date = new Date()
+): TimetableSlot[] {
+  const tomorrowDate = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000);
+  const tomorrowDay = getDayOfWeekName(tomorrowDate);
+  return getClassesForDay(timetable, tomorrowDay);
+}
+
+/**
  * Identifies the currently running class or the next upcoming class today.
  */
 export function getCurrentOrNextClass(
@@ -189,6 +201,62 @@ export function validateTimetableSummary(
 }
 
 /**
+ * Intelligently locates the very next upcoming class across the week.
+ * If all classes today are over, scans tomorrow and subsequent weekdays.
+ */
+export function getNextUpcomingClass(
+  timetable: TimetableSummary,
+  now: Date = new Date()
+): {
+  slot?: TimetableSlot;
+  isRunningNow?: boolean;
+  isToday?: boolean;
+  dayName: TimetableDay;
+  relativeDay: 'today' | 'tomorrow' | 'upcoming';
+} {
+  const todayName = getDayOfWeekName(now);
+  const currentStatus = getCurrentOrNextClass(timetable, now);
+
+  if (currentStatus.currentClass) {
+    return {
+      slot: currentStatus.currentClass,
+      isRunningNow: true,
+      isToday: true,
+      dayName: todayName,
+      relativeDay: 'today'
+    };
+  }
+
+  if (currentStatus.nextClass) {
+    return {
+      slot: currentStatus.nextClass,
+      isRunningNow: false,
+      isToday: true,
+      dayName: todayName,
+      relativeDay: 'today'
+    };
+  }
+
+  // If no upcoming classes today, scan future days (1 to 6 days ahead)
+  for (let offset = 1; offset <= 6; offset++) {
+    const futureDate = new Date(now.getTime() + offset * 24 * 60 * 60 * 1000);
+    const futureDay = getDayOfWeekName(futureDate);
+    const classes = getClassesForDay(timetable, futureDay);
+    if (classes.length > 0) {
+      return {
+        slot: classes[0],
+        isRunningNow: false,
+        isToday: false,
+        dayName: futureDay,
+        relativeDay: offset === 1 ? 'tomorrow' : 'upcoming'
+      };
+    }
+  }
+
+  return { dayName: todayName, relativeDay: 'today' };
+}
+
+/**
  * Builds standard Computer Use FinalResponseData for timetable queries.
  */
 export function buildTimetableFinalResponse(
@@ -197,15 +265,32 @@ export function buildTimetableFinalResponse(
   targetDate: Date = new Date()
 ): FinalResponseData {
   const todayName = getDayOfWeekName(targetDate);
-  const todayClasses = getTodayClasses(timetable, targetDate);
-  const currentStatus = getCurrentOrNextClass(timetable, targetDate);
   const goalLower = goal.toLowerCase();
 
+  const weekdays: TimetableDay[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const explicitDay = weekdays.find((d) => goalLower.includes(d.toLowerCase()));
+  const isTomorrowQuery = goalLower.includes('tomorrow');
+
+  let targetDay: TimetableDay = todayName;
+  let targetDayLabel = `Today (${todayName})`;
+  if (isTomorrowQuery) {
+    const tomorrowDate = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000);
+    targetDay = getDayOfWeekName(tomorrowDate);
+    targetDayLabel = `Tomorrow (${targetDay})`;
+  } else if (explicitDay) {
+    targetDay = explicitDay;
+    targetDayLabel = `${explicitDay}`;
+  }
+
+  const dayClasses = getClassesForDay(timetable, targetDay);
+  const currentStatus = getCurrentOrNextClass(timetable, targetDate);
+  const nextUpcoming = getNextUpcomingClass(timetable, targetDate);
+
   // If student specifically asked for a specific course's faculty or cabin:
-  const codeMatch = goal.match(/\b([A-Z]{2,5}\s*\d{3,4}[A-Z]?)\b/i);
+  const codeMatch = goal.match(/\b([A-Z]{2,5})\s*(\d{3,4}[A-Z]?)\b/i);
   let spotlightCourse: CourseFacultyRecord | undefined;
   if (codeMatch) {
-    spotlightCourse = findFacultyByCourse(timetable, codeMatch[1]);
+    spotlightCourse = findFacultyByCourse(timetable, `${codeMatch[1]}${codeMatch[2]}`);
   }
 
   let title = `Student Time Table (${timetable.homeSection || 'Verified'})`;
@@ -214,17 +299,27 @@ export function buildTimetableFinalResponse(
   if (spotlightCourse && (goalLower.includes('faculty') || goalLower.includes('cabin') || goalLower.includes('teacher') || goalLower.includes('who teaches'))) {
     title = `${spotlightCourse.courseCode} Faculty: ${spotlightCourse.facultyName || 'Faculty'}`;
     explanation = `${spotlightCourse.courseTitle} is taught by ${spotlightCourse.facultyName || 'Faculty'} (Cabin: ${spotlightCourse.facultyCabin || 'N/A'}).`;
-  } else if (goalLower.includes('today') || goalLower.includes('now') || goalLower.includes('next class')) {
-    title = `Today's Classes (${todayName})`;
-    if (todayClasses.length > 0) {
-      explanation = `You have ${todayClasses.length} classes scheduled for today (${todayName}).`;
-      if (currentStatus.currentClass) {
-        explanation += ` Currently in ${currentStatus.currentClass.courseCode} (${currentStatus.currentClass.room || 'Room TBD'}).`;
-      } else if (currentStatus.nextClass) {
-        explanation += ` Next up: ${currentStatus.nextClass.courseCode} at ${currentStatus.nextClass.time}.`;
-      }
+  } else if (goalLower.includes('next class') || goalLower.includes('where is my next') || goalLower.includes('current class')) {
+    if (nextUpcoming.isRunningNow && nextUpcoming.slot) {
+      title = `Current Class: ${nextUpcoming.slot.courseCode}`;
+      explanation = `Currently in ${nextUpcoming.slot.courseCode} (${nextUpcoming.slot.type || 'Lecture'}) in Room ${nextUpcoming.slot.room || 'TBD'} until ${nextUpcoming.slot.time.split('-')[1] || 'end of slot'}.`;
+    } else if (nextUpcoming.isToday && nextUpcoming.slot) {
+      title = `Next Class Today: ${nextUpcoming.slot.courseCode}`;
+      explanation = `Your next class today (${todayName}) is ${nextUpcoming.slot.courseCode} at ${nextUpcoming.slot.time} in Room ${nextUpcoming.slot.room || 'TBD'}.`;
+    } else if (nextUpcoming.slot) {
+      const dayPhrase = nextUpcoming.relativeDay === 'tomorrow' ? `tomorrow (${nextUpcoming.dayName})` : `on ${nextUpcoming.dayName}`;
+      title = `Next Class: ${nextUpcoming.slot.courseCode}`;
+      explanation = `All classes for today (${todayName}) are over. Your next scheduled class is ${nextUpcoming.slot.courseCode} ${dayPhrase} at ${nextUpcoming.slot.time} in Room ${nextUpcoming.slot.room || 'TBD'}.`;
     } else {
-      explanation = `No scheduled lectures or practicals for today (${todayName}). Enjoy your free day!`;
+      title = 'No Upcoming Classes';
+      explanation = 'No scheduled classes found in your weekly timetable.';
+    }
+  } else if (isTomorrowQuery || explicitDay || goalLower.includes('today') || goalLower.includes('now')) {
+    title = `${targetDayLabel} Classes`;
+    if (dayClasses.length > 0) {
+      explanation = `You have ${dayClasses.length} classes scheduled for ${targetDayLabel}. First class starts at ${dayClasses[0].time} (${dayClasses[0].courseCode} in Room ${dayClasses[0].room || 'TBD'}).`;
+    } else {
+      explanation = `No scheduled lectures or practicals for ${targetDayLabel}. Enjoy your free day!`;
     }
   }
 
@@ -236,13 +331,13 @@ export function buildTimetableFinalResponse(
     explanation,
     details: {
       timetable,
-      todayClasses,
-      currentOrNextClass: currentStatus.currentClass || currentStatus.nextClass,
+      todayClasses: dayClasses,
+      currentOrNextClass: currentStatus.currentClass || currentStatus.nextClass || nextUpcoming.slot,
       homeSection: timetable.homeSection,
       vid: timetable.vid,
       courses: timetable.courses,
       totalCourses: timetable.totalCourses,
-      selectedDay: 'Today' as any
+      selectedDay: targetDay as any
     },
     verification: {
       verified: true,
@@ -269,4 +364,40 @@ export function formatVerificationSource(source?: string): string {
   }
   return formatted;
 }
+
+/**
+ * Formats room code into human-friendly block and floor description (e.g. "33-502" -> "Room 33-502 (Block 33, 5th Floor)").
+ */
+export function formatRoomLocation(room?: string): string {
+  if (!room || room === 'N/A' || room === 'TBD') return room || 'N/A';
+  const trimmed = room.trim();
+  const match = trimmed.match(/^(\d{1,2})-(\d)(\d{2})$/);
+  if (match) {
+    const block = match[1];
+    const floorNum = parseInt(match[2], 10);
+    const floorSuffix = floorNum === 1 ? '1st' : floorNum === 2 ? '2nd' : floorNum === 3 ? '3rd' : `${floorNum}th`;
+    return `**${trimmed}** (Block ${block}, ${floorSuffix} Floor)`;
+  }
+  const simpleMatch = trimmed.match(/^(\d{1,2})-(.*)$/);
+  if (simpleMatch) {
+    return `**${trimmed}** (Block ${simpleMatch[1]})`;
+  }
+  return `**${trimmed}**`;
+}
+
+/**
+ * Formats faculty cabin into human-friendly block and cabin description.
+ */
+export function formatCabinLocation(cabin?: string): string {
+  if (!cabin || cabin === 'N/A' || cabin === 'TBD' || cabin.toLowerCase().includes('verified')) {
+    return cabin || 'Verified in UMS report';
+  }
+  const trimmed = cabin.trim();
+  const match = trimmed.match(/^(\d{1,2})-(\d+)/);
+  if (match) {
+    return `**${trimmed}** (Block ${match[1]}, Cabin ${match[2]})`;
+  }
+  return `**${trimmed}**`;
+}
+
 

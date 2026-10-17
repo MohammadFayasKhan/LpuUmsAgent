@@ -42,7 +42,7 @@
   -webkit-backdrop-filter: var(--glass-blur);
   border: var(--glass-border);
   padding: 8px 14px;
-  border-radius: 18px 18px 18px 4px;
+  border-radius: 18px;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -143,9 +143,9 @@
   left: 0;
   top: 0;
   bottom: 0;
-  width: 20px;
+  width: 24px;
   pointer-events: none;
-  background: linear-gradient(to right, var(--bg-primary, #0f172a), transparent);
+  background: linear-gradient(to right, var(--bg-primary, #F5F5F7), transparent);
   z-index: 2;
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -156,9 +156,9 @@
   right: 0;
   top: 0;
   bottom: 0;
-  width: 24px;
+  width: 28px;
   pointer-events: none;
-  background: linear-gradient(to left, var(--bg-primary, #0f172a), transparent);
+  background: linear-gradient(to left, var(--bg-primary, #F5F5F7), transparent);
   z-index: 2;
   opacity: 0;
   transition: opacity 0.2s ease;
@@ -166,6 +166,51 @@
 
 .showFade {
   opacity: 1;
+}
+
+.railScrollButtonLeft,
+.railScrollButtonRight {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: var(--text-secondary, #475569);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  z-index: 4;
+  transition: all var(--transition-fast, 0.15s ease);
+  padding: 0;
+}
+
+.railScrollButtonLeft {
+  left: 2px;
+}
+
+.railScrollButtonRight {
+  right: 2px;
+}
+
+.railScrollButtonLeft:hover,
+.railScrollButtonRight:hover {
+  background: #ffffff;
+  color: var(--accent, #7c3aed);
+  border-color: rgba(124, 58, 237, 0.4);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.25);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.railScrollButtonLeft:active,
+.railScrollButtonRight:active {
+  transform: translateY(-50%) scale(0.92);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -181,8 +226,6 @@
   justify-content: center;
   margin-bottom: 2px;
   z-index: 2;
-  width: clamp(64px, 18vw, 92px);
-  height: clamp(64px, 18vw, 92px);
 }
 
 .suggestionChip {
@@ -218,6 +261,10 @@
 
 .composerWrapper {
   margin-top: 4px;
+  /* Anchor for the floating voice bar overlay: it must never affect the
+     composer's own layout height, or every mic press shifts the messages
+     container and yanks scrollTop (the old second-press flicker). */
+  position: relative;
 }
 
 .composer {
@@ -297,15 +344,49 @@
 
 /* Voice Agent Controls & Animations */
 .voiceBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 5;
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  margin-bottom: 6px;
   background: rgba(124, 58, 237, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(124, 58, 237, 0.2);
   border-radius: 14px;
-  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 6px 24px -8px rgba(124, 58, 237, 0.35);
+  /* Always mounted: enter/exit are pure opacity+transform transitions so the
+     bar never changes document flow. */
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s linear 0s;
+  will-change: transform, opacity;
+}
+
+.voiceBarHidden {
+  opacity: 0;
+  transform: translateY(8px) scale(0.97);
+  pointer-events: none;
+  visibility: hidden;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0s linear 0.2s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voiceBar,
+  .voiceBarHidden {
+    transition-duration: 0.01ms !important;
+    transform: none;
+  }
 }
 
 .voiceWave {
@@ -411,4 +492,112 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ==========================================================================
+ * Thinking / reasoning bar — minimal aesthetic pre-response loading state:
+ * floating ONEE bot + rotating reasoning phrase + pulse dots + shimmer sweep.
+ * ========================================================================== */
+.thinkingRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.thinkingBot {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #1d1d1f 0%, #2d2d30 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(124, 58, 237, 0.22);
+  animation: botFloat 2.4s ease-in-out infinite;
+}
+
+@keyframes botFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.thinkingPanel {
+  flex: 1;
+  min-width: 0;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: var(--glass-border);
+  border-radius: 16px;
+  padding: 8px 12px 9px;
+  box-shadow: var(--glass-shadow);
+  overflow: hidden;
+}
+
+.thinkingTextRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.thinkingPhrase {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--accent, #7c3aed);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Re-keyed on every phrase swap: soft blur-fade materialization */
+  animation: phraseFade 0.45s ease-out both;
+}
+
+@keyframes phraseFade {
+  from { opacity: 0; filter: blur(4px); transform: translateX(-4px); }
+  to { opacity: 1; filter: blur(0); transform: translateX(0); }
+}
+
+.thinkingDots {
+  display: inline-flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.thinkingDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%);
+  animation: bounce 1.2s infinite ease-in-out;
+}
+
+.thinkingDot:nth-child(2) { animation-delay: 0.2s; }
+.thinkingDot:nth-child(3) { animation-delay: 0.4s; }
+
+.thinkingShimmerTrack {
+  position: relative;
+  margin-top: 6px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.12);
+  overflow: hidden;
+}
+
+.thinkingShimmer {
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent 0%, #7c3aed 45%, #a78bfa 55%, transparent 100%);
+  animation: shimmerSlide 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmerSlide {
+  0% { left: -40%; }
+  100% { left: 100%; }
 }

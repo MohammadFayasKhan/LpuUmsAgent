@@ -8,11 +8,35 @@
     "sidePanel",
     "storage",
     "tabs",
-    "scripting"
+    "scripting",
+    "offscreen",
+    "microphone",
+    "downloads"
   ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://huggingface.co https://*.huggingface.co https://cdn.jsdelivr.net http://localhost:8000 data: blob:;"
+  },
   "host_permissions": [
     "*://ums.lpu.in/*",
-    "*://*.lpu.in/*"
+    "*://*.lpu.in/*",
+    "https://huggingface.co/*",
+    "https://*.huggingface.co/*",
+    "https://cdn.jsdelivr.net/*",
+    "http://localhost:8000/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "wasm/*",
+        "voices/*",
+        "assets/*",
+        "icons/*"
+      ],
+      "matches": [
+        "*://ums.lpu.in/*",
+        "*://*.lpu.in/*"
+      ]
+    }
   ],
   "action": {
     "default_title": "Open ONEE - LPU Agent"

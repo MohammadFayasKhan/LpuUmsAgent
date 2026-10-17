@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+*node_modules*
 .venv/
 venv/
 env/
@@ -12,6 +13,7 @@ __pycache__/
 
 # Environment variables & secrets
 .env
+.env.*
 .env.local
 *.env
 !backend/.env.example
@@ -28,4 +30,7 @@ yarn-error.log*
 
 # Build artifacts & test outputs
 test-results/
+extension/dist/voices/
+extension/dist/wasm/
+extension/dist/pic/
 # dist/ is built via npm run build

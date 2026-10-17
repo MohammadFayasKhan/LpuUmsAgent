@@ -12,7 +12,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
 [![IndexedDB](https://img.shields.io/badge/Storage-IndexedDB_Local--First-7C3AED?style=flat-square)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
-[![Vitest](https://img.shields.io/badge/Vitest-239_Passing-22c55e?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev/)
+[![Vitest](https://img.shields.io/badge/Vitest-422_Passing-22c55e?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev/)
 [![Pytest](https://img.shields.io/badge/Pytest-22_Passing-22c55e?style=flat-square&logo=pytest&logoColor=white)](https://pytest.org/)
 [![Voice Agent](https://img.shields.io/badge/Voice_Agent-Multimodal_Computer_Use-7c3aed?style=flat-square)](https://groq.com/)
 [![Playwright](https://img.shields.io/badge/E2E-Playwright_Verified-2EAD33?style=flat-square&logo=playwright&logoColor=white)](https://playwright.dev/)
@@ -30,6 +30,128 @@
 
 ---
 
+## 🏛️ Platform Specifications & Architecture Matrix
+
+| Specification Parameter | Platform Standard |
+| :--- | :--- |
+| **Project Title** | **ONEE - Autonomous Browser Agent & Academic Copilot** |
+| **Target Portals** | **`ums.lpu.in` (Legacy ASP.NET/SSRS) & `studentums.lpu.in` (Angular SPA)** |
+| **Runtime Environment** | **Google Chrome Side Panel (Manifest V3 Extension)** |
+| **Execution Paradigm** | **Autonomous In-Session Computer Use (Perception-Action Loop)** |
+| **Credential Security** | **Zero Password Storage & Zero Cookie Interception (Uses live authenticated session)** |
+| **Perception & Grounding** | **Hybrid 2D IoU Spatial Matching + Semantic Text Grounding + MutationObserver SPA Watchers** |
+| **Cursor Physics** | **Smooth Cubic-Bézier Natural Trajectories with Cosine Smoothstep Easing (60 FPS)** |
+| **Voice & Speech Engine** | **Dual-Tier Groq Pipeline: Whisper Large-v3 STT + Orpheus Expressive Audio TTS** |
+| **Voice Interactivity** | **Full Speech Interruption / Barge-in Detection & Dynamic Milestone Narration** |
+| **Attendance Computation** | **100% Deterministic Algebra (Zero LLM math hallucinations for safe bunks/recovery)** |
+| **Storage Architecture** | **Local-First IndexedDB v3 (Persistent on-device memory with privacy controls)** |
+| **UI Design System** | **Apple iOS Human Interface Guidelines (Frosted Acrylic, Specular Rims, Spring Motion)** |
+| **Automated Tests** | **422 Extension Tests (Vitest) + 22 Backend Tests (Pytest) + Playwright E2E** |
+
+---
+
+## 🔬 In-Field Diagnostics & Results Demonstration
+
+<div align="center">
+  <h3>Portal Mounting & Multimodal Live Voice Subsystem</h3>
+  <table border="0" width="100%" cellspacing="12" cellpadding="0">
+    <tr>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic1.png" alt="Autonomous Chrome Side Panel Mounting & Portal Awareness" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 1: Native Side Panel Mounting & Portal Awareness</b><br/>ONEE operates seamlessly inside the student's live authenticated session on <code>ums.lpu.in</code>, mounting alongside the portal with zero password prompts or headless browser risks.</em>
+      </td>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic2.png" alt="ONEE ULTIMATE Live Voice Subsystem" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 2: ONEE ULTIMATE Live Voice Subsystem</b><br/>Full-duplex voice execution pipeline powered by Groq Whisper STT and Groq Orpheus TTS, with hardware audio prewarming, speech barge-in, and semantic progress narration.</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<br/>
+
+<div align="center">
+  <h3>Deterministic Attendance Algebra & Interactive Bunk Calculator</h3>
+  <table border="0" width="100%" cellspacing="12" cellpadding="0">
+    <tr>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic3.png" alt="Deterministic Attendance Algebra & Overall Summary" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 3: Deterministic Attendance Extraction & Grounding</b><br/>Live extraction of enrolled courses, attended/delivered lectures, duty leave reconciliation, and verified overall percentage with zero LLM math errors.</em>
+      </td>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic4.png" alt="Interactive Safe-Bunk Calculator & Target Margins" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 4: Interactive Safe-Bunk Calculator & Margin Analysis</b><br/>Exact algebraic bounds calculating allowable bunks and required recovery classes across 75%, 80%, and 85% thresholds with discrepancy detection.</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<br/>
+
+<div align="center">
+  <h3>Timetable Traversal & Context-Aware Procedural Mascot</h3>
+  <table border="0" width="100%" cellspacing="12" cellpadding="0">
+    <tr>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic5.png" alt="SSRS ReportViewer Timetable Container Navigation" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 5: SSRS ReportViewer Timetable Container Navigation</b><br/>Deep DOM traversal through <code>Reports/frmStudentTimeTable.aspx</code>, internal container scrolling down to faculty directories without scrolling the student's page, and Apple-style day filtering.</em>
+      </td>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic6.png" alt="Context-Aware Procedural 3D Companion Mascot" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 6: Context-Aware Procedural 3D Companion Mascot</b><br/>22 dynamic state-driven SVG expressions synchronized with real-time agent lifecycle events (<code>THINKING</code>, <code>LOCATING</code>, <code>MOVING</code>, <code>VERIFIED</code>) via <code>oneeBridge</code>.</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<br/>
+
+<div align="center">
+  <h3>Autonomous Seating Plan Navigation & Examination Schedule Verification</h3>
+  <table border="0" width="100%" cellspacing="12" cellpadding="0">
+    <tr>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic7.png" alt="Autonomous Browser Agent in Action on Seating Plan Portal" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 7: Autonomous Browser Agent on Seating Plan Portal</b><br/>Visible AI cursor moving along smooth cubic-Bézier trajectories on <code>studentums.lpu.in</code> with Angular SPA dynamic loading detection (<code>WAIT_FOR_RENDER</code>).</em>
+      </td>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic8.png" alt="Verified Examination Date Sheet & Venue Extraction" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 8: Verified Examination Date Sheet & Venue Extraction</b><br/>Chronological examination schedule extraction with relative reporting windows (<code>Report 30 mins before</code>), shift timings, room designations, and desk allocations.</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<br/>
+
+<div align="center">
+  <h3>Multi-Course Date Sheet Indexing & Sample Question Paper Sub-Agent</h3>
+  <table border="0" width="100%" cellspacing="12" cellpadding="0">
+    <tr>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic9.png" alt="Multi-Course Schedule Cards & Desk Assignments" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 9: Multi-Course Schedule Cards & Desk Assignments</b><br/>Comprehensive examination schedule indexing across multiple subjects with room numbers, block designations, desk allocations, and next-exam spotlighting.</em>
+      </td>
+      <td width="50%" align="center" valign="top">
+        <img src="pics/Pic10.png" alt="Sample Paper Sub-Automation (SamplePaperAgent)" width="100%" style="border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,0.15);" />
+        <br/><br/>
+        <em><b>Figure 10: Sample Paper Sub-Automation (SamplePaperAgent)</b><br/>Targeted retrieval and instant previewing of official university sample question papers directly from course exam cards on request without unwanted auto-downloads.</em>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
 ## 📖 Overview
 
 **ONEE** is an autonomous browser copilot engineered specifically for Lovely Professional University (LPU) students. It runs as a **Manifest V3 Chrome Extension** in the native **Chrome Side Panel** alongside university portals (`ums.lpu.in` and `studentums.lpu.in`).
@@ -43,8 +165,9 @@ Most university bots rely on external headless scrapers (Playwright or Puppeteer
 5. **Sample Question Paper Sub-Automation (`SamplePaperAgent`):** Detects question paper availability without auto-downloading, navigating directly to the PDF preview on request.
 6. **Deterministic Attendance Algebra:** Calculates safe bunks and required recovery classes algebraically with zero reliance on LLMs for arithmetic.
 7. **Apple iOS Design System & Fluid 60 FPS Motion:** Frosted glass materials (`backdrop-filter: blur(40px)`), critically-damped spring animations, specular edge highlights, and smooth streaming response follow-through.
-8. **Local-First Privacy & Memory:** Stores all chat history, execution traces, and verified academic records on-device in **IndexedDB**.
-9. **Live Procedural 3D Companion:** An animated SVG mascot with 22 state-driven expressions synchronized to the agent's real-time browser actions.
+8. **Local-First Privacy & Memory:** Stores all chat history, execution traces, and verified academic records on-device in **IndexedDB v3**.
+9. **Live Procedural 3D Companion:** An animated SVG mascot with 22 state-driven expressions synchronized to the agent's real-time browser actions via `oneeBridge`.
+10. **Multimodal Voice Agent Layer:** Voice-directed execution using Groq Whisper large-v3 STT and Groq Orpheus expressive audio TTS with real-time speech barge-in and cancellation.
 
 ---
 
@@ -121,7 +244,7 @@ ONEE provides dedicated browser agent automation for student examinations:
 
 ### 4. Timetable & LMS Lecture Schedules
 
-- **SSRS Report Container Traversal:** Navigates `Academics ➔ LMS ➔ View Time Table` and scrolls inside internal Microsoft ReportViewer scroll containers down to the faculty directory without scrolling the student's main browser window.
+- **SSRS Report Container Traversal:** Navigates `Academics → LMS → View Time Table` and scrolls inside internal Microsoft ReportViewer scroll containers down to the faculty directory without scrolling the student's main browser window.
 - **Segmented Day Filter Bar:** Filter classes by day (**Today**, **Mon**, **Tue**, **Wed**, **Thu**, **Fri**, **Sat**) using Apple segmented control aesthetics with instant tactile touch states.
 - **Live Class Detection:** Detects current ongoing and next upcoming classes based on 24-hour university scheduling intervals.
 - **Faculty & Venue Directory:** Displays course instructor names, cabin/room locations, and delivery status (Attended, Delivered, Cancelled).
@@ -139,19 +262,15 @@ ONEE provides dedicated browser agent automation for student examinations:
 
 ONEE performs all attendance mathematics deterministically using exact algebraic bounds:
 
-**Safe Bunks** (when current attendance >= threshold):
+**Safe Bunks** (when current attendance $\ge$ threshold):
 
-```
-Allowable Bunks  =  floor( (Attended - T * Total) / T )
-```
+$$\text{Allowable Bunks} = \left\lfloor \frac{\text{Attended} - T \times \text{Total}}{T} \right\rfloor$$
 
-**Required Recovery** (when current attendance < threshold):
+**Required Recovery** (when current attendance $<$ threshold):
 
-```
-Classes Needed   =  ceil( (T * Total - Attended) / (1 - T) )
-```
+$$\text{Classes Needed} = \left\lceil \frac{T \times \text{Total} - \text{Attended}}{1 - T} \right\rceil$$
 
-> Where `T` = target threshold (0.75, 0.80, or 0.85), `Attended` = classes attended, `Total` = total classes delivered.
+> Where $T$ = target threshold ($0.75$, $0.80$, or $0.85$), $\text{Attended}$ = classes attended, $\text{Total}$ = total classes delivered.
 
 - **Zero Arithmetic Hallucinations:** Large language models frequently make off-by-one errors. ONEE guarantees mathematically sound bunk counts using pure algebraic computation.
 - **Multi-Threshold Margin Analysis:** Evaluates exact lecture margins for **75%**, **80%**, and **85%** thresholds across all enrolled courses simultaneously.
@@ -165,7 +284,7 @@ Classes Needed   =  ceil( (T * Total - Attended) / (1 - T) )
 - **Physical Spring Feedback:** Buttons and interactive cards feature critically-damped spring transitions (`cubic-bezier(0.16, 1, 0.3, 1)`) with instant touch response (`:active { transform: scale(0.97) }`).
 - **Continuous CSS Grid Disclosures:** Accordions and expandable exam cards transition fluidly using CSS grid `0fr → 1fr` rather than abrupt DOM mounts.
 - **Rotating Vector SVG Chevrons:** Crisp SVG polylines rotating smoothly `0deg → 180deg` on state toggle across all dashboard components.
-- **Non-Clipping Typography:** Text wrapping and responsive padding prevent truncation (`...`) on course titles, exam tags, and metadata values.
+- **Non-Clipping Typography:** Text wrapping and responsive padding prevent truncation on course titles, exam tags, and metadata values.
 
 ---
 
@@ -184,7 +303,7 @@ Classes Needed   =  ceil( (T * Total - Attended) / (1 - T) )
 
 ### 9. Conversations History Drawer & Privacy Modal
 
-- **Sanitized History Previews:** Strips raw markdown headers (`###`), bold markers, and replaces em dashes (`—`) with out arrows (`→`) so conversation cards render clean, readable previews.
+- **Sanitized History Previews:** Strips raw markdown headers (`###`), bold markers, and replaces em dashes with clean arrows (`→`) so conversation cards render readable previews.
 - **Guaranteed Non-Collapsing Telemetry:** Storage metrics grid (`Chat History`, `Browser Agent runs`, `Saved Context`) and selective purge buttons use non-collapsing flex structures (`flex-shrink: 0`).
 - **Automatic Presentation on Fresh Launch & Login:**
   - Opens automatically on fresh extension startup so students are informed of local-first storage.
@@ -196,7 +315,7 @@ Classes Needed   =  ceil( (T * Total - Attended) / (1 - T) )
 
 - **Lightweight SVG Engine:** Renders a 60fps character using pure mathematical curves without external GLTF bundles or static GIFs.
 - **CSP Compliant:** Eliminates runtime code generation (`eval`, `new Function`) to comply strictly with Chrome Web Store Manifest V3 security rules.
-- **Contextual Reactions:** Features 22 state-driven expressions (observing, thinking, moving, reading, celebrate, warning, error) linked to browser agent events.
+- **Contextual Reactions:** Features 22 state-driven expressions (observing, thinking, moving, reading, celebrate, warning, error) linked to browser agent events via `oneeBridge`.
 
 ---
 
@@ -208,19 +327,19 @@ ONEE turns natural student speech into verified browser execution. Rather than a
 LISTEN → TRANSCRIBE → UNDERSTAND → PLAN → NARRATE → GROUND → MOVE → ACT → WAIT_FOR_RENDER → OBSERVE → EXTRACT → VALIDATE → VERIFY → SPEAK RESULT
 ```
 
-- **Three Adaptive Voice Modes:**
+- **Two Dedicated Voice Modes:**
   - **Voice Off (Default):** Normal silent typed chat and visual browser agent for quiet study rooms or libraries.
-  - **Voice Assist:** Spoken query input with spoken final answers; intermediate navigation narration is silenced.
-  - **Live Agent:** Complete multimodal experience — real-time narration of semantic milestones while the physical cursor operates UMS.
-- **Two Speech Lanes (Zero-Latency + Expressive Output):**
-  - **Lane 1 (Instant Local Narration):** Browser `window.speechSynthesis` speaks instant short cues (*"Sure, I'll check that on UMS"*, *"Opening your examination schedule"*, *"Verifying details"*) with near-zero network delay.
-  - **Lane 2 (Expressive Verified Speech):** Groq `canopylabs/orpheus-v1-english` generates expressive vocal-directed audio for rich conversational answers and verified final results.
-- **Dedicated Credential & Rate-Limit Isolation:**
-  - Dedicated Voice API key (`GROQ_VOICE_API_KEY`) and separate backend endpoints (`/api/voice/transcribe`, `/api/voice/speak`) isolate speech transcription & synthesis completely from the LLM reasoning account.
-  - Server-side only: keys are never exposed in the client extension.
+  - **Live Agent (Ultimate AI Voice):** Complete multimodal experience with real-time speech input, milestone narration, and spoken final summaries.
+- **Authoritative Groq Speech Subsystem:**
+  - **Speech-to-Text:** Groq Whisper large-v3 captures natural student requests with built-in hallucination detection and a 1.4-second VAD silence completion window.
+  - **Text-to-Speech:** Groq Orpheus generates expressive vocal-directed speech output with sentence streaming pipelining.
+  - **AudioController:** Non-blocking Web Audio playback engine with hardware audio prewarming and execution ID isolation.
+- **Dedicated Credential & Rate-Limit Boundary:**
+  - Dedicated Voice API key (`GROQ_VOICE_API_KEY`) and separate backend endpoints (`/api/voice/transcribe`, `/api/voice/speak`) isolate speech transcription and synthesis completely from the LLM reasoning account.
+  - Server-side only: API keys are never exposed in the client extension.
 - **Barge-In & Voice Interruption:**
   - If the student speaks or clicks the mic while ONEE is talking, speech cancels immediately and transitions into `LISTENING`.
-  - Spoken commands (*"Stop"*, *"Cancel that"*, *"Hold on"*) instantly stop TTS, safely cancel active browser execution, release locks, and update the companion avatar to `CANCELLED`.
+  - Spoken interruption commands (*"Stop"*, *"Cancel that"*, *"Hold on"*) instantly stop TTS, safely cancel active browser execution, release locks, and update the companion avatar to `CANCELLED`.
 - **Truthful Execution Integrity:**
   - Voice narration strictly reflects actual execution state — it never claims *"I found your seat"* or *"Your attendance is 81%"* until DOM extraction and algebraic validation have succeeded.
 
@@ -260,7 +379,8 @@ LISTEN → TRANSCRIBE → UNDERSTAND → PLAN → NARRATE → GROUND → MOVE �
 │  │   ├─ VoiceQueue.ts (Sentence chunking, priority queue, execution guard)  │
 │  │   ├─ NarrationPolicy.ts (Semantic state-to-speech mapping & truthfulness) │
 │  │   ├─ NarrationManager.ts (Central RuntimeState subscriber)                │
-│  │   └─ Providers (Native SpeechRecognition/Synthesis + Groq Whisper/Orpheus)│
+│  │   ├─ AudioController.ts (Non-blocking Web Audio playback & unlock)        │
+│  │   └─ Providers (Groq Whisper Provider + Groq Orpheus Provider)            │
 │  ├─ useUmsConnection.ts (Active tab tracking & automatic reconnection)      │
 │  ├─ useAgentController.ts (Autonomous perception-action loop manager)      │
 │  │   └─ WAIT_FOR_RENDER stage & terminal state gating (READY/FAILED/etc)   │
@@ -285,7 +405,7 @@ LISTEN → TRANSCRIBE → UNDERSTAND → PLAN → NARRATE → GROUND → MOVE �
 │                                                                             │
 │  ├─ /api/chat (Token streaming with grounded academic context)              │
 │  ├─ /api/agent/plan (Computer Use next-action planner with waitForRender)   │
-│  ├─ /api/voice/transcribe (Groq Whisper large-v3-turbo STT fallback)        │
+│  ├─ /api/voice/transcribe (Groq Whisper large-v3 audio transcription)       │
 │  ├─ /api/voice/speak (Groq Orpheus expressive audio synthesis)              │
 │  └─ Groq Service (Dedicated Agent & Voice API Keys)                         │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -293,7 +413,7 @@ LISTEN → TRANSCRIBE → UNDERSTAND → PLAN → NARRATE → GROUND → MOVE �
 
 ---
 
-## 🛠 Tech Stack
+## 🛠️ Tech Stack
 
 | Category | Technology | Purpose |
 | :--- | :--- | :--- |
@@ -301,10 +421,13 @@ LISTEN → TRANSCRIBE → UNDERSTAND → PLAN → NARRATE → GROUND → MOVE �
 | **Frontend Framework** | **React 18.3**, **TypeScript 5.6** | Modular component hierarchy, custom hooks, strict type safety |
 | **Build System** | **Vite 5.4**, **Rollup** | Multi-bundle packaging (sidepanel, background service worker, content script) |
 | **Styling & Motion** | **Apple iOS Design System**, **CSS Modules** | Frosted glass (`backdrop-filter`), critically-damped springs, specular rims |
-| **Local Storage** | **IndexedDB** (`idb`), `chrome.storage` | On-device persistent memory for conversations, executions, and records |
-| **Testing (Frontend)** | **Vitest 2.1**, **JSDOM** | 23 test suites with 217 passing tests covering DOM, parsers, math, and actions |
+| **Voice STT** | **Groq Whisper Large-v3** | High-accuracy Speech-to-Text transcription with hallucination filtering |
+| **Voice TTS** | **Groq Orpheus English** | Expressive vocal synthesis, zero-latency streaming sentence chunking |
+| **Audio Playback** | **Web Audio API + AudioController** | Non-blocking execution isolation, volume gating, and audio prewarming |
+| **Local Storage** | **IndexedDB v3** (`idb`), `chrome.storage` | On-device persistent memory for conversations, executions, and records |
+| **Testing (Extension)** | **Vitest 2.1**, **JSDOM** | 42 test suites with 422 passing tests covering DOM, parsers, math, and actions |
 | **Testing (E2E)** | **Playwright** | Real browser workflow integration and modal regression testing |
-| **Testing (Backend)** | **Pytest 9.1**, **pytest-asyncio** | 16 passing unit and integration tests for planner, API, and agent tools |
+| **Testing (Backend)** | **Pytest 9.0+**, **pytest-asyncio** | 22 unit and integration tests for planner, API, and agent tools |
 | **Backend API** | **FastAPI 0.115**, **Python 3.11+** | Stateless REST and Server-Sent Events (SSE) streaming server |
 | **AI Inference** | **Groq Cloud API** | Ultra-fast token streaming (`qwen/qwen3.8-27b` with multi-tier fallback) |
 | **Avatar Engine** | **@bible-strong/avatar-core** | Pure-math SVG procedural geometry and ambient motion without CSP eval |
@@ -314,108 +437,61 @@ LISTEN → TRANSCRIBE → UNDERSTAND → PLAN → NARRATE → GROUND → MOVE �
 ## 📁 Project Structure
 
 ```
-OneeLpuAgent/
-├── backend/                                     # Stateless FastAPI Backend
-│   ├── app/
-│   │   ├── agent/
-│   │   │   ├── agent.py                         # Conversational agent & tool loop
-│   │   │   ├── planner.py                       # Computer Use planner (supports waitForRender)
-│   │   │   ├── prompts.py                       # Grounded prompts & academic tone rules
-│   │   │   └── tools.py                         # Deterministic attendance tools
-│   │   ├── schemas/                             # Pydantic models (PageObservation, AgentAction)
-│   │   ├── services/
-│   │   │   └── groq_service.py                  # Groq client with multi-model fallback
-│   │   ├── config.py                            # Backend settings & environment variables
-│   │   └── main.py                              # FastAPI entry point & CORS configuration
-│   ├── tests/                                   # Pytest test suite (16 passing tests)
-│   └── requirements.txt                         # Python dependencies
+OneeLpuAgentFinal/
+├── README.md                                      # Primary project entrypoint & documentation
+├── CHROMEWEBSTORE.md                              # Chrome Web Store submission specification
+├── LICENSE                                        # MIT License
 │
-├── extension/                                   # Chrome Extension (Manifest V3)
-│   ├── manifest.json                            # MV3 manifest with side panel declaration
-│   ├── sidepanel.html                           # Side panel HTML shell
-│   ├── package.json                             # Extension scripts & dependencies
-│   ├── vite.config.ts                           # Side panel Vite configuration
-│   ├── vite.background.config.ts                # Service worker Vite build config
-│   ├── vite.content.config.ts                   # Content script Vite build config
-│   ├── playwright.config.ts                     # Playwright E2E configuration
+├── pics/                                          # In-field execution screenshots & results
+│   ├── Pic1.png                                   # Native Side Panel mounting on UMS Dashboard
+│   ├── Pic2.png                                   # ONEE ULTIMATE Live Voice interface
+│   ├── Pic3.png                                   # Deterministic attendance algebra & course summary
+│   ├── Pic4.png                                   # Safe-Bunk Calculator & target margin analysis
+│   ├── Pic5.png                                   # SSRS ReportViewer timetable extraction & day filters
+│   ├── Pic6.png                                   # Procedural 3D companion mascot in action
+│   ├── Pic7.png                                   # Autonomous Browser Agent on seating plan portal
+│   ├── Pic8.png                                   # Verified examination date sheet & venue parsing
+│   ├── Pic9.png                                   # Multi-course exam schedule cards & timings
+│   └── Pic10.png                                  # Sample question paper sub-agent retrieval
+│
+├── backend/                                       # Stateless FastAPI Backend Service
+│   ├── requirements.txt                           # Python dependencies
+│   ├── .env.example                               # Environment template (strict credential isolation)
+│   ├── app/
+│   │   ├── main.py                                # FastAPI entrypoint & CORS configuration
+│   │   ├── config.py                              # Backend configuration & environment variables
+│   │   ├── agent/                                 # Computer Use planner, prompts & tools
+│   │   ├── schemas/                               # Pydantic schemas (attendance, chat, planner)
+│   │   ├── services/                              # Groq client with multi-tier model fallback
+│   │   └── voice/                                 # Groq Whisper STT & Orpheus TTS voice service
+│   └── tests/                                     # Pytest test suite (16 tests)
+│
+├── extension/                                     # Chrome Extension (Manifest V3)
+│   ├── manifest.json                              # MV3 manifest with side panel declaration
+│   ├── sidepanel.html                             # Side panel HTML shell
+│   ├── offscreen.html                             # Offscreen document for audio decoding
+│   ├── permission.html                            # Microphone permission onboarding page
+│   ├── package.json                               # Dependencies & build scripts
+│   ├── tsconfig.json                              # TypeScript configuration
+│   ├── vite.config.ts                             # Side panel Vite build configuration
+│   ├── vite.background.config.ts                  # Background service worker Vite configuration
+│   ├── vite.content.config.ts                     # Content script Vite build configuration
+│   ├── playwright.config.ts                       # Playwright E2E configuration
 │   │
 │   ├── src/
-│   │   ├── background/
-│   │   │   └── service-worker.ts                # MV3 worker lifecycle, port reconnections & tabs
-│   │   │
-│   │   ├── components/                          # React UI Components (Apple iOS HIG)
-│   │   │   ├── AgentControlPanel.tsx            # Computer Use visualizer & terminal state cards
-│   │   │   ├── AttendanceCard.tsx               # Overview attendance card & greeting
-│   │   │   ├── BunkCalculatorModal.tsx          # Interactive safe-bunk / recovery modal
-│   │   │   ├── ChatMessage.tsx                  # Message bubble with frosted glass & avatar
-│   │   │   ├── ChatView.tsx                     # Chat interface with 60FPS RAF spring follow
-│   │   │   ├── ConnectionState.tsx              # UMS connection status indicator
-│   │   │   ├── ConversationDrawer.tsx           # Apple iOS history drawer with sanitized previews
-│   │   │   ├── CourseList.tsx                   # Expandable course attendance list
-│   │   │   ├── CourseRow.tsx                    # Individual course card with progress bar
-│   │   │   ├── ExaminationCard.tsx              # Verified schedule cards & fluid grid reveal
-│   │   │   ├── Header.tsx                       # Side panel navigation & mascot header
-│   │   │   ├── OneeCompanion.tsx                # Live mascot avatar & speech bubble
-│   │   │   ├── PrivacyModal.tsx                 # Non-collapsing on-device data metrics & purge
-│   │   │   ├── Skeletons.tsx                    # Shimmer loading placeholders
-│   │   │   ├── Toast.tsx                        # Notification toast manager
-│   │   │   └── onee/
-│   │   │       ├── avatarCore.ts                # CSP-safe procedural avatar geometry
-│   │   │       └── avatarRenderer.ts            # 60fps SVG requestAnimationFrame loop
-│   │   │
-│   │   ├── content/                             # Injected UMS Content Scripts
-│   │   │   ├── actionEngine.ts                  # Real DOM click, type, and waitForRender dispatcher
-│   │   │   ├── agentMotion.ts                   # Cubic-Bézier cursor motion & easing
-│   │   │   ├── aiCursorOverlay.ts               # Visible on-screen cursor & bounding boxes
-│   │   │   ├── content-script.ts                # Content script entry & message bridge
-│   │   │   ├── coordinateUtils.ts               # Viewport vs document coordinate transforms
-│   │   │   ├── hybridGrounding.ts               # Hybrid 2D IoU & text target matcher
-│   │   │   ├── pageObserver.ts                  # Interactive DOM scanning & ID mapping
-│   │   │   ├── umsAttendanceParser.ts           # Deterministic attendance table extractor
-│   │   │   ├── umsDetector.ts                   # Hostname & Cloudflare challenge detector
-│   │   │   ├── umsPreflight.ts                  # Blocking Campus Drive modal safe dismissal
-│   │   │   ├── samplePaperAgent.ts              # Sample paper control locator & viewer
-│   │   │   ├── examination/                     # Examination Agent Content Subsystem
-│   │   │   │   ├── examDateSheetParser.ts       # Leaf card parser with relative reporting time
-│   │   │   │   ├── examinationDetector.ts       # Page detection & MutationObserver render watcher
-│   │   │   │   ├── examinationValidator.ts      # Schema validator for examination records
-│   │   │   │   └── seatingPlanParser.ts         # Seating allocation & venue parser
-│   │   │   └── timetable/                       # Timetable Content Subsystem
-│   │   │       └── timetableParser.ts           # SSRS internal container schedule parser
-│   │   │
-│   │   ├── hooks/                               # React Custom Hooks
-│   │   │   ├── useAgentController.ts            # Autonomous perception-action loop manager
-│   │   │   ├── useChatAgent.ts                  # Chat persistence & streaming response hook
-│   │   │   ├── useReducedMotion.ts              # Accessibility preference listener
-│   │   │   └── useUmsConnection.ts              # UMS tab detection & auto-reconnect
-│   │   │
-│   │   ├── lib/                                 # Shared Utilities & Math
-│   │   │   ├── scrollUtils.ts                   # Two-phase reveal scroll & snippet sanitizer
-│   │   │   ├── runtimeState.ts                  # State machine definitions & status transitions
-│   │   │   ├── confetti.ts                      # Success confetti particle emitter
-│   │   │   └── humanizer.ts                     # Relative time & human-friendly date formatters
-│   │   │
-│   │   ├── services/                            # Data & IPC Repositories
-│   │   │   ├── api.ts                           # Backend API client & local fallback engine
-│   │   │   ├── connectionManager.ts             # Service worker port keeper & heartbeat
-│   │   │   ├── localDatabase.ts                 # IndexedDB stores & lifecycle controls
-│   │   │   ├── repositories.ts                  # Grounded data repositories
-│   │   │   ├── suggestionGenerator.ts           # Contextual query suggestions
-│   │   │   ├── intentRouter.ts                  # Multi-goal natural language router
-│   │   │   └── tabMessenger.ts                  # Chrome tab query & script injector
-│   │   │
-│   │   ├── shared/                              # Shared Types & Math
-│   │   │   ├── attendanceCalculator.ts          # Pure algebraic bunk & recovery math
-│   │   │   ├── examinationCalculator.ts         # Composite key deduplication & sort
-│   │   │   ├── timetableCalculator.ts           # SSRS schedule analysis & day filters
-│   │   │   ├── messages.ts                      # IPC message protocol definitions
-│   │   │   └── types.ts                         # Complete domain models & telemetry types
-│   │   │
-│   │   └── tests/                               # Vitest Unit & Integration Tests (217 tests)
+│   │   ├── background/                            # Service worker lifecycle & message router
+│   │   ├── components/                            # React UI components (Apple iOS HIG design)
+│   │   ├── content/                               # Injected UMS Computer Use content scripts
+│   │   ├── hooks/                                 # Custom React hooks (agent, chat, UMS connection)
+│   │   ├── lib/                                   # Shared event bus, state machine, and math
+│   │   ├── services/                              # Repositories, IPC messaging, local database
+│   │   ├── shared/                                # Deterministic calculators & shared types
+│   │   ├── voice/                                 # Voice subsystem (Controller, Queue, Providers)
+│   │   └── tests/                                 # Vitest test suites (421 passing tests)
 │   │
-│   └── dist/                                    # Compiled Extension Bundles
+│   └── dist/                                      # Compiled production extension bundles
 │
-└── README.md                                    # Project documentation
+└── docs/                                          # Technical Architecture & Guides
 ```
 
 ---
@@ -425,50 +501,50 @@ OneeLpuAgent/
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (version 18.x or later)
-- [Python 3.11+](https://www.python.org/) (for optional backend server)
-- Google Chrome (or any Chromium-based browser with Side Panel support)
+- [Python 3.11+](https://www.python.org/) (for optional backend streaming server)
+- Google Chrome (or any Chromium browser supporting the Side Panel API)
 
 ### 1. Clone the Repository
-
 ```bash
 git clone https://github.com/MohammadFayasKhan/LpuUmsAgent.git
 cd LpuUmsAgent
 ```
 
 ### 2. Build the Chrome Extension
-
 ```bash
 cd extension
 npm install
 npm run build
 ```
 
-This compiles TypeScript and builds all three production bundles into `extension/dist/`:
+This compiles TypeScript and outputs production bundles into `extension/dist/`:
 - `sidepanel.html` + `assets/` (React Side Panel UI)
 - `content.js` (Injected UMS browser agent content script)
 - `service-worker.js` (Background runtime & port coordinator)
+- `offscreen.html` (Offscreen audio decoding pipeline)
+- `permission.html` (Microphone permission onboarding)
 
 ### 3. Load Extension in Google Chrome
-
-1. Open Chrome and navigate to `chrome://extensions/`.
-2. Enable **Developer mode** via the toggle in the upper-right corner.
-3. Click **Load unpacked** and select the `extension/dist` directory.
-4. Navigate to `https://ums.lpu.in/` in Chrome and open the Side Panel (or click the ONEE icon in your browser extensions toolbar).
+1. Open Google Chrome and navigate to `chrome://extensions/`.
+2. Enable **Developer mode** via the top-right toggle switch.
+3. Click **Load unpacked** and select the `extension/dist` folder.
+4. Log into `https://ums.lpu.in/` normally and open the Side Panel (or click the ONEE icon in your extension toolbar).
 
 ### 4. (Optional) Start the FastAPI Backend
-
-ONEE functions completely offline with built-in deterministic calculations and local planning. To enable remote LLM streaming via Groq:
+ONEE functions offline with built-in deterministic calculation tools and local planning. To enable cloud LLM streaming and expressive voice:
 
 ```bash
-cd ../backend
+cd backend
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Create environment configuration
-echo "GROQ_API_KEY=your_groq_api_key_here" > .env
+# Configure environment variables (Strict boundary isolation)
+# GROQ_API_KEY       → Main LLM reasoning
+# GROQ_VOICE_API_KEY → Voice STT (Whisper) & TTS (Orpheus)
+printf "GROQ_API_KEY=your_main_key\nGROQ_VOICE_API_KEY=your_voice_key\n" > .env
 
-# Run FastAPI server
+# Run FastAPI service
 uvicorn app.main:app --reload --port 8000
 ```
 
@@ -476,57 +552,49 @@ uvicorn app.main:app --reload --port 8000
 
 ## 🧪 Testing & Verification Matrix
 
-The project includes thorough, automated test suites covering deterministic mathematics, DOM observers, coordinate spaces, and IndexedDB storage:
-
-### Extension Unit & Integration Tests (Vitest)
+The project enforces rigorous automated test coverage across deterministic mathematics, DOM observers, coordinate spaces, and voice subsystem lifecycles:
 
 ```bash
+# Run extension test suites (422 passing tests across 42 suites)
 cd extension
 npm test
+
+# Run voice subsystem tests exclusively
+npx vitest run src/tests/voice/
 ```
+
+### Extension Test Suite Highlights
 
 | Test Suite | Focus Area | Tests | Status |
 | :--- | :--- | :---: | :---: |
-| `actionEngine.test.ts` | Real DOM clicks, input dispatch, table & card element highlighting | 12 | ✅ Passed |
+| `actionEngine.test.ts` | Real DOM clicks, input dispatch, table & card highlighting | 14 | ✅ Passed |
 | `aiCursorOverlay.test.ts` | Visible cursor physics, landmark highlights, cubic-Bézier overlays | 5 | ✅ Passed |
-| `attendanceCalculator.test.ts` | Safe-bunk algebra, recovery class bounds, lowest subject search | 16 | ✅ Passed |
-| `coordinateUtils.test.ts` | Viewport/document conversions, navbar safe zones | 5 | ✅ Passed |
-| `examDateSheetParser.test.ts` | Angular SPA leaf cards, relative reporting times, dynamic traversal | 18 | ✅ Passed |
+| `attendanceCalculator.test.ts` | Safe-bunk algebra, recovery class bounds, lowest subject search | 20 | ✅ Passed |
+| `coordinateUtils.test.ts` | Viewport/document coordinate conversions, safe click boundaries | 5 | ✅ Passed |
+| `examDateSheetParser.test.ts` | Angular SPA leaf cards, relative reporting times, dynamic traversal | 21 | ✅ Passed |
 | `examinationCalculator.test.ts` | Chronological sort, next exam computation, timing checks | 23 | ✅ Passed |
 | `examinationDataFlow.test.ts` | End-to-end data pipeline from DOM extraction to IndexedDB | 5 | ✅ Passed |
 | `examinationValidator.test.ts` | Examination schema verification, date parsing, missing venue checks | 17 | ✅ Passed |
 | `hybridGrounding.test.ts` | 2D IoU spatial matching, text similarity scoring | 3 | ✅ Passed |
-| `intentRouter.test.ts` | Natural language goal classification (attendance vs examination vs timetable) | 15 | ✅ Passed |
-| `localDatabase.test.ts` | IndexedDB CRUD, session isolation, data purge | 6 | ✅ Passed |
+| `intentRouter.test.ts` | Multi-goal natural language routing & capability firewall | 29 | ✅ Passed |
+| `localDatabase.test.ts` | IndexedDB v3 CRUD, session isolation, data purge | 8 | ✅ Passed |
 | `oneeCompanion.test.ts` | Event bridge subscription, avatar state transitions | 2 | ✅ Passed |
 | `pageObserver.test.ts` | Interactive element scanning, ID attribute mapping | 4 | ✅ Passed |
 | `repositories.test.ts` | Repository tier abstraction, storage boundaries | 6 | ✅ Passed |
 | `samplePaperAgent.test.ts` | Question paper discovery, cursor navigation, PDF preview | 8 | ✅ Passed |
-| `seatingPlanTab.test.ts` | Duplicate tab cleanup, tab messaging protocols | 3 | ✅ Passed |
-| `suggestionGenerator.test.ts` | Contextual question generation from verified records | 6 | ✅ Passed |
+| `seatingPlanTab.test.ts` | Duplicate tab cleanup, tab messaging protocols | 8 | ✅ Passed |
+| `suggestionGenerator.test.ts` | Contextual question generation from verified records | 10 | ✅ Passed |
 | `timetableCalculator.test.ts` | Timetable day filtering, faculty directory, current/next class | 18 | ✅ Passed |
-| `timetableParser.test.ts` | SSRS report viewer table parser, lecture slot extraction | 17 | ✅ Passed |
-| `umsAttendanceParser.test.ts` | Real HTML fixtures, course counts, discrepancy checks | 7 | ✅ Passed |
-| `umsDetector.test.ts` | Hostname matching, login screen, Cloudflare detection | 10 | ✅ Passed |
+| `timetableParser.test.ts` | SSRS report viewer table parser, lecture slot extraction | 22 | ✅ Passed |
+| `umsAttendanceParser.test.ts` | Real HTML fixtures, course counts, discrepancy checks | 11 | ✅ Passed |
+| `umsDetector.test.ts` | Hostname matching, login screen, Cloudflare detection | 14 | ✅ Passed |
 | `umsPreflight.test.ts` | Campus Drive modal detection, isolation, Remind me later gating | 8 | ✅ Passed |
-| `verifiedExaminationRepo.test.ts` | Examination persistence, multi-user isolation | 3 | ✅ Passed |
-| **Total** | **All 23 Test Suites** | **217** | **✅ 100% Passed** |
-
-### Backend Tests (Pytest)
-
-```bash
-cd backend
-.venv/bin/pytest
-```
-
-| Test Suite | Focus Area | Tests | Status |
-| :--- | :--- | :---: | :---: |
-| `test_agent.py` | Conversational agent execution loop | 1 | ✅ Passed |
-| `test_api.py` | REST endpoints and health checks | 2 | ✅ Passed |
-| `test_fallback.py` | Offline fallback planning and recovery | 2 | ✅ Passed |
-| `test_planner.py` | Next-action planner & `waitForRender` actions | 5 | ✅ Passed |
-| `test_tools.py` | Deterministic calculation tool bindings | 6 | ✅ Passed |
-| **Total** | **All Backend Test Files** | **16** | **✅ 100% Passed** |
+| `voiceController.test.ts` | Microphone lifecycle, barge-in, STT completion window, interruption | 9 | ✅ Passed |
+| `voiceProviders.test.ts` | Groq Whisper STT & Groq Orpheus TTS integration | 17 | ✅ Passed |
+| `voiceQueue.test.ts` | Sentence chunking, priority preemption, execution guard | 9 | ✅ Passed |
+| `dynamicNarrationE2E.test.ts` | Live dynamic narration, latency pipelining, milestone speech | 8 | ✅ Passed |
+| `voiceWorkerAudioRuntimeE2E.test.ts` | Web Audio API execution isolation, dual engine fallback | 7 | ✅ Passed |
+| **Total** | **All Extension Test Suites** | **422** | **✅ 100% Passed** |
 
 ---
 

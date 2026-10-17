@@ -10,6 +10,7 @@
  */
 
 import { ExamRecord, ExaminationSummary, ExaminationValidationResult } from '../../shared/types';
+import { findNextExam } from '../../shared/examinationCalculator';
 
 const MONTH_MAP: Record<string, number> = {
   jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
@@ -175,24 +176,11 @@ export function getExaminationDatasetDiagnostics(summary?: ExaminationSummary | 
  * If all exams are in the past, returns null.
  */
 export function getNextExam(exams: ExamRecord[], referenceDate: Date = new Date()): ExamRecord | null {
-  if (!exams || exams.length === 0) return null;
-
-  const refTime = referenceDate.getTime();
-
-  // Filter exams that are strictly in the future (>= refTime)
-  const futureExams = exams
-    .map((exam) => ({
-      exam,
-      dt: parseExamDateTime(exam.examDate, exam.startTime)
-    }))
-    .filter((item): item is { exam: ExamRecord; dt: Date } => item.dt !== null && item.dt.getTime() >= refTime);
-
-  if (futureExams.length > 0) {
-    futureExams.sort((a, b) => a.dt.getTime() - b.dt.getTime());
-    return futureExams[0].exam;
-  }
-
-  return null;
+  // Keep one canonical definition across the response composer, suggestions,
+  // and browser agent. An exam that has started but has not ended is still the
+  // current/next relevant examination; selecting a later paper in that state
+  // is misleading.
+  return findNextExam(exams, referenceDate);
 }
 
 /**

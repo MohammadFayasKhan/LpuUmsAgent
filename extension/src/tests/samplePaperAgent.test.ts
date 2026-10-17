@@ -208,10 +208,14 @@ describe('samplePaperAgent', () => {
       });
       expect(clickSpy).toHaveBeenCalled();
       expect(res.success).toBe(true);
-      expect(res.verified).toBe(true);
       expect(res.courseCode).toBe('CSE408');
-      expect(res.actionTaken).toBe('downloaded');
-      expect(res.fileName).toBe('CSE408_Sample_Paper.pdf');
+      // No chrome.downloads service worker exists in this test context, so the
+      // honest contract applies: the click happened but the outcome is NOT
+      // claimed as verified and NO filename is fabricated.
+      expect(res.verified).toBe(false);
+      expect(res.actionTaken).toBe('clicked_unverified');
+      expect(res.fileName).toBeFalsy();
+      expect(res.error).toBeTruthy();
     });
 
     it('detects direct PDF href and sets preview_ready', async () => {
@@ -235,7 +239,11 @@ describe('samplePaperAgent', () => {
 
       const res = await executeOpenSamplePaper('CSE408', anchor);
       expect(res.success).toBe(true);
+      // Direct PDF URL is known from the DOM; the browser's reaction could not
+      // be observed here, so verified stays false (no fabricated confirmation).
       expect(res.actionTaken).toBe('preview_ready');
+      expect(res.verified).toBe(false);
+      expect(res.fileName).toBeFalsy();
       expect(res.paperUrl).toBe('https://studentums.lpu.in/papers/cse408_sample.pdf');
     });
 

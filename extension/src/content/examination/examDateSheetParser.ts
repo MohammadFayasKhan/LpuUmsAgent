@@ -484,16 +484,34 @@ export function extractSamplePaper(cardEl: Element): SamplePaperInfo | undefined
  * Extracts question pattern instructions from examination text.
  */
 export function extractInstructions(text: string): string | undefined {
-  const mcqMatch = text.match(/(\d+\s+Multiple Choice Questions[^\n\r]+)/i);
+  // UMS card text is frequently flattened by textContent, so line-based
+  // patterns consume the next card (for example: "eachCSE408 Upcoming...").
+  // Match only the complete self-contained question pattern instead.
+  const mcqMatch = text.match(
+    /(\d+\s+Multiple Choice Questions(?:\s+of\s+\d+\s+Marks?\s+each)?)/i
+  );
   if (mcqMatch) return cleanText(mcqMatch[1]);
 
-  const subjMatch = text.match(/(\d+\s+Short Question[^\n\r]+)/i) || text.match(/(Part\s+[A-Z]\s*[-–—][^\n\r]+)/i);
+  const subjMatch = text.match(
+    /(\d+\s+Short Questions?\s+\d+\s+Marks?\s+each(?:\s*,?\s*\d+\s+Long Questions?\s+\d+\s+Marks?\s+each)?)/i
+  );
   if (subjMatch) return cleanText(subjMatch[1]);
 
-  const instMatch = text.match(/Instruction\s*[-–—:]\s*([^\n\r]+)/i);
-  if (instMatch) return cleanText(instMatch[0]);
+  const partMatch = text.match(/(Part\s+[A-Z]\s*[-–—]\s*[^\n\r]{1,180})/i);
+  if (partMatch) return trimInstructionAtCardBoundary(partMatch[1]);
+
+  const instMatch = text.match(/Instruction\s*[-–—:]\s*([^\n\r]{1,240})/i);
+  if (instMatch) return trimInstructionAtCardBoundary(`Instruction: ${instMatch[1]}`);
 
   return undefined;
+}
+
+/** Stops a generic instruction before a flattened neighbouring examination card. */
+function trimInstructionAtCardBoundary(value: string): string {
+  const boundary = value.search(
+    /\b(?:[A-Z]{2,5}\s*\d{3,4}[A-Z]?\s*[-:–—]|Upcoming\b|Awaited\b|Theory\s+(?:Mid|End)\s+Term|Practical\s+(?:Mid|End)\s+Term|Sample\s+Question\s+Paper)\b/i
+  );
+  return cleanText((boundary > 0 ? value.slice(0, boundary) : value).slice(0, 240));
 }
 
 /**
@@ -614,8 +632,18 @@ export function findExaminationCardElements(
         parentText.toLowerCase().includes('end term')
       ) {
         bestCardContainer = curr;
-        // curr contains the course code and date/timing information: this is the card boundary
-        break;
+        // If curr matches explicit card boundary classes, stop climbing here so we don't climb into the list container
+        const className = curr.className && typeof curr.className === 'string' ? curr.className.toLowerCase() : '';
+        if (
+          className.includes('conduct-card') ||
+          className.includes('exam-card') ||
+          className.includes('seating-card') ||
+          className.includes('schedule-card') ||
+          className.includes('datesheet-item') ||
+          className.includes('exam-item')
+        ) {
+          break;
+        }
       }
       curr = curr.parentElement;
     }
@@ -721,10 +749,8 @@ export function findExaminationCardElements(
     });
 
     if (isContainedByOther) {
-      // If cand has no calendar date, but parent does, cand is an inner child
-      if (!hasCalendarDate(candText)) {
-        return false;
-      }
+      // Cand is an inner child element of an outer card; prune cand and keep the outer card
+      return false;
     }
 
     return true;
@@ -826,6 +852,18 @@ export function findAllScrollableDateSheetContainers(doc: Document = document): 
       }
     } else if (el.scrollHeight > el.clientHeight + 25) {
       if (!scrollables.includes(el)) scrollables.push(el);
+    }
+  }
+
+  // The current Student UMS shell uses an application viewport whose class
+  // names change between releases.  It is often neither a `seating-*` nor a
+  // `scroll-*` element, so selector-only discovery stops on the visible first
+  // card.  Include every element with demonstrable vertical scroll capacity;
+  // the action engine subsequently keeps only record-owning ancestors.
+  for (const el of Array.from(doc.querySelectorAll<HTMLElement>('*'))) {
+    if (el === doc.body || el === doc.documentElement) continue;
+    if (el.scrollHeight > el.clientHeight + 25 && !scrollables.includes(el)) {
+      scrollables.push(el);
     }
   }
 
@@ -934,6 +972,35 @@ export function parseSingleExamFromScope(
   );
   if (venueMatch) venue = cleanText(venueMatch[1]);
 
+  // Extract room in Block-Room format (e.g. 37-707, 38-917, 33-502, 34-808) common on modern UMS cards
+  if (!room || room.toLowerCase() === 'awaited') {
+    const blockRoomMatch = scopeText.match(/\b(\d{1,2})-(\d{3,4})\b/);
+    if (blockRoomMatch) {
+      const blk = blockRoomMatch[1];
+      const rm = blockRoomMatch[2];
+      room = `${blk}-${rm}`;
+      if (!venue || venue.toLowerCase() === 'awaited') {
+        venue = `Block ${blk}`;
+      }
+    }
+  }
+
+  // Also inspect child elements of scopeElement if room is still missing or awaited
+  if ((!room || room.toLowerCase() === 'awaited') && scopeElement) {
+    const allEls = Array.from(scopeElement.querySelectorAll<HTMLElement>('*'));
+    for (const el of allEls) {
+      const t = cleanText(el.textContent);
+      const m = t.match(/\b(\d{1,2})-(\d{3,4})\b/);
+      if (m) {
+        room = `${m[1]}-${m[2]}`;
+        if (!venue || venue.toLowerCase() === 'awaited') {
+          venue = `Block ${m[1]}`;
+        }
+        break;
+      }
+    }
+  }
+
   const seatMatch = scopeText.match(/(?:seat|desk|row)\s*(?:no|number)?\s*[:\-]?\s*([A-Za-z0-9\-_]+)/i);
   if (seatMatch) seat = seatMatch[1];
 
@@ -941,6 +1008,7 @@ export function parseSingleExamFromScope(
   if (!venue && !room && !seat) {
     if (scopeText.includes('Awaited') || lowerScope.includes('awaited')) {
       venue = 'Awaited';
+      room = 'Awaited';
     }
   }
 
@@ -1067,18 +1135,19 @@ export function parseExaminationCards(
       let scopeElement: HTMLElement = card;
       let scopeText = text;
 
-      // If a card/container has multiple codes, narrow down to the sub-element for this course
+      // If a card/container has multiple codes, narrow down to the outermost sub-element for this course
       if (codeMatches.length > 1) {
-        const subEl = Array.from(card.querySelectorAll<HTMLElement>('*')).find((child) => {
+        const subEls = Array.from(card.querySelectorAll<HTMLElement>('*')).filter((child) => {
           const childText = cleanText(child.textContent);
           const hasThisCode = new RegExp(`\\b${code}\\b`, 'i').test(childText);
           const hasNoOtherCode = !codeMatches.some((other) => other !== code && new RegExp(`\\b${other}\\b`, 'i').test(childText));
           const hasDate = hasCalendarDate(childText);
           return hasThisCode && hasNoOtherCode && hasDate;
         });
-        if (subEl) {
-          scopeElement = subEl;
-          scopeText = cleanText(subEl.textContent);
+        if (subEls.length > 0) {
+          subEls.sort((a, b) => (b.textContent?.length || 0) - (a.textContent?.length || 0));
+          scopeElement = subEls[0];
+          scopeText = cleanText(subEls[0].textContent);
         }
       }
 
@@ -1095,6 +1164,110 @@ export function parseExaminationCards(
           rawSnippet: scopeText.slice(0, 120)
         });
       }
+    }
+  }
+
+  return records;
+}
+
+/**
+ * Parses the modern UMS date-sheet list from its repeated course headings.
+ *
+ * Some UMS releases render every record inside one scroll viewport without
+ * stable card classes.  In that layout, trying to infer a card boundary by
+ * climbing ancestors can only find the first record.  A course heading is a
+ * reliable per-record anchor, however, including when the same course has two
+ * separate sittings.  Clone the DOM range up to the next course heading so the
+ * existing field parser receives exactly one record's content.
+ */
+export function parseExaminationByRepeatedCourseHeadings(
+  doc: Document = document,
+  diagnostics?: ExtractionDiagnostics
+): ExamRecord[] {
+  const headingSelector = 'h1, h2, h3, h4, h5, h6, [role="heading"]';
+  const anchors = Array.from(doc.querySelectorAll<HTMLElement>(headingSelector)).filter((heading) => {
+    const text = cleanText(heading.textContent);
+    return text.length > 0 && text.length <= 160 && !!extractCourseCode(text);
+  });
+
+  const records: ExamRecord[] = [];
+  for (let index = 0; index < anchors.length; index++) {
+    const anchor = anchors[index];
+    const code = extractCourseCode(cleanText(anchor.textContent));
+    if (!code) continue;
+
+    const range = doc.createRange();
+    range.setStartBefore(anchor);
+    if (anchors[index + 1]) {
+      range.setEndBefore(anchors[index + 1]);
+    } else {
+      // The last record ends at the closest content boundary when possible,
+      // otherwise use the document body.
+      const boundary = anchor.closest<HTMLElement>('main, [role="main"], .content-wrapper, .main-content') || doc.body;
+      range.setEndAfter(boundary.lastElementChild || boundary);
+    }
+
+    const scopeElement = doc.createElement('div');
+    scopeElement.append(range.cloneContents());
+    const scopeText = cleanText(scopeElement.textContent);
+    if (!hasCalendarDate(scopeText)) continue;
+
+    const record = parseSingleExamFromScope(code, scopeElement, scopeText);
+    if (record) {
+      records.push(record);
+      if (diagnostics) diagnostics.successfullyParsedCount++;
+    } else if (diagnostics) {
+      diagnostics.rejectedCount++;
+      diagnostics.rejectionReasons.push({
+        candidateIdentifier: 'repeated-course-heading',
+        courseCode: code,
+        reason: 'Repeated course heading range did not yield a valid record',
+        rawSnippet: scopeText.slice(0, 120)
+      });
+    }
+  }
+
+  return records;
+}
+
+/**
+ * Last-resort parser for UMS releases whose visual cards have no reliable DOM
+ * boundary or semantic heading. The date sheet is still rendered as a stable,
+ * ordered text stream: each scheduled record begins with a course code and
+ * ends before the next course code. This deliberately preserves repeated
+ * codes, such as separate mid-term and end-term CSE408 records.
+ */
+export function parseExaminationByDocumentTextRanges(
+  doc: Document = document,
+  diagnostics?: ExtractionDiagnostics
+): ExamRecord[] {
+  const text = cleanText(doc.body?.innerText || doc.body?.textContent);
+  if (!text) return [];
+
+  const matches = Array.from(text.matchAll(/\b([A-Z]{2,5}\s*\d{3,4}[A-Z]?)\b/gi))
+    .filter((match) => isValidCourseCode(match[1]));
+  const records: ExamRecord[] = [];
+
+  for (let index = 0; index < matches.length; index++) {
+    const match = matches[index];
+    const start = match.index ?? 0;
+    const end = index + 1 < matches.length
+      ? (matches[index + 1].index ?? text.length)
+      : text.length;
+    const scopeText = cleanText(text.slice(start, end));
+
+    // Course references elsewhere in the portal are not date-sheet records.
+    if (!hasCalendarDate(scopeText) || !/(?:exam|term|report|room|awaited|regular)/i.test(scopeText)) {
+      continue;
+    }
+
+    const code = match[1].replace(/\s+/g, '').toUpperCase();
+    const scopeElement = doc.createElement('div');
+    scopeElement.textContent = scopeText;
+    const record = parseSingleExamFromScope(code, scopeElement, scopeText);
+    if (record) {
+      records.push(record);
+      if (diagnostics) diagnostics.successfullyParsedCount++;
     }
   }
 
@@ -1148,7 +1321,6 @@ export function parseExaminationByHeadingSlices(
       if (enclosed.length > 1) break;
       if (hasCalendarDate(text) || text.toLowerCase().includes('awaited') || text.toLowerCase().includes('exam')) {
         cardSlice = curr;
-        break;
       }
       curr = curr.parentElement;
     }
@@ -1222,11 +1394,33 @@ export function parseExamDateSheet(doc: Document = document): ExaminationSummary
     }
   }
 
-  // 3. Fallback targeted strategy: Heading Slice Extraction
-  // If targetFromHeader > 0 and allExams.length < targetFromHeader, or if 0 exams found:
+  // 3. Modern UMS fallback: repeated course-heading ranges preserve duplicate
+  // course codes (for example, two CSE408 sittings) and do not depend on CSS
+  // card classes or the current scroll position.
   const validExams = allExams.filter((exam) => isValidExamDate(exam.examDate));
   let uniqueExams = deduplicateExams(validExams);
 
+  if (uniqueExams.length === 0 || (targetFromHeader > 0 && uniqueExams.length < targetFromHeader)) {
+    const headingRangeExams = parseExaminationByRepeatedCourseHeadings(doc, diagnostics);
+    if (headingRangeExams.length > 0) {
+      allExams.push(...headingRangeExams);
+      diagnostics.discoveryStrategiesUsed.push('REPEATED_COURSE_HEADING_RANGES');
+      uniqueExams = deduplicateExams(allExams.filter((e) => isValidExamDate(e.examDate)));
+    }
+  }
+
+  // 4. Structural fail-safe for the live UMS shell. This does not rely on
+  // classes, scroll state, headings, or individual card containers.
+  if (uniqueExams.length === 0 || (targetFromHeader > 0 && uniqueExams.length < targetFromHeader)) {
+    const textRangeExams = parseExaminationByDocumentTextRanges(doc, diagnostics);
+    if (textRangeExams.length > 0) {
+      allExams.push(...textRangeExams);
+      diagnostics.discoveryStrategiesUsed.push('DOCUMENT_TEXT_RANGE_FALLBACK');
+      uniqueExams = deduplicateExams(allExams.filter((e) => isValidExamDate(e.examDate)));
+    }
+  }
+
+  // 5. Legacy fallback for layouts without semantic course headings.
   if (uniqueExams.length === 0 || (targetFromHeader > 0 && uniqueExams.length < targetFromHeader)) {
     const fallbackExams = parseExaminationByHeadingSlices(doc, diagnostics);
     if (fallbackExams.length > 0) {
@@ -1251,6 +1445,14 @@ export function parseExamDateSheet(doc: Document = document): ExaminationSummary
     return null;
   }
 
+  // Preserve one stable identity across collector, message, storage, and React.
+  // It intentionally includes date/time/type so two valid sittings of the same
+  // course are never collapsed into a single examination.
+  uniqueExams = uniqueExams.map((exam) => ({
+    ...exam,
+    id: buildExamIdentity(exam)
+  }));
+
   const totalExams = headerStats.totalExams > 0 ? headerStats.totalExams : uniqueExams.length;
 
   return {
@@ -1268,4 +1470,3 @@ export function parseExamDateSheet(doc: Document = document): ExaminationSummary
 
 // Canonical alias for backward and cross-module compatibility
 export const parseExaminationDateSheet = parseExamDateSheet;
-

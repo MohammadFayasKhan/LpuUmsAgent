@@ -314,6 +314,159 @@ export function findLmsMenuElement(doc: Document = document): HTMLElement | null
 }
 
 /**
+ * Known invalid strings and pseudo-codes produced by SSRS headers, footnotes, or cabin codes
+ * that must never be treated as valid course codes.
+ */
+export const INVALID_COURSE_CODES = new Set([
+  'ON10',
+  'CH13',
+  'CH16',
+  'CH8',
+  'CH11',
+  'CH7',
+  'CH1',
+  'WOW1',
+  'C2',
+  'TIME',
+  'TABLE',
+  'ROOM',
+  'CODE',
+  'VID',
+  'PAGE',
+  'LEGENDS',
+  'LEGEND',
+  'PRINTED',
+  'SECTION',
+  'CABIN',
+  'LECTURE',
+  'PRACTICAL',
+  'TUTORIAL',
+  'GROUP',
+  'STATUS',
+  'BLOCK',
+  'CREDIT',
+  'CREDITS',
+  'TOTAL',
+  'FACULTY'
+]);
+
+/**
+ * Validates whether a candidate string is an authentic academic course code.
+ * (e.g. CSE329, CSE408, PEAS01, INT373, or special placeholder PROJECT)
+ */
+export function isValidCourseCode(code?: string): boolean {
+  if (!code || typeof code !== 'string') return false;
+  const clean = code.trim().toUpperCase();
+  if (clean === 'PROJECT') return true;
+  if (INVALID_COURSE_CODES.has(clean)) return false;
+  return /^[A-Z]{2,5}\d{2,4}[A-Z0-9]?$/.test(clean);
+}
+
+/**
+ * Validates whether a time cell represents an actual class period time
+ * (e.g. "09:30-10:20 AM", "10:20-11:10 AM", "01:40-02:30 PM", "9:00 - 10:00").
+ * Rejects SSRS report titles, printed timestamps ("Printed On 10/5/2026 1:33:19 PM"),
+ * and directory update stamps.
+ */
+export function isValidPeriodTimeString(t?: string): boolean {
+  if (!t || typeof t !== 'string') return false;
+  const clean = t.replace(/[\u00a0\s]+/g, ' ').trim();
+  if (clean.length < 4 || clean.length > 35) return false;
+  if (!/\d{1,2}:\d{2}/.test(clean)) return false;
+  const lower = clean.toLowerCase();
+  const blacklist = [
+    'time table',
+    'timetable',
+    'home section',
+    'printed on',
+    'legends',
+    'course code',
+    'faculty',
+    'last updated',
+    'credits',
+    'tutorial',
+    'practical credits',
+    'page no',
+    'vid',
+    'cabin',
+    'schedule below',
+    'report'
+  ];
+  if (blacklist.some((word) => lower.includes(word))) return false;
+  return true;
+}
+
+/**
+ * Parses concatenated UMS ReportViewer / SSRS Course & Faculty Directory text dump
+ * into structured CourseFacultyRecord entries.
+ */
+export function parseConcatenatedSsrsCourses(text: string): CourseFacultyRecord[] {
+  if (!text || typeof text !== 'string') return [];
+  const headerMatch =
+    text.match(/Course\s*Code\s*Type\s*Course\s*Title\s*Lectures\s*Tutorial\s*Practical\s*Credits\s*Facul[^\n\r]*?\)/i) ||
+    text.match(/Course\s*Code\s*Type\s*Course\s*Title[^\n\r]*?/i);
+
+  if (!headerMatch || headerMatch.index === undefined) return [];
+
+  const headerEndIdx = headerMatch.index + headerMatch[0].length;
+  const bodyText = text.slice(headerEndIdx).trim();
+
+  // Clean separator before each course row (supports both newline-delimited and fully-concatenated SSRS dumps)
+  const preProcessed = bodyText.replace(
+    /(?:(AM|PM|NA|\))\s*|\r?\n\s*)(?=([A-Z]{2,4}\d{2,4})(PW|CR|TE|EM|OM|PE|UC|PC|OE|RE|SP|SE|BL|[A-Z]{2}))/gi,
+    '$1\n[ROW] '
+  );
+
+  const rowPattern =
+    /([A-Z]{2,4}\d{2,4})\s*(PW|CR|TE|EM|OM|PE|UC|PC|OE|RE|SP|SE|BL|[A-Z]{2})\s*([A-Z0-9\s\-_/&]+?)\s*(\d)(\d)(\d)(\d)\s*(.*?)(?:Last Updated\s*::\s*([^\n\r]+?))?$/is;
+
+  const rawRows = preProcessed.split('\n[ROW]').map((s) => s.trim()).filter(Boolean);
+  const courses: CourseFacultyRecord[] = [];
+
+  for (const rawRow of rawRows) {
+    const cleanRow = rawRow.replace(/\s+/g, ' ');
+    const m = cleanRow.match(rowPattern);
+    if (m) {
+      const code = m[1].trim().toUpperCase();
+      if (!isValidCourseCode(code)) continue;
+
+      const type = m[2].trim().toUpperCase();
+      const courseTypeName = COURSE_TYPE_LABELS[type] || type;
+      const title = m[3].trim();
+      const lectures = parseInt(m[4], 10) || 0;
+      const tutorial = parseInt(m[5], 10) || 0;
+      const practical = parseInt(m[6], 10) || 0;
+      const credits = parseInt(m[7], 10) || 0;
+      let facRaw = (m[8] || '').trim();
+      if (facRaw.includes('(') && !facRaw.includes(')')) {
+        facRaw += ')';
+      }
+      const lastUpRaw = (m[9] || '').trim();
+      const facParsed = parseFacultyCell(facRaw + (lastUpRaw ? ` Last Updated :: ${lastUpRaw}` : ''));
+
+      courses.push({
+        courseCode: code,
+        courseType: type,
+        courseTypeName,
+        courseTitle: title,
+        lectures,
+        tutorial,
+        practical,
+        credits,
+        facultyName: facParsed.facultyName,
+        facultyCabin: facParsed.facultyCabin,
+        facultyBlock: facParsed.facultyBlock,
+        facultyRoom: facParsed.facultyRoom,
+        cabinNumber: facParsed.cabinNumber,
+        lastUpdated: facParsed.lastUpdated || (lastUpRaw && lastUpRaw !== 'NA' ? lastUpRaw : undefined)
+      });
+    }
+  }
+
+  return courses;
+}
+
+/**
  * Parses individual class string like:
  * "Lecture / G:All C:CSE329 / R: 38-917 / S:K4E0061"
  * or "Practical / G:0 C:CSE472 / R: 33-502 / S:K2EM001"
@@ -375,14 +528,17 @@ export function parseClassCellText(
     const courseMatch = line.match(/C\s*:\s*([A-Z0-9]+)/i);
     const courseCode = courseMatch ? courseMatch[1].trim().toUpperCase() : undefined;
 
-    // A valid class slot must contain a course code
-    if (!courseCode) continue;
+    // A valid class slot must contain an authentic course code
+    if (!courseCode || !isValidCourseCode(courseCode)) continue;
 
     const roomMatch = line.match(/R\s*:\s*([0-9A-Z\s-]+?)(?=\s*\/|$)/i);
     const room = roomMatch ? roomMatch[1].replace(/\s+/g, '').trim() : undefined;
 
     const sectionMatch = line.match(/S\s*:\s*([0-9A-Z]+)/i);
-    const section = sectionMatch ? sectionMatch[1].trim() : undefined;
+    let section = sectionMatch ? sectionMatch[1].replace(/Legends.*$/i, '').trim() : undefined;
+    if (section && /^(time|timetable|table|schedule|weekly|report|legends|legend)$/i.test(section)) {
+      section = undefined;
+    }
 
     let block: string | undefined;
     let roomNumber: string | undefined;
@@ -546,29 +702,123 @@ export function parseStudentTimeTable(doc: Document = document): TimetableSummar
   // Locate the weekly schedule grid table and course table across all tables
   let gridTable: HTMLTableElement | null = null;
   let courseTable: HTMLTableElement | null = null;
+  let bestGridScore = -1;
+  let bestCourseScore = -1;
 
   for (const tbl of allTables) {
-    const text = (tbl.textContent || '').toLowerCase().replace(/[\u00a0\s]+/g, ' ');
-    if (
-      !gridTable &&
-      (text.includes('monday') || text.includes('tuesday')) &&
-      (text.includes('timing') || text.includes('time') || text.includes('wednesday') || text.includes('09:') || text.includes('10:'))
-    ) {
-      gridTable = tbl;
+    const idLower = (tbl.id || '').toLowerCase();
+    // Exclude outer SSRS fixedTable shells
+    if (idLower.includes('fixedtable') || idLower.includes('reportviewercontrol_ctl04')) {
+      continue;
     }
-    if (
-      !courseTable &&
-      text.includes('course code') &&
-      text.includes('faculty')
-    ) {
-      courseTable = tbl;
+
+    const text = (tbl.textContent || '').toLowerCase().replace(/[\u00a0\s]+/g, ' ');
+    const hasDays = text.includes('monday') || text.includes('tuesday');
+    const hasTiming = text.includes('timing') || text.includes('time') || /\d{1,2}:\d{2}/.test(text);
+
+    // Direct rows of this table (not rows belonging to nested child tables)
+    const directRows = Array.from(tbl.rows && tbl.rows.length > 0 ? tbl.rows : tbl.querySelectorAll('tr'))
+      .filter((r) => r.closest('table') === tbl);
+
+    if (hasDays && hasTiming) {
+      let directTimingRows = 0;
+      let hasDirectHeaderDays = false;
+
+      for (const r of directRows) {
+        const directCells = Array.from(r.cells && r.cells.length > 0 ? r.cells : r.querySelectorAll('td, th'))
+          .filter((c) => c.closest('tr') === r);
+        const cellTexts = directCells.map((c) =>
+          (c.textContent || '').replace(/[\u00a0\s]+/g, ' ').trim().toLowerCase()
+        );
+
+        if (cellTexts.some((t) => t.includes('monday')) && cellTexts.some((t) => t.includes('tuesday'))) {
+          hasDirectHeaderDays = true;
+        }
+
+        const hasTime = cellTexts.slice(0, 3).some(
+          (t) =>
+            isValidPeriodTimeString(t) ||
+            (/\d{1,2}:\d{2}/.test(t) &&
+              t.length < 50 &&
+              !t.includes('printed on') &&
+              !t.includes('course code'))
+        );
+        if (hasTime) {
+          directTimingRows++;
+        }
+      }
+
+      // If direct rows check found timing rows or header days, score heavily
+      const score = (hasDirectHeaderDays ? 50 : 0) + (directTimingRows * 10);
+      if (score > bestGridScore) {
+        bestGridScore = score;
+        gridTable = tbl;
+      }
+    }
+
+    const hasCourseHeaders =
+      (text.includes('course code') || text.includes('coursecode')) &&
+      text.includes('faculty') &&
+      (text.includes('credit') || text.includes('lecture') || text.includes('practical') || text.includes('cabin'));
+    const isLegendsOnly = text.includes('legends :') && !text.includes('course code');
+
+    if (hasCourseHeaders && !isLegendsOnly) {
+      let directCourseRows = 0;
+      for (const r of directRows) {
+        const directCells = Array.from(r.cells && r.cells.length > 0 ? r.cells : r.querySelectorAll('td, th'))
+          .filter((c) => c.closest('tr') === r);
+        const cellTexts = directCells.map((c) =>
+          (c.textContent || '').replace(/[\u00a0\s]+/g, ' ').trim()
+        );
+        if (cellTexts.some((t) => isValidCourseCode(t))) {
+          directCourseRows++;
+        }
+      }
+
+      const courseScore = directCourseRows * 10 + (text.includes('cabin') ? 5 : 0);
+      if (courseScore > bestCourseScore) {
+        bestCourseScore = courseScore;
+        courseTable = tbl;
+      }
+    }
+  }
+
+  // Drill down gridTable ONLY if an inner table has MORE direct timing rows than gridTable
+  if (gridTable && gridTable.querySelectorAll('table').length > 0) {
+    const nested = Array.from(gridTable.querySelectorAll<HTMLTableElement>('table'));
+    for (const inner of nested) {
+      const iText = (inner.textContent || '').toLowerCase();
+      const innerTimingRows = Array.from(inner.querySelectorAll('tr')).filter((r) =>
+        isValidPeriodTimeString((r.textContent || '').toLowerCase())
+      ).length;
+      if (
+        (iText.includes('monday') || iText.includes('tuesday')) &&
+        innerTimingRows >= 3
+      ) {
+        gridTable = inner;
+        break;
+      }
+    }
+  }
+
+  // Drill down courseTable ONLY if an inner table has the course headers and is not an outer layout wrapper
+  if (courseTable && courseTable.querySelectorAll('table').length > 0) {
+    const nested = Array.from(courseTable.querySelectorAll<HTMLTableElement>('table'));
+    for (const inner of nested) {
+      const iText = (inner.textContent || '').toLowerCase();
+      if (iText.includes('course code') && iText.includes('faculty') && inner.querySelectorAll('tr').length >= 2) {
+        courseTable = inner;
+        break;
+      }
     }
   }
 
   // 4. Parse Course & Faculty Directory Table first so we can enrich slots
   const courses: CourseFacultyRecord[] = [];
   if (courseTable) {
-    const rows = Array.from(courseTable.querySelectorAll('tr'));
+    const directRows = Array.from(courseTable.rows && courseTable.rows.length > 0 ? courseTable.rows : courseTable.querySelectorAll('tr'))
+      .filter((r) => r.closest('table') === courseTable);
+    const rows = directRows.length > 0 ? directRows : Array.from(courseTable.querySelectorAll('tr'));
     let codeColIdx = -1;
     let typeColIdx = -1;
     let titleColIdx = -1;
@@ -579,7 +829,9 @@ export function parseStudentTimeTable(doc: Document = document): TimetableSummar
     let facColIdx = -1;
 
     for (const row of rows) {
-      const cells = Array.from(row.querySelectorAll('td, th')).map((c) =>
+      const directCells = Array.from(row.cells && row.cells.length > 0 ? row.cells : row.querySelectorAll('td, th'))
+        .filter((c) => c.closest('tr') === row);
+      const cells = directCells.map((c) =>
         (c.textContent || '').replace(/[\u00a0\s]+/g, ' ').trim()
       );
       const lowerCells = cells.map((c) => c.toLowerCase());
@@ -614,7 +866,7 @@ export function parseStudentTimeTable(doc: Document = document): TimetableSummar
         }
       }
 
-      if (!courseCode) continue;
+      if (!courseCode || !isValidCourseCode(courseCode)) continue;
 
       const courseType = typeColIdx !== -1 ? cells[typeColIdx] : (cells[targetCodeIdx + 1] || undefined);
       const courseTypeName = courseType ? COURSE_TYPE_LABELS[courseType] || courseType : undefined;
@@ -646,6 +898,14 @@ export function parseStudentTimeTable(doc: Document = document): TimetableSummar
     }
   }
 
+  // Concatenated SSRS course directory fallback (if courses table wasn't rendered as standard table elements)
+  if (courses.length === 0) {
+    const ssrsParsedCourses = parseConcatenatedSsrsCourses(cleanFullText);
+    if (ssrsParsedCourses.length > 0) {
+      courses.push(...ssrsParsedCourses);
+    }
+  }
+
   // Map for fast course code lookup
   const courseMap = new Map<string, CourseFacultyRecord>();
   for (const c of courses) {
@@ -656,11 +916,15 @@ export function parseStudentTimeTable(doc: Document = document): TimetableSummar
   const slots: TimetableSlot[] = [];
 
   if (gridTable) {
-    const rows = Array.from(gridTable.querySelectorAll('tr'));
+    const directRows = Array.from(gridTable.rows && gridTable.rows.length > 0 ? gridTable.rows : gridTable.querySelectorAll('tr'))
+      .filter((r) => r.closest('table') === gridTable);
+    const rows = directRows.length > 0 ? directRows : Array.from(gridTable.querySelectorAll('tr'));
     let dayIndexMap: Array<{ day: TimetableDay; colIndex: number }> = [];
 
     for (const row of rows) {
-      const cells = Array.from(row.querySelectorAll('td, th')).map((c) =>
+      const directCells = Array.from(row.cells && row.cells.length > 0 ? row.cells : row.querySelectorAll('td, th'))
+        .filter((c) => c.closest('tr') === row);
+      const cells = directCells.map((c) =>
         (c.textContent || '').replace(/[\u00a0\s]+/g, ' ').trim()
       );
       const lowerCells = cells.map((c) => c.toLowerCase());
@@ -680,10 +944,10 @@ export function parseStudentTimeTable(doc: Document = document): TimetableSummar
 
       // If we already identified header days, parse time slot row
       if (dayIndexMap.length > 0 && cells.length > 1) {
-        // Find which cell in the first 3 columns contains the time
+        // Find which cell in the first 3 columns contains a valid period time
         // e.g. "09:30-10:20 AM" or "10:20-11:10 AM"
-        const timeCell = cells.slice(0, 3).find((c) => /\d{1,2}:\d{2}/.test(c)) || cells[0];
-        if (!timeCell || !timeCell.match(/\d{1,2}:\d{2}/)) continue;
+        const timeCell = cells.slice(0, 3).find((c) => isValidPeriodTimeString(c));
+        if (!timeCell) continue;
 
         for (const { day, colIndex } of dayIndexMap) {
           if (colIndex >= cells.length) continue;
@@ -693,6 +957,8 @@ export function parseStudentTimeTable(doc: Document = document): TimetableSummar
           const parsedSlots = parseClassCellText(cellContent, day, timeCell);
 
           for (const s of parsedSlots) {
+            if (!isValidCourseCode(s.courseCode) || !isValidPeriodTimeString(s.time)) continue;
+
             // Enrich slot with course & faculty metadata
             if (s.courseCode) {
               const matchedCourse = courseMap.get(s.courseCode.toUpperCase());
@@ -735,11 +1001,38 @@ export function parseStudentTimeTable(doc: Document = document): TimetableSummar
     }
   }
 
+  // Group slots by day for deterministic day-level retrieval
+  const byDay: Record<string, TimetableSlot[]> = {
+    Monday: [],
+    Tuesday: [],
+    Wednesday: [],
+    Thursday: [],
+    Friday: [],
+    Saturday: [],
+    Sunday: []
+  };
+
+  for (const s of slots) {
+    const capDay = s.day ? (s.day.charAt(0).toUpperCase() + s.day.slice(1).toLowerCase()) : '';
+    if (byDay[capDay]) {
+      byDay[capDay].push(s);
+    }
+  }
+
+  // Diagnostic logging for DOM extraction & verification
+  console.log(
+    `[ONEE Timetable Parser] Extraction complete: ${slots.length} total slots across ${courses.length} courses. ` +
+    `Monday: ${byDay.Monday.length}, Tuesday: ${byDay.Tuesday.length}, Wednesday: ${byDay.Wednesday.length}, ` +
+    `Thursday: ${byDay.Thursday.length}, Friday: ${byDay.Friday.length}, Saturday: ${byDay.Saturday.length}. ` +
+    `Section: ${homeSection || 'N/A'}, VID: ${vid || 'N/A'}`
+  );
+
   return {
     vid: vid || 'Verified Student',
     homeSection: homeSection || 'Verified Section',
     printedOn,
     slots,
+    byDay,
     courses,
     totalSlots: slots.length,
     totalCourses: courses.length,
@@ -748,4 +1041,20 @@ export function parseStudentTimeTable(doc: Document = document): TimetableSummar
     verified: true,
     source: 'UMS Student Time Table Report'
   };
+}
+
+/**
+ * Deterministically extracts classes for a specific day from TimetableSummary.
+ */
+export function getClassesForDay(
+  timetable?: TimetableSummary | null,
+  dayName?: string
+): TimetableSlot[] {
+  if (!timetable || !timetable.slots || timetable.slots.length === 0) return [];
+  if (!dayName) return timetable.slots;
+
+  const target = dayName.trim().toLowerCase();
+  return timetable.slots.filter(
+    (s) => s.day && s.day.trim().toLowerCase() === target
+  );
 }

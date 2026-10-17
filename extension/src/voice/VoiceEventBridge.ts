@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { voiceController } from './VoiceController';
+import { audioController } from './AudioController';
 import { VoiceState, VoiceMode, VoicePreferences } from './VoiceTypes';
 
 export interface UseVoiceAgentReturn {
@@ -47,6 +48,7 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
   }, []);
 
   const startListening = useCallback(async () => {
+    audioController.unlockAudio().catch(() => {});
     await voiceController.startListening();
   }, []);
 
@@ -59,12 +61,24 @@ export function useVoiceAgent(): UseVoiceAgentReturn {
   }, []);
 
   const toggleListening = useCallback(async () => {
-    if (voiceState === 'LISTENING') {
+    audioController.unlockAudio().catch(() => {});
+    const current = voiceController.getState();
+    if (current === 'LISTENING' || current === 'TRANSCRIBING') {
       voiceController.stopListening();
-    } else {
-      await voiceController.startListening();
+      return;
     }
-  }, [voiceState]);
+    // Barge-in: stop any in-flight TTS, then start a fresh capture session.
+    if (
+      current === 'SPEAKING' ||
+      current === 'UNDERSTANDING' ||
+      current === 'PLANNING' ||
+      current === 'NARRATING' ||
+      audioController.isSpeaking()
+    ) {
+      voiceController.stopSpeaking();
+    }
+    await voiceController.startListening();
+  }, []);
 
   const setVoiceMode = useCallback(async (mode: VoiceMode) => {
     await voiceController.setMode(mode);

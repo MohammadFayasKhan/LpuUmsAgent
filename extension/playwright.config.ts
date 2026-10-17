@@ -10,6 +10,7 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     headless: true,
+    channel: 'chrome',
     viewport: { width: 1280, height: 720 },
     actionTimeout: 10000,
     trace: 'off'

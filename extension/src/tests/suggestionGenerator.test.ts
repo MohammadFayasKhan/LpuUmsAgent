@@ -1,8 +1,19 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generateContextualSuggestions } from '../services/suggestionGenerator';
 import { ExaminationSummary, AttendanceSummary, ExaminationRecord } from '../shared/types';
 
 describe('suggestionGenerator', () => {
+  // These fixtures represent the morning before the first paper. Freeze time so
+  // the expected "next exam" does not become stale as the real clock advances.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-06T08:00:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const mockAttendance: AttendanceSummary = {
     totalCourses: 3,
     overallPercentage: 81.5,
@@ -182,5 +193,100 @@ describe('suggestionGenerator', () => {
     expect(suggestions).not.toContain('Fetch and open sample paper for CSE408');
     // Should qualify with the specific term that actually has the paper
     expect(suggestions.some((s) => s.includes('CSE408 (End Term Regular)'))).toBe(true);
+  });
+
+  it('generates course-grounded suggestions when user asks about a specific course code', () => {
+    // INT373 is at 66.7% (<75%) - Attendance query strictly suggests attendance chips
+    const suggestionsLow = generateContextualSuggestions(mockAttendance, 'Can I skip INT373?', mockExamination);
+    expect(suggestionsLow).toContain('How many to reach 75% in INT373?');
+    expect(suggestionsLow).toContain('Can I miss any classes in INT373?');
+
+    // INT373 Exam query strictly suggests exam chips
+    const suggestionsExam = generateContextualSuggestions(mockAttendance, 'When is my exam for INT373?', mockExamination);
+    expect(suggestionsExam).toContain('Where is my seat for INT373?');
+
+    // CSE471 is at 93.3% (>75%)
+    const suggestionsHigh = generateContextualSuggestions(mockAttendance, 'What is my standing in CSE471?', mockExamination);
+    expect(suggestionsHigh).toContain('How many can I miss in CSE471?');
+    expect(suggestionsHigh).toContain('Can I skip next lecture of CSE471?');
+  });
+
+  it('generates context-aware follow-ups when discussing leave tomorrow and extracts critical course from assistant response', () => {
+    const attendanceWithCse329: AttendanceSummary = {
+      totalCourses: 4,
+      overallPercentage: 98,
+      totalDelivered: 40,
+      totalAttended: 39,
+      courses: [
+        { code: 'CSE329', name: 'Software Design', attended: 10, delivered: 10, total: 10, percentage: 100, dutyLeave: 0 },
+        { code: 'CSE330', name: 'Data Mining', attended: 10, delivered: 10, total: 10, percentage: 100, dutyLeave: 0 },
+        { code: 'CSE408', name: 'Software Testing', attended: 9, delivered: 10, total: 10, percentage: 90, dutyLeave: 0 },
+        { code: 'CSE471', name: 'Cloud Computing', attended: 10, delivered: 10, total: 10, percentage: 100, dutyLeave: 0 }
+      ]
+    };
+
+    const leaveResponse =
+      "### Leave Impact Simulation\n" +
+      "Here is the projected impact if you take leave tomorrow (assuming 4 lectures scheduled):\n" +
+      "- Most Critical Course: CSE329 (100%) has a individual buffer of 3 skips.\n" +
+      "> Leave Verdict: Taking leave tomorrow is safe for your overall aggregate, provided you do not miss a class in CSE329 if it is on tomorrow's schedule.";
+
+    const suggestions = generateContextualSuggestions(
+      attendanceWithCse329,
+      'Can I take leave tomorrow?',
+      null,
+      null,
+      leaveResponse
+    );
+
+    // Must be grounded in CSE329 and tomorrow's schedule
+    expect(suggestions).toContain("Is CSE329 on tomorrow's schedule?");
+    expect(suggestions).toContain('What classes do I have tomorrow?');
+    expect(suggestions).toContain('Can I safely skip CSE329 tomorrow?');
+
+    // Must NOT contain unrelated generic fallbacks
+    expect(suggestions).not.toContain('Which subject is lowest?');
+    expect(suggestions.some((s) => s.includes('lowest'))).toBe(false);
+  });
+
+  it('suggests proactive schedule and attendance actions when user asks about leave with no data loaded', () => {
+    const suggestions = generateContextualSuggestions(null, 'Can I take leave tomorrow?', null, null, null);
+    expect(suggestions).toContain("View tomorrow's class schedule");
+    expect(suggestions).toContain('Extract live attendance from UMS');
+    expect(suggestions).not.toContain('Which subject is lowest?');
+  });
+
+  /*
+   * REGRESSION: "How many can I miss in ON19?" appeared in the suggestion rail
+   * even though ON19/TERM2026 are notification text, not UMS subjects.
+   */
+  it('never builds suggestions from subjects that are not verified UMS course codes', () => {
+    const pollutedAttendance: AttendanceSummary = {
+      totalCourses: 3,
+      overallPercentage: 65,
+      totalDelivered: 37,
+      totalAttended: 19,
+      courses: [
+        { code: 'ON19', name: 'notification text', attended: 0, delivered: 8, total: 8, percentage: 0, dutyLeave: 0 },
+        { code: 'TERM2026', name: 'notification text', attended: 0, delivered: 8, total: 8, percentage: 0, dutyLeave: 0 },
+        { code: 'PARTY2026', name: 'news headline', attended: 0, delivered: 8, total: 8, percentage: 0, dutyLeave: 0 },
+        { code: 'CSE330', name: 'Competitive Coding Approaches', attended: 19, delivered: 21, total: 21, percentage: 95, dutyLeave: 0 }
+      ]
+    };
+
+    const queries = [
+      'how many classes can I miss in ON19?',
+      'which subject is lowest?',
+      'what is my attendance?',
+      'calculate safe bunks'
+    ];
+
+    for (const q of queries) {
+      const suggestions = generateContextualSuggestions(pollutedAttendance, q, null, null, null);
+      const joined = suggestions.join(' | ');
+      expect(joined).not.toContain('ON19');
+      expect(joined).not.toContain('TERM2026');
+      expect(joined).not.toContain('PARTY2026');
+    }
   });
 });

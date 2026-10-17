@@ -9,9 +9,12 @@ from .schemas import (
     TranscriptionResponse,
     TranscriptionJsonRequest,
     SynthesisRequest,
-    VoiceHealthResponse
+    VoiceHealthResponse,
+    NarrationRequest,
+    NarrationResponse
 )
 from .service import voice_service
+from .groq_voice import transform_speech_identity
 
 logger = logging.getLogger("onee.voice.router")
 
@@ -86,13 +89,17 @@ async def speak_text_endpoint(request: SynthesisRequest):
     Synthesizes expressive spoken audio from text using Groq Orpheus/TTS.
     """
     try:
+        request.text = transform_speech_identity(request.text)
         audio_bytes, media_type = await voice_service.synthesize(request)
+        # Filename must match the actual payload format (Orpheus serves WAV);
+        # never advertise MP3 for WAV bytes.
+        ext = "wav" if "wav" in (media_type or "") else (media_type or "audio").split("/")[-1]
         return Response(
             content=audio_bytes,
             media_type=media_type,
             headers={
                 "Cache-Control": "no-cache",
-                "Content-Disposition": "inline; filename=speech.mp3"
+                "Content-Disposition": f"inline; filename=speech.{ext}"
             }
         )
     except ValueError as ve:
@@ -106,3 +113,22 @@ async def speak_text_endpoint(request: SynthesisRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Speech synthesis failed: {str(e)}"
         )
+
+@router.post("/narrate", response_model=NarrationResponse, status_code=status.HTTP_200_OK)
+async def narrate_milestone_endpoint(request: NarrationRequest):
+    """
+    Generates dynamic, context-aware spoken narration for browser agent milestones.
+    """
+    try:
+        return await voice_service.generate_dynamic_narration(request)
+    except Exception as e:
+        logger.exception("Dynamic narration generation failed")
+        return NarrationResponse(
+            text=None,
+            purpose=request.milestone_type,
+            execution_id=request.execution_id,
+            priority=request.milestone_type,
+            should_speak=False,
+            semantic_key=f"{request.phase}_{request.milestone_type}"
+        )
+

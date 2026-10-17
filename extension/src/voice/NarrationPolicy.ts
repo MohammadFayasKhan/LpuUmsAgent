@@ -1,35 +1,23 @@
 /*
  * Narration Policy Engine for ONEE.
  *
- * Translates centralized semantic agent states into concise, natural,
- * human-sounding spoken narration without requiring expensive LLM round-trips.
- *
- * Core Guarantees:
- * 1. Single Source of Truth: Driven exclusively by OneeSemanticState and AgentState.
- * 2. Truthfulness: Never claims "I found your exam" until validation & verification succeed.
- * 3. Semantic-Only: Never exposes mechanical cursor/DOM movements ("The cursor is moving").
- * 4. Mode-Filtered: Honors OFF, ASSIST, and LIVE_AGENT modes.
- * 5. Anti-Repetition: Deduplicates identical utterances within an active window.
+ * Provides synchronous bridge to DynamicNarrationEngine:
+ * - Single source of truth: Runtime State provides facts; ONEE intelligence generates wording.
+ * - Anti-repetition: Deduplicates semantically identical utterances within an active window.
+ * - Truthfulness: Never claims verification until real verified data exists.
  */
 
 import { OneeSemanticState, OneeRuntimeState } from '../lib/runtimeState';
-import { VoiceMode, NarrationLevel } from './VoiceTypes';
+import { NarrationContext } from './VoiceTypes';
 import { FinalResponseData, AgentCapability } from '../shared/types';
-
-export interface NarrationContext {
-  mode: VoiceMode;
-  level: NarrationLevel;
-  lastSpokenPhrase?: string;
-  lastSpokenTime?: number;
-  activeExecutionId?: string | null;
-}
+import { dynamicNarrationEngine } from './DynamicNarrationEngine';
 
 export class NarrationPolicyEngine {
   private recentPhrases: Map<string, number> = new Map();
   private readonly DEDUP_WINDOW_MS = 4000;
 
   /**
-   * Evaluates current state and returns a short natural spoken phrase, or null if silent.
+   * Evaluates current state and returns a natural spoken phrase, or null if silent.
    */
   public getNarrationPhrase(
     semanticState: OneeSemanticState,
@@ -55,7 +43,8 @@ export class NarrationPolicyEngine {
       (agentState?.currentGoal || '').toLowerCase().includes('timetable') ||
       (agentState?.currentGoal || '').toLowerCase().includes('class');
 
-    // In ASSIST mode, we only speak initial plan acknowledgment and final verified result
+
+    // Legacy ASSIST mode: only initial plan acknowledgment and final verified result are spoken
     if (context.mode === 'ASSIST') {
       if (semanticState === 'SUCCESS' && agentState?.finalResponse) {
         return this.formatVerifiedResultSpeech(agentState.finalResponse);
@@ -71,7 +60,7 @@ export class NarrationPolicyEngine {
       return null;
     }
 
-    // LIVE_AGENT Mode: Full semantic milestone narration
+    // LIVE_AGENT Mode: Progressive semantic milestone narration
     let phrase: string | null = null;
 
     switch (semanticState) {
@@ -114,7 +103,7 @@ export class NarrationPolicyEngine {
       }
 
       case 'WAITING':
-        phrase = "The UMS page is loading. I'll wait for it.";
+        phrase = "The UMS page is loading.";
         break;
 
       case 'EXTRACTING':
@@ -159,7 +148,6 @@ export class NarrationPolicyEngine {
       case 'THINKING':
       case 'IDLE':
       default:
-        // Deliberately silent to avoid robotically chattering on low-level mouse movements
         phrase = null;
         break;
     }
@@ -168,88 +156,11 @@ export class NarrationPolicyEngine {
     return this.filterRepetition(phrase);
   }
 
-  /**
-   * Formats verified final data into natural spoken speech.
-   * This is ONLY called once verified: true is guaranteed by application logic.
-   */
   public formatVerifiedResultSpeech(finalResponse: FinalResponseData): string {
-    const details = finalResponse.details;
-
-    if (finalResponse.type === 'next_exam') {
-      const next = details?.nextExam;
-      if (next) {
-        let speech = `Your next exam is ${next.courseCode} on ${next.examDate}`;
-        if (next.startTime) speech += ` at ${next.startTime}`;
-        if (next.reportingTime) speech += `, reporting by ${next.reportingTime}`;
-        if (next.seat && next.seat !== 'Not Allotted') {
-          speech += `. Your seat is ${next.seat}`;
-          if (next.room) speech += ` in room ${next.room}`;
-          if (next.building) speech += `, ${next.building}`;
-        }
-        speech += '.';
-        return speech;
-      }
-      return finalResponse.title || "Your upcoming exams are verified.";
-    }
-
-    if (finalResponse.type === 'seating_plan') {
-      const next = details?.nextExam;
-      if (next && next.seat && next.seat !== 'Not Allotted') {
-        let speech = `Your seat for ${next.courseCode} is ${next.seat}`;
-        if (next.room) speech += ` in room ${next.room}`;
-        if (next.building) speech += `, ${next.building}`;
-        speech += '.';
-        return speech;
-      }
-      return finalResponse.title || "Your seating plan has been verified.";
-    }
-
-    if (finalResponse.type === 'sample_paper') {
-      if (finalResponse.samplePaperResult?.success) {
-        return `I found and opened the sample question paper for ${finalResponse.samplePaperResult.courseCode}.`;
-      }
-      return `Sample paper for ${finalResponse.subjectCode || 'the course'} was checked on UMS.`;
-    }
-
-    if (finalResponse.type === 'timetable') {
-      const todayClasses = details?.todayClasses;
-      if (todayClasses && todayClasses.length > 0) {
-        const nextClass = details?.currentOrNextClass || todayClasses[0];
-        let speech = `You have ${todayClasses.length} classes scheduled today. `;
-        if (nextClass) {
-          speech += `Your class is ${nextClass.courseCode} in room ${nextClass.room || 'assigned room'}.`;
-        }
-        return speech;
-      }
-      return finalResponse.title || "Your student timetable has been verified.";
-    }
-
-    if (finalResponse.type === 'lowest_attendance' || finalResponse.type === 'safe_bunk') {
-      if (finalResponse.subjectCode && finalResponse.percentage !== undefined) {
-        let speech = `Your lowest attendance is ${finalResponse.subjectCode} at ${Math.round(finalResponse.percentage)} percent.`;
-        if (finalResponse.safeBuffer !== undefined) {
-          if (finalResponse.safeBuffer > 0) {
-            speech += ` You can safely miss ${finalResponse.safeBuffer} ${finalResponse.safeBuffer === 1 ? 'class' : 'classes'} without falling below 75 percent.`;
-          } else {
-            speech += ` You cannot skip any classes for this subject right now.`;
-          }
-        }
-        return speech;
-      }
-    }
-
-    if (finalResponse.type === 'full_summary') {
-      const overall = details?.overallPercentage;
-      const total = details?.totalCourses;
-      if (overall !== undefined) {
-        return `Your overall attendance across ${total || 'all'} subjects is ${Math.round(overall)} percent.`;
-      }
-    }
-
-    return finalResponse.title || "Your request has been verified.";
+    return dynamicNarrationEngine.formatVerifiedResultSpeech(finalResponse);
   }
 
-  private filterRepetition(phrase: string): string | null {
+  public filterRepetition(phrase: string): string | null {
     const now = Date.now();
     const lastSpoken = this.recentPhrases.get(phrase);
 
@@ -259,7 +170,6 @@ export class NarrationPolicyEngine {
 
     this.recentPhrases.set(phrase, now);
 
-    // Prune stale entries
     if (this.recentPhrases.size > 20) {
       this.recentPhrases.forEach((time, key) => {
         if (now - time > 15000) {
@@ -273,6 +183,7 @@ export class NarrationPolicyEngine {
 
   public reset() {
     this.recentPhrases.clear();
+    dynamicNarrationEngine.reset();
   }
 }
 

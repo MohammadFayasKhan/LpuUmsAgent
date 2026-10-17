@@ -13,22 +13,49 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { AttendanceSummary, ExaminationSummary, ChatMessage, AgentActivity } from '../shared/types';
+import { AttendanceSummary, ExaminationSummary, TimetableSummary, ChatMessage, AgentActivity } from '../shared/types';
 import { streamChatMessage } from '../services/api';
 import {
   localDatabase,
   ConversationRecord,
   MessageRecord
 } from '../services/localDatabase';
-import { verifiedExaminationRepo } from '../services/repositories';
+import { verifiedExaminationRepo, verifiedTimetableRepo } from '../services/repositories';
 import { generateContextualSuggestions } from '../services/suggestionGenerator';
 import { personalizationStore } from '../services/personalizationStore';
 import { cleanPreviewSnippet } from '../lib/scrollUtils';
+import { sanitizeFinalResponseText } from '../lib/sanitizeResponseText';
+import { routeUserIntent } from '../services/intentRouter';
+import { isCachedAttendanceForStudent } from '../shared/attendanceCalculator';
+import { voiceController } from '../voice';
 
 export interface UseChatAgentResult {
   messages: ChatMessage[];
   isTyping: boolean;
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (
+    text: string,
+    options?: {
+      skipVoice?: boolean;
+      executionId?: string;
+      attendance?: AttendanceSummary | null;
+      examination?: ExaminationSummary | null;
+      timetable?: TimetableSummary | null;
+    }
+  ) => Promise<void>;
+  startPendingExchange: (userText: string, executionId: string) => Promise<string>;
+  updatePendingExchangeChunk: (placeholderId: string, chunk: string) => void;
+  completePendingExchange: (
+    placeholderId: string,
+    userText: string,
+    reply: string,
+    options?: {
+      executionId?: string;
+      cardType?: string;
+      ttsChunks?: string[];
+      skipVoice?: boolean;        suggestions?: string[];
+        capability?: string;
+      }
+    ) => Promise<void>;
   clearHistory: () => void;
   suggestions: string[];
   conversations: ConversationRecord[];
@@ -45,7 +72,8 @@ export function useChatAgent(
   attendance: AttendanceSummary | null,
   onActivityLog?: (activity: AgentActivity) => void,
   accountId: string = 'default',
-  examination?: ExaminationSummary | null
+  examination?: ExaminationSummary | null,
+  timetable?: TimetableSummary | null
 ): UseChatAgentResult {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isTyping, setIsTyping] = useState<boolean>(false);
@@ -53,6 +81,8 @@ export function useChatAgent(
   const [activeConversationId, setActiveConversationId] = useState<string>('');
   const [localVerifiedContext, setLocalVerifiedContext] = useState<AttendanceSummary | null>(null);
   const [localVerifiedExamination, setLocalVerifiedExamination] = useState<ExaminationSummary | null>(null);
+  const [localVerifiedTimetable, setLocalVerifiedTimetable] = useState<TimetableSummary | null>(null);
+  const [dynamicSuggestions, setDynamicSuggestions] = useState<string[]>([]);
 
   const activeConvRef = useRef<string>('');
   activeConvRef.current = activeConversationId;
@@ -65,12 +95,26 @@ export function useChatAgent(
     return localVerifiedExamination;
   }, [examination, localVerifiedExamination]);
 
+  // Effective timetable: Merges live timetable snapshot with local verified records
+  const effectiveTimetable = useMemo(() => {
+    if (timetable && timetable.slots && timetable.slots.length > 0) {
+      return timetable;
+    }
+    return localVerifiedTimetable;
+  }, [timetable, localVerifiedTimetable]);
+
   // Effective attendance: Merges live snapshot with local verified context so exact class counts are never lost
   const effectiveAttendance = useMemo(() => {
     if (!attendance || !attendance.courses || attendance.courses.length === 0) {
       return localVerifiedContext;
     }
     if (!localVerifiedContext || !localVerifiedContext.courses || localVerifiedContext.courses.length === 0) {
+      return attendance;
+    }
+
+    // Never merge another UMS account's cached counts into the live snapshot
+    // captured from the tab currently on screen.
+    if (!isCachedAttendanceForStudent(localVerifiedContext, attendance)) {
       return attendance;
     }
 
@@ -116,13 +160,18 @@ export function useChatAgent(
 
     async function loadStorage() {
       try {
-        const [convList, verifiedAtt, verifiedExam] = await Promise.all([
+        const [convList, verifiedAtt, verifiedExam, verifiedTt] = await Promise.all([
           localDatabase.listConversations(accountId),
           localDatabase.getLatestVerifiedAttendance(accountId),
-          verifiedExaminationRepo.getLatestVerifiedExamination(accountId)
+          verifiedExaminationRepo.getLatestVerifiedExamination(accountId),
+          verifiedTimetableRepo.getLatestVerifiedTimetable(accountId)
         ]);
 
         if (!isMounted) return;
+
+        if (verifiedTt && verifiedTt.timetable) {
+          setLocalVerifiedTimetable(verifiedTt.timetable);
+        }
 
         if (verifiedExam && verifiedExam.examination) {
           setLocalVerifiedExamination(verifiedExam.examination);
@@ -144,7 +193,9 @@ export function useChatAgent(
             totalDelivered: verifiedAtt.aggregate.delivered,
             totalCourses: verifiedAtt.aggregate.totalCourses,
             status: 'verified',
-            source: 'live-ums-dom'
+            // Cached snapshot, not a fresh DOM read — labeled honestly so it
+            // can never masquerade as live data in answers or cards.
+            source: 'cached-verified-record'
           });
         }
 
@@ -194,15 +245,27 @@ export function useChatAgent(
     };
   }, [accountId]);
 
-  // Dynamic contextual suggestions based on live/local attendance & exam state and message history
-  const suggestions = useMemo(() => {
+  // Baseline dynamic contextual suggestions based on live/local attendance & exam state and message history
+  const baselineSuggestions = useMemo(() => {
     const lastUserMsg = [...messages].reverse().find((m) => m.sender === 'user')?.text || null;
-    return generateContextualSuggestions(effectiveAttendance, lastUserMsg, effectiveExamination);
-  }, [effectiveAttendance, messages, effectiveExamination]);
+    const lastAsstMsg = [...messages].reverse().find((m) => m.sender === 'onee' && m.text)?.text || null;
+    return generateContextualSuggestions(
+      effectiveAttendance,
+      lastUserMsg,
+      effectiveExamination,
+      effectiveTimetable || null,
+      lastAsstMsg
+    );
+  }, [effectiveAttendance, messages, effectiveExamination, effectiveTimetable]);
+
+  const suggestions = useMemo(() => {
+    return dynamicSuggestions.length > 0 ? dynamicSuggestions : baselineSuggestions;
+  }, [dynamicSuggestions, baselineSuggestions]);
 
   const switchConversation = useCallback(
     async (conversationId: string) => {
       setActiveConversationId(conversationId);
+      setDynamicSuggestions([]);
       try {
         const savedMsgs = await localDatabase.listMessages(conversationId);
         setMessages(
@@ -234,6 +297,7 @@ export function useChatAgent(
     await localDatabase.saveConversation(newConv);
     setConversations((prev) => [newConv, ...prev]);
     setActiveConversationId(newId);
+    setDynamicSuggestions([]);
     setMessages([]);
     return newId;
   }, [accountId]);
@@ -255,8 +319,27 @@ export function useChatAgent(
   );
 
   const sendMessage = useCallback(
-    async (text: string) => {
+    async (
+      text: string,
+      options?: {
+        skipVoice?: boolean;
+        executionId?: string;
+        attendance?: AttendanceSummary | null;
+        examination?: ExaminationSummary | null;
+        timetable?: TimetableSummary | null;
+      }
+    ) => {
       if (!text.trim() || isTyping) return;
+
+      const skipVoice = Boolean(options?.skipVoice);
+
+      // Stop any ongoing speech from older executions (preserve immediate acknowledgement for current request)
+      if (!skipVoice) {
+        const currentExec = voiceController.getActiveExecutionId();
+        if (!options?.executionId || options.executionId !== currentExec) {
+          voiceController.stopSpeaking();
+        }
+      }
 
       let convId = activeConvRef.current;
       if (!convId) {
@@ -277,6 +360,7 @@ export function useChatAgent(
       };
 
       const assistantId = `onee-${Date.now()}`;
+      const execId = options?.executionId || assistantId;
       const assistantPlaceholder: ChatMessage = {
         id: assistantId,
         sender: 'onee',
@@ -303,10 +387,60 @@ export function useChatAgent(
       // Record task usage in personalization store
       await personalizationStore.recordTaskUsage(text, accountId);
 
+      /*
+       * LIVE_UMS_RESPONSE_REQUIRES_VERIFIED_EXECUTION:
+       * this direct chat stream may only answer non-live, conversational text.
+       * Live UMS capabilities must go through the unified pipeline in App.tsx
+       * (semantic intent -> capability -> Browser Agent -> verified result ->
+       * response composer), never straight to an LLM.
+       */
+      const routedCapability = String(routeUserIntent(text).capability);
+      if (
+        ['ATTENDANCE', 'EXAM_DATE_SHEET', 'SEATING_PLAN', 'SAMPLE_PAPER', 'TIMETABLE'].includes(
+          routedCapability
+        )
+      ) {
+        const executionRequiredText =
+          "This is a live UMS question, so I need to run my Browser Agent against your UMS session before I can answer. Please send it again from the main chat so I can verify the data first.";
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  text: executionRequiredText,
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  isStreaming: false,
+                  isError: false
+                }
+              : m
+          )
+        );
+        await localDatabase.saveMessage({
+          id: assistantId,
+          conversationId: convId,
+          accountId,
+          role: 'assistant',
+          content: executionRequiredText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          createdAt: Date.now()
+        });
+        setIsTyping(false);
+        return;
+      }
+
+      if (!skipVoice) {
+        // Track active execution ID on voiceController for this assistant message
+        voiceController.setActiveExecutionId(execId);
+      }
+
+      const currentAtt = options?.attendance !== undefined ? options.attendance : effectiveAttendance;
+      const currentExam = options?.examination !== undefined ? options.examination : effectiveExamination;
+      const currentTt = options?.timetable !== undefined ? options.timetable : effectiveTimetable;
+
       try {
         const response = await streamChatMessage(
           text,
-          effectiveAttendance,
+          currentAtt,
           messages,
           (chunk: string) => {
             const cleanChunk = chunk.replace(/—/g, '→');
@@ -317,7 +451,13 @@ export function useChatAgent(
           (act: AgentActivity) => {
             if (onActivityLog) onActivityLog(act);
           },
-          effectiveExamination
+          currentExam,
+          (suggs: string[]) => {
+            if (Array.isArray(suggs) && suggs.length > 0) {
+              setDynamicSuggestions(suggs);
+            }
+          },
+          currentTt || null
         );
 
         const oneeTimestamp = new Date().toLocaleTimeString([], {
@@ -325,7 +465,9 @@ export function useChatAgent(
           minute: '2-digit'
         });
 
-        const finalText = (response.message || '').replace(/—/g, '→');
+        const finalText = sanitizeFinalResponseText(
+          (response.message || '').replace(/—/g, '→')
+        );
 
         setMessages((prev) =>
           prev.map((m) =>
@@ -342,6 +484,22 @@ export function useChatAgent(
           )
         );
 
+        // FINAL SPEC: the spoken response IS the canonical chat response (after
+        // the queue's deterministic sanitation). No second summary engine.
+        if (!skipVoice && voiceController.getPreferences().mode !== 'OFF' && finalText) {
+          try {
+            voiceController.speakText(finalText, true, execId);
+          } catch (voiceErr) {
+            console.warn('[ONEE] Voice delivery failed; canonical chat response is unaffected:', voiceErr);
+          }
+        }
+
+        if (response.suggestions && response.suggestions.length > 0) {
+          setDynamicSuggestions(response.suggestions);
+        } else {
+          setDynamicSuggestions([]);
+        }
+
         // Persist assistant message to IndexedDB
         const assistantRecord: MessageRecord = {
           id: assistantId,
@@ -351,7 +509,7 @@ export function useChatAgent(
           content: finalText,
           timestamp: oneeTimestamp,
           createdAt: Date.now(),
-          sources: effectiveAttendance ? ['UMS_DOM'] : [],
+          sources: currentAtt ? ['UMS_DOM'] : [],
           activities: response.activities
         };
         await localDatabase.saveMessage(assistantRecord);
@@ -412,6 +570,170 @@ export function useChatAgent(
     [accountId, effectiveAttendance, messages, isTyping, newConversation, onActivityLog]
   );
 
+  const startPendingExchange = useCallback(
+    async (userText: string, executionId: string): Promise<string> => {
+      let convId = activeConvRef.current;
+      if (!convId) {
+        convId = await newConversation();
+      }
+
+      const userTimestamp = new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const userMessageId = `user-${Date.now()}`;
+      const assistantMessageId = executionId || `onee-${Date.now()}`;
+
+      const userMessage: ChatMessage = {
+        id: userMessageId,
+        sender: 'user',
+        text: userText.trim(),
+        timestamp: userTimestamp
+      };
+
+      const assistantPlaceholder: ChatMessage = {
+        id: assistantMessageId,
+        sender: 'onee',
+        text: '',
+        timestamp: userTimestamp,
+        isStreaming: true
+      };
+
+      setMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
+      setIsTyping(true);
+      setDynamicSuggestions([]);
+
+      // Save user message to IndexedDB
+      await localDatabase.saveMessage({
+        id: userMessageId,
+        conversationId: convId,
+        accountId,
+        role: 'user',
+        content: userText.trim(),
+        timestamp: userTimestamp,
+        createdAt: Date.now()
+      });
+
+      await personalizationStore.recordTaskUsage(userText, accountId);
+      return assistantMessageId;
+    },
+    [accountId, newConversation]
+  );
+
+  const updatePendingExchangeChunk = useCallback((placeholderId: string, chunk: string) => {
+    const cleanChunk = chunk.replace(/—/g, '→');
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === placeholderId
+          ? {
+              ...m,
+              text: ((m.text || '') + cleanChunk).replace(/—/g, '→')
+            }
+          : m
+      )
+    );
+  }, []);
+
+  const completePendingExchange = useCallback(
+    async (
+      placeholderId: string,
+      userText: string,
+      reply: string,
+      options?: {
+        executionId?: string;
+        cardType?: string;
+        ttsChunks?: string[];
+        skipVoice?: boolean;
+        suggestions?: string[];
+        capability?: string;
+      }
+    ) => {
+      const convId = activeConvRef.current;
+      const execId = options?.executionId || placeholderId;
+      const skipVoice = Boolean(options?.skipVoice);
+
+      const oneeTimestamp = new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      const cleanReply = sanitizeFinalResponseText(reply.replace(/—/g, '→'));
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === placeholderId
+            ? {
+                ...m,
+                text: cleanReply,
+                timestamp: oneeTimestamp,
+                isStreaming: false
+              }
+            : m
+        )
+      );
+      setIsTyping(false);
+
+      if (convId) {
+        await localDatabase.saveMessage({
+          id: placeholderId,
+          conversationId: convId,
+          accountId,
+          role: 'assistant',
+          content: cleanReply,
+          timestamp: oneeTimestamp,
+          createdAt: Date.now()
+        });
+
+        const conv = conversations.find((c) => c.id === convId);
+        if (conv) {
+          const title = conv.title === 'New Chat' ? userText.slice(0, 30) : conv.title;
+          const updatedConv: ConversationRecord = {
+            ...conv,
+            title,
+            updatedAt: Date.now(),
+            lastMessagePreview: cleanPreviewSnippet(cleanReply, 80)
+          };
+          await localDatabase.saveConversation(updatedConv);
+          setConversations((prev) =>
+            prev.map((c) => (c.id === convId ? updatedConv : c))
+          );
+        }
+      }
+
+      // ONE canonical response: chat renders `cleanReply`; voice speaks the
+      // composer's deterministic spoken summary when provided (same verified
+      // facts, natural prose — no headings/tables/slashes), else `cleanReply`.
+      const spokenReply = sanitizeFinalResponseText(
+        options?.ttsChunks && options.ttsChunks.length > 0
+          ? options.ttsChunks.join(' ')
+          : cleanReply
+      );
+      if (!skipVoice && voiceController.getPreferences().mode !== 'OFF' && spokenReply) {
+        try {
+          voiceController.speakText(spokenReply, true, execId);
+        } catch (voiceErr) {
+          console.warn('[ONEE] Voice delivery failed; canonical chat response is unaffected:', voiceErr);
+        }
+      }
+
+      // Update contextual dynamic suggestions for this turn
+      if (options?.suggestions && options.suggestions.length > 0) {
+        setDynamicSuggestions(options.suggestions);
+      } else {
+        const freshSuggs = generateContextualSuggestions(
+          effectiveAttendance,
+          userText,
+          effectiveExamination,
+          effectiveTimetable || null,
+          cleanReply
+        );
+        setDynamicSuggestions(freshSuggs);
+      }
+    },
+    [accountId, conversations, effectiveAttendance, effectiveExamination, messages, effectiveTimetable]
+  );
+
   const clearHistory = useCallback(async () => {
     if (activeConversationId) {
       await localDatabase.deleteConversation(activeConversationId);
@@ -423,6 +745,9 @@ export function useChatAgent(
     messages,
     isTyping,
     sendMessage,
+    startPendingExchange,
+    updatePendingExchangeChunk,
+    completePendingExchange,
     clearHistory,
     suggestions,
     conversations,

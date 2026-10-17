@@ -42,7 +42,11 @@ export const MESSAGE_TYPES = {
 
   // Preflight and Examination Sub-Automation
   DISMISS_UMS_POPUP: 'ONEE_DISMISS_UMS_POPUP',
-  OPEN_SAMPLE_PAPER: 'ONEE_OPEN_SAMPLE_PAPER'
+  OPEN_SAMPLE_PAPER: 'ONEE_OPEN_SAMPLE_PAPER',
+
+  // Post-action verification: did Chrome actually record a fresh download
+  // (or open the PDF in a tab) right after we clicked the paper control?
+  VERIFY_RECENT_DOWNLOAD: 'ONEE_VERIFY_RECENT_DOWNLOAD'
 } as const;
 
 export interface DismissUmsPopupMessage {
@@ -136,6 +140,21 @@ export type ExtensionMessage =
 
 export interface UmsResponsePayload {
   status: ConnectionStatus;
+  /**
+   * URL of the tab/document that produced this payload.
+   * Lets the side panel attribute status updates to the correct tab so a
+   * stray login-page tab can never clobber the state of the dashboard tab.
+   */
+  sourceUrl?: string;
+  /**
+   * Identity of the student signed into the UMS tab that produced this
+   * payload. The side panel compares it against locally cached attendance so
+   * a record captured under a different account can never be displayed.
+   */
+  studentProfile?: {
+    studentName?: string;
+    registrationNumber?: string;
+  };
   attendance?: AttendanceSummary | null;
   examination?: ExaminationSummary | null;
   timetable?: TimetableSummary | null;
