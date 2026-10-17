@@ -347,68 +347,85 @@ LISTEN → TRANSCRIBE → UNDERSTAND → PLAN → NARRATE → GROUND → MOVE �
 
 ## 🏗️ Architecture & Execution Flow
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                            CHROME BROWSER TAB                               │
-│  ums.lpu.in / studentums.lpu.in (Real authenticated student session)        │
-│                                                                             │
-│  ┌───────────────────────────────────────────────────────────────────────┐  │
-│  │ ONEE Content Script (content.js)                                      │  │
-│  │ ├─ umsDetector.ts (Domain & login validation)                         │  │
-│  │ ├─ umsPreflight.ts (Campus Drive notification modal safe dismissal)   │  │
-│  │ ├─ pageObserver.ts (Interactive DOM element harvesting & card index)  │  │
-│  │ ├─ examinationDetector.ts (SPA content detection & MutationObserver) │  │
-│  │ ├─ examDateSheetParser.ts (Leaf card extraction & reporting times)    │  │
-│  │ ├─ umsAttendanceParser.ts (Deterministic table extraction)            │  │
-│  │ ├─ timetableParser.ts (SSRS internal container schedule parser)       │  │
-│  │ ├─ samplePaperAgent.ts (Sample question paper control locator)        │  │
-│  │ ├─ hybridGrounding.ts (2D IoU + Text matching)                        │  │
-│  │ ├─ agentMotion.ts (Cubic-Bézier trajectories & easing)                │  │
-│  │ ├─ aiCursorOverlay.ts (Visible viewport cursor & target highlights)   │  │
-│  │ └─ actionEngine.ts (Native click, input dispatch & waitForRender)     │  │
-│  └──────────────────────────────────┬────────────────────────────────────┘  │
-└─────────────────────────────────────┼───────────────────────────────────────┘
-                                      │ Chrome Runtime Messaging (IPC)
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                     ONEE CHROME SIDE PANEL (sidepanel.html)                  │
-│  React 18 + TypeScript + Apple Human Interface Guidelines Design Tokens     │
-│                                                                             │
-│  ├─ Voice Subsystem (extension/src/voice/)                                  │
-│  │   ├─ VoiceController.ts (Microphone lifecycle, barge-in, interruption)    │
-│  │   ├─ VoiceQueue.ts (Sentence chunking, priority queue, execution guard)  │
-│  │   ├─ NarrationPolicy.ts (Semantic state-to-speech mapping & truthfulness) │
-│  │   ├─ NarrationManager.ts (Central RuntimeState subscriber)                │
-│  │   ├─ AudioController.ts (Non-blocking Web Audio playback & unlock)        │
-│  │   └─ Providers (Groq Whisper Provider + Groq Orpheus Provider)            │
-│  ├─ useUmsConnection.ts (Active tab tracking & automatic reconnection)      │
-│  ├─ useAgentController.ts (Autonomous perception-action loop manager)      │
-│  │   └─ WAIT_FOR_RENDER stage & terminal state gating (READY/FAILED/etc)   │
-│  ├─ useChatAgent.ts (Conversational agent & local fallback engine)          │
-│  ├─ AgentControlPanel.tsx (Apple iOS execution cards & category pills)      │
-│  ├─ ExaminationCard.tsx (Verified schedule cards & fluid grid reveal)       │
-│  ├─ ActivityTimeline.tsx (Execution pipeline progress rail & stage badges)  │
-│  ├─ ConversationDrawer.tsx (Apple iOS sidebar with sanitized preview text)  │
-│  ├─ PrivacyModal.tsx (Non-collapsing local storage metrics & purge tools)   │
-│  ├─ localDatabase.ts (On-Device IndexedDB v3: chat, executions, datasets)    │
-│  ├─ attendanceCalculator.ts (Exact algebraic bunk & recovery formulas)      │
-│  ├─ examinationCalculator.ts (Composite key deduplication & sort)           │
-│  ├─ timetableCalculator.ts (SSRS schedule analysis & day filters)           │
-│  ├─ scrollUtils.ts (Two-phase reveal scroll & preview text sanitization)    │
-│  └─ OneeCompanion.tsx (Procedural SVG 3D avatar & context speech)            │
-└─────────────────────────────────────┬───────────────────────────────────────┘
-                                      │ Minimal Context & Audio (REST / SSE)
-                                      ▼
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                    ONEE BACKEND (FastAPI / Groq Cloud)                      │
-│  Stateless • Zero Credential Storage • Multi-User Isolated                   │
-│                                                                             │
-│  ├─ /api/chat (Token streaming with grounded academic context)              │
-│  ├─ /api/agent/plan (Computer Use next-action planner with waitForRender)   │
-│  ├─ /api/voice/transcribe (Groq Whisper large-v3 audio transcription)       │
-│  ├─ /api/voice/speak (Groq Orpheus expressive audio synthesis)              │
-│  └─ Groq Service (Dedicated Agent & Voice API Keys)                         │
-└─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph TAB["🌐 CHROME BROWSER TAB · Live Authenticated UMS Session"]
+        direction TB
+        subgraph CS["ONEE Injected Content Script (content.js)"]
+            direction LR
+            D1["🛡️ UMS Detector & Preflight<br/>Domain validation & Placement modal safe dismissal"]
+            D2["👁️ Page Observer & Grounding<br/>Interactive DOM harvesting & 2D IoU spatial matching"]
+            D3["🎯 AI Cursor & Motion<br/>Natural cubic-Bézier trajectories & live badges"]
+            D4["📑 Universal Parsers<br/>Attendance, Date Sheets, Seating & SSRS Timetable"]
+            D5["⚡ Action Engine<br/>Native click dispatch & WAIT_FOR_RENDER watcher"]
+            D1 --> D2 --> D3 --> D4 --> D5
+        end
+    end
+
+    subgraph PANEL["📱 ONEE CHROME SIDE PANEL · Native Manifest V3 Extension"]
+        direction TB
+        subgraph VOICE["🎙️ Multimodal Voice Subsystem"]
+            direction LR
+            V1["VoiceController<br/>Microphone lifecycle & barge-in"]
+            V2["VoiceQueue<br/>Sentence chunking & priority queue"]
+            V3["NarrationPolicy<br/>Semantic milestone narration"]
+            V4["AudioController<br/>Web Audio API & prewarming"]
+            V1 --> V2 --> V3 --> V4
+        end
+
+        subgraph CORE["🧠 React 18 Agent Controller & Deterministic Engines"]
+            direction LR
+            C1["useAgentController<br/>Perception-action loop manager"]
+            C2["useChatAgent & Intent Router<br/>Token streaming & capability firewall"]
+            C3["Deterministic Calculators<br/>Exact safe-bunk algebra & exam sorting"]
+            C4["IndexedDB v3 Database<br/>On-device chat, executions & datasets"]
+            C1 <--> C2
+            C1 <--> C3
+            C3 <--> C4
+        end
+
+        subgraph UI["✨ Apple iOS HIG Interface & Companion Mascot"]
+            direction LR
+            U1["Agent Control Panel<br/>Category pills & state visualizers"]
+            U2["Chat Feed & 60 FPS Spring Follow<br/>Critically-damped smooth glide loop"]
+            U3["Examination & Attendance Cards<br/>Fluid CSS grid disclosures (0fr → 1fr)"]
+            U4["Procedural 3D SVG Mascot<br/>22 expressions synced via oneeBridge"]
+            U1 --- U2 --- U3 --- U4
+        end
+    end
+
+    subgraph BACKEND["⚡ ONEE BACKEND SERVICE · FastAPI + Groq Cloud"]
+        direction LR
+        B1["/api/agent/plan<br/>Next-action planner & WAIT_FOR_RENDER"]
+        B2["/api/chat<br/>Token streaming with grounded context"]
+        B3["/api/voice/transcribe<br/>Groq Whisper large-v3 STT fallback"]
+        B4["/api/voice/speak<br/>Groq Orpheus vocal-directed synthesis"]
+        B5["Credential Isolation Boundary<br/>Dedicated Agent & Voice Groq Keys"]
+        B1 --- B2 --- B3 --- B4 --- B5
+    end
+
+    %% Cross-tier execution pathways
+    CS <-->|"Chrome Runtime IPC Messaging (DOM Observations ↔ Agent Actions)"| PANEL
+    PANEL <-->|"Stateless REST & SSE Audio Streams"| BACKEND
+
+    %% Tier Styling
+    classDef tabBox fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef panelBox fill:#18181b,stroke:#a855f7,stroke-width:2px,color:#f8fafc;
+    classDef backendBox fill:#022c22,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+    classDef nodeStyle fill:#1e293b,stroke:#64748b,stroke-width:1px,color:#f1f5f9;
+    classDef voiceStyle fill:#3b0764,stroke:#c084fc,stroke-width:1px,color:#f3e8ff;
+    classDef mathStyle fill:#064e3b,stroke:#34d399,stroke-width:1px,color:#ecfdf5;
+    classDef uiStyle fill:#1e1b4b,stroke:#818cf8,stroke-width:1px,color:#e0e7ff;
+
+    class TAB,CS tabBox;
+    class PANEL,VOICE,CORE,UI panelBox;
+    class BACKEND backendBox;
+    class D1,D2,D3,D4,D5 nodeStyle;
+    class V1,V2,V3,V4 voiceStyle;
+    class C1,C2 nodeStyle;
+    class C3,C4 mathStyle;
+    class U1,U2,U3,U4 uiStyle;
+    class B1,B2,B3,B4,B5 nodeStyle;
 ```
 
 ---
