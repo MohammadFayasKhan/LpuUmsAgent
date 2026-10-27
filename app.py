@@ -9,6 +9,10 @@ alongside an interactive dashboard and live health monitor.
 
 import os
 import sys
+
+# Disable Gradio's internal Node SSR proxy in Gradio 5/6 to prevent port 7860 collision
+os.environ["GRADIO_SSR_MODE"] = "false"
+
 import json
 import httpx
 import uvicorn
@@ -53,13 +57,7 @@ def test_chat_query(message: str):
     except Exception as e:
         return f"Error executing test query: {str(e)}"
 
-# Custom styling for the Gradio dashboard
-custom_css = """
-footer {visibility: hidden !important;}
-.gradio-container {max-width: 960px !important; margin: 0 auto !important;}
-"""
-
-with gr.Blocks(title="ONEE - Autonomous Academic Copilot API", css=custom_css, theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="ONEE - Autonomous Academic Copilot API") as demo:
     gr.Markdown("""
     # 🎓 ONEE → Autonomous Browser Agent & Academic Copilot
     **Stateless Backend Service powering the ONEE Chrome Side Panel Extension**
