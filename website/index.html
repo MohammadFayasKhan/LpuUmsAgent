@@ -24,7 +24,7 @@
   <header class="site-header">
     <div class="header-inner container-wide">
       <a href="#" class="brand">
-        <img src="assets/logo.png" alt="LPU Emblem" class="brand-logo" width="28" height="28">
+        <img src="assets/lpulogo.png" alt="LPU Emblem" class="brand-logo" width="28" height="28">
         <span class="brand-title">LPU UMS Agent</span>
       </a>
       <nav class="nav-links">
@@ -334,11 +334,11 @@ flowchart TB
         direction TB
         subgraph CS["LPU UMS Agent Injected Content Script (content.js)"]
             direction LR
-            D1["🛡️ UMS Detector &amp; Preflight<br/>Domain validation &amp; Placement modal safe dismissal"]
-            D2["👁️ Page Observer &amp; Grounding<br/>Interactive DOM harvesting &amp; 2D IoU spatial matching"]
-            D3["🎯 AI Cursor &amp; Motion<br/>Natural cubic-Bézier trajectories &amp; live badges"]
-            D4["📑 Universal Parsers<br/>Attendance, Date Sheets, Seating &amp; SSRS Timetable"]
-            D5["⚡ Action Engine<br/>Native click dispatch &amp; WAIT_FOR_RENDER watcher"]
+            D1["🛡️ UMS Detector & Preflight<br/>Domain validation & Placement modal safe dismissal"]
+            D2["👁️ Page Observer & Grounding<br/>Interactive DOM harvesting & 2D IoU spatial matching"]
+            D3["🎯 AI Cursor & Motion<br/>Natural cubic-Bézier trajectories & live badges"]
+            D4["📑 Universal Parsers<br/>Attendance, Date Sheets, Seating & SSRS Timetable"]
+            D5["⚡ Action Engine<br/>Native click dispatch & WAIT_FOR_RENDER watcher"]
             D1 --> D2 --> D3 --> D4 --> D5
         end
     end
@@ -347,50 +347,50 @@ flowchart TB
         direction TB
         subgraph VOICE["🎙️ Multimodal Voice Subsystem"]
             direction LR
-            V1["VoiceController<br/>Microphone lifecycle &amp; barge-in"]
-            V2["VoiceQueue<br/>Sentence chunking &amp; priority queue"]
+            V1["VoiceController<br/>Microphone lifecycle & barge-in"]
+            V2["VoiceQueue<br/>Sentence chunking & priority queue"]
             V3["NarrationPolicy<br/>Semantic milestone narration"]
-            V4["AudioController<br/>Web Audio API &amp; prewarming"]
+            V4["AudioController<br/>Web Audio API & prewarming"]
             V1 --> V2 --> V3 --> V4
         end
 
-        subgraph CORE["🧠 React 18 Agent Controller &amp; Deterministic Engines"]
+        subgraph CORE["🧠 React 18 Agent Controller & Deterministic Engines"]
             direction LR
             C1["useAgentController<br/>Perception-action loop manager"]
-            C2["useChatAgent &amp; Intent Router<br/>Token streaming &amp; capability firewall"]
-            C3["Deterministic Calculators<br/>Exact safe-bunk algebra &amp; exam sorting"]
-            C4["IndexedDB v3 Database<br/>On-device chat, executions &amp; datasets"]
-            C1 &lt;--&gt; C2
-            C1 &lt;--&gt; C3
-            C3 &lt;--&gt; C4
+            C2["useChatAgent & Intent Router<br/>Token streaming & capability firewall"]
+            C3["Deterministic Calculators<br/>Exact safe-bunk algebra & exam sorting"]
+            C4["IndexedDB v3 Database<br/>On-device chat, executions & datasets"]
+            C1 --- C2
+            C1 --- C3
+            C3 --- C4
         end
 
-        subgraph UI["✨ Apple iOS HIG Interface &amp; Companion Mascot"]
+        subgraph UI["✨ Apple iOS HIG Interface & Companion Mascot"]
             direction LR
-            U1["Agent Control Panel<br/>Category pills &amp; state visualizers"]
-            U2["Chat Feed &amp; 60 FPS Spring Follow<br/>Critically-damped smooth glide loop"]
-            U3["Examination &amp; Attendance Cards<br/>Fluid CSS grid disclosures (0fr → 1fr)"]
+            U1["Agent Control Panel<br/>Category pills & state visualizers"]
+            U2["Chat Feed & 60 FPS Spring Follow<br/>Critically-damped smooth glide loop"]
+            U3["Examination & Attendance Cards<br/>Fluid CSS grid disclosures (0fr to 1fr)"]
             U4["Procedural 3D SVG Mascot<br/>22 expressions synced via Bridge"]
             U1 --- U2 --- U3 --- U4
         end
 
-        VOICE -->|"Transcribed Intents &amp; Barge-in Events"| CORE
-        CORE -->|"Dynamic Mascot Expressions &amp; Component Feeds"| UI
+        V4 -->|"Voice Transcripts & Barge-in"| C1
+        C2 -->|"Mascot Signals & Feed Updates"| U1
     end
 
     subgraph BACKEND["⚡ LPU UMS AGENT BACKEND SERVICE · FastAPI + Groq Cloud"]
         direction LR
-        B1["/api/agent/plan<br/>Next-action planner &amp; WAIT_FOR_RENDER"]
+        B1["/api/agent/plan<br/>Next-action planner & WAIT_FOR_RENDER"]
         B2["/api/chat<br/>Token streaming with grounded context"]
         B3["/api/voice/transcribe<br/>Groq Whisper large-v3 STT fallback"]
         B4["/api/voice/speak<br/>Groq Orpheus vocal-directed synthesis"]
-        B5["Credential Isolation Boundary<br/>Dedicated Agent &amp; Voice Groq Keys"]
+        B5["Credential Isolation Boundary<br/>Dedicated Agent & Voice Groq Keys"]
         B1 --- B2 --- B3 --- B4 --- B5
     end
 
     %% Cross-tier execution pathways
-    CS &lt;--&gt;|"Chrome Runtime IPC (DOM Observations ↔ Agent Actions)"| CORE
-    CORE &lt;--&gt;|"Stateless REST &amp; SSE Audio Streams"| BACKEND
+    D5 ---|"Chrome Runtime IPC Messaging (DOM Observations ↔ Agent Actions)"| C1
+    C2 ---|"Stateless REST & SSE Audio Streams"| B1
 
     %% Tier Styling
     classDef tabBox fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;

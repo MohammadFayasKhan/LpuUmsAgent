@@ -170,7 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const mExpand = document.getElementById("mExpand");
   const mExpandText = document.getElementById("mExpandText");
 
-  let mScale = 1.0;
+  let mScale = 0.85;
   let mPanX = 0;
   let mPanY = 0;
   const M_MIN_SCALE = 0.35;
@@ -186,6 +186,9 @@ document.addEventListener("DOMContentLoaded", () => {
       mZoomLevel.textContent = `${Math.round(mScale * 100)}%`;
     }
   }
+
+  // Set initial scale display
+  applyMermaidTransform(false);
 
   if (mZoomIn) {
     mZoomIn.addEventListener("click", () => {
@@ -203,7 +206,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (mReset) {
     mReset.addEventListener("click", () => {
-      mScale = 1.0;
+      mScale = 0.85;
       mPanX = 0;
       mPanY = 0;
       applyMermaidTransform(true);
@@ -307,7 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Double-click to reset view
     mViewport.addEventListener("dblclick", (e) => {
       if (e.target.closest("button")) return;
-      mScale = 1.0;
+      mScale = 0.85;
       mPanX = 0;
       mPanY = 0;
       applyMermaidTransform(true);
