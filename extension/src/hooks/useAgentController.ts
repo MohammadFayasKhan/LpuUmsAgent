@@ -38,7 +38,7 @@ import { planNextAction, SemanticExecutionContext } from '../services/api';
 import { hybridGrounding, createGroundedTarget, MIN_ACTION_CONFIDENCE } from '../content/hybridGrounding';
 import { agentMotion } from '../content/agentMotion';
 import { validateAttendanceSummary, getLowestAttendanceSubject } from '../shared/attendanceCalculator';
-import { sendTabMessageWithAutoRecovery, broadcastTabMessage, closeDuplicateLpuTabs, openSeatingPlanTab, openTimetableTab, getActiveLpuTab } from '../services/tabMessenger';
+import { sendTabMessageWithAutoRecovery, broadcastTabMessage, closeDuplicateLpuTabs, openSeatingPlanTab, openTimetableTab, getActiveLpuTab, navigateToStudentDashboard } from '../services/tabMessenger';
 import { routeUserIntent } from '../services/intentRouter';
 import { verifiedExaminationRepo, verifiedTimetableRepo } from '../services/repositories';
 import {
@@ -865,6 +865,23 @@ export function useAgentController(
         } catch {}
       }
 
+      // Handle tab targeting for attendance goals: attendance cards live on the Student Dashboard
+      if (routed.capability === 'ATTENDANCE') {
+        try {
+          const activeTab = await getActiveLpuTab();
+          const activeUrl = (activeTab?.url || '').toLowerCase();
+          const isOnDashboard = activeUrl.includes('studentdashboard');
+
+          if (!isOnDashboard) {
+            addActivity('ACT', 'Navigating to Student Dashboard', 'Attendance records are located on the main dashboard...', 'in_progress');
+            await navigateToStudentDashboard();
+            await agentMotion.wait(1200);
+          }
+        } catch (err) {
+          console.warn('[useAgentController] Attendance tab targeting notice:', err);
+        }
+      }
+
       // Immediately originate the AI cursor from the right edge (beside the sidepanel)
       try {
         await sendTabMessage({
@@ -1077,6 +1094,19 @@ export function useAgentController(
            * to click navigation buttons again. We go straight into parsing the table,
            * checking course percentages, and validating that the numbers make sense.
            */
+          // If on an unexpected non-dashboard page during an attendance goal, redirect to Student Dashboard
+          if (routed.capability === 'ATTENDANCE' && !observation.hasAttendanceTable) {
+            const observedUrl = (observation.url || '').toLowerCase();
+            const isOnDashboard = observedUrl.includes('studentdashboard') || observation.pageType?.toLowerCase().includes('dashboard');
+            if (!isOnDashboard && step <= 2) {
+              addActivity('ACT', 'Navigating to Student Dashboard', 'Returning to dashboard to access attendance records...', 'in_progress');
+              await navigateToStudentDashboard();
+              await agentMotion.wait(1500);
+              step++;
+              continue;
+            }
+          }
+
           if (observation.hasAttendanceTable) {
             setState((prev) => ({ ...prev, status: 'extracting' }));
             addActivity('EXTRACT', 'Reading attendance table', 'Extracting structured table from UMS modal...', 'in_progress');

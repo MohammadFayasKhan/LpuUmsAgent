@@ -14,6 +14,7 @@
  */
 
 import { MESSAGE_TYPES } from '../shared/messages';
+import { isCompoundNavigationAndAction } from './intentRouter';
 
 export interface TabMessengerOptions {
   maxRetries?: number;
@@ -22,9 +23,12 @@ export interface TabMessengerOptions {
 
 export const STUDENT_DASHBOARD_URL = 'https://ums.lpu.in/LpuUms/StudentDashboard.aspx';
 
-/** Matches explicit requests to return to the UMS student home dashboard. */
+/** Matches explicit requests to return to the UMS student home dashboard (excluding compound action commands). */
 export function isStudentDashboardNavigationCommand(command: string): boolean {
-  return /\b(?:take|bring|go|navigate|open|return|head)\s+(?:me\s+)?(?:back\s+)?(?:to\s+)?(?:(?:the|my)\s+)?(?:home\s*page|homepage|home|student\s+dashboard|dashboard)\b/i.test(command);
+  return (
+    /\b(?:take|bring|go|navigate|open|return|head)\s+(?:me\s+)?(?:back\s+)?(?:to\s+)?(?:(?:the|my)\s+)?(?:home\s*page|homepage|home|student\s+dashboard|dashboard)\b/i.test(command) &&
+    !isCompoundNavigationAndAction(command)
+  );
 }
 
 /**

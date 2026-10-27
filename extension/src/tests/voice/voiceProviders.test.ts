@@ -182,4 +182,19 @@ describe('transformSpeechIdentity (rooms, times, acronyms)', () => {
     expect(out).toContain('9:30 to 12:30');
     expect(out).toContain('Block 34, Room 601');
   });
+
+  it('expands month abbreviations such as Dec to December instead of D ec', () => {
+    const fullDate = transformSpeechIdentity('Your next exam is on 05-Dec-2026.');
+    expect(fullDate).toContain('5 December 2026');
+    expect(fullDate).not.toContain('05-Dec-2026');
+    expect(fullDate).not.toMatch(/\bDec\b/);
+
+    const dayMonth = transformSpeechIdentity('Classes resume on 12-Jan.');
+    expect(dayMonth).toContain('12 January');
+    expect(dayMonth).not.toContain('12-Jan');
+
+    const standalone = transformSpeechIdentity('End term examinations begin in Dec.');
+    expect(standalone).toContain('in December.');
+    expect(standalone).not.toMatch(/\bDec\b/);
+  });
 });

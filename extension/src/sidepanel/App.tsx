@@ -24,7 +24,8 @@ import {
   routeUserIntent,
   extractCourseFromText,
   enforceCapabilityDomain,
-  goalForCapabilityDomain
+  goalForCapabilityDomain,
+  isCompoundNavigationAndAction
 } from '../services/intentRouter';
 import { resolveSemanticIntent, generateVerifiedResponse, ConversationState } from '../services/semanticRouter';
 import { generateLocalFallbackResponse } from '../services/api';
@@ -493,10 +494,13 @@ export const App: React.FC = () => {
           setConversationState(semantic.conversationState);
         }
 
+        const isCompound = isCompoundNavigationAndAction(text);
+
         const isDashboardIntent =
-          semantic.intent === 'dashboard_navigation' ||
+          !isCompound &&
+          (semantic.intent === 'dashboard_navigation' ||
           semantic.target === 'student_dashboard' ||
-          (semantic.action === 'navigate' && semantic.entities?.destination === 'student_dashboard');
+          (semantic.action === 'navigate' && semantic.entities?.destination === 'student_dashboard'));
         if (isDashboardIntent) {
           const dashboardTab = await navigateToStudentDashboard();
           const responseText = dashboardTab
@@ -506,6 +510,17 @@ export const App: React.FC = () => {
             executionId: goalExecutionId
           });
           return;
+        }
+
+        // For compound multi-automation requests (e.g. "take me to home page and check what is my attendance right now"),
+        // execute stage 1 (navigate to dashboard tab) seamlessly before proceeding to stage 2 (academic capability verification).
+        if (isCompound) {
+          try {
+            await navigateToStudentDashboard();
+            await new Promise((r) => setTimeout(r, 1000));
+          } catch (navErr) {
+            console.warn('[ONEE] Compound navigation stage warning:', navErr);
+          }
         }
 
         const isVoiceDiagnostic =

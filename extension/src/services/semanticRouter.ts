@@ -9,6 +9,7 @@
 
 import { getBackendUrl, generateLocalFallbackResponse as localDeterministicEngine } from './api';
 import { getNextExam } from '../content/examination/examinationValidator';
+import { isCompoundNavigationAndAction } from './intentRouter';
 
 export interface ConversationState {
   currentIntent?: string;
@@ -190,7 +191,9 @@ function fallbackIntentResolution(req: SemanticResolutionRequest): SemanticResol
 
   // Keep navigation structured when Groq is temporarily unavailable. This is
   // deliberately an offline fallback; normal requests are resolved by Groq.
-  if (/\b(?:take|bring|go|navigate|open|return|head)\s+(?:me\s+)?(?:back\s+)?(?:to\s+)?(?:(?:the|my)\s+)?(?:home\s*page|homepage|home|student\s+dashboard|dashboard)\b/i.test(q)) {
+  // Compound requests ("take me to home page and check my attendance") must NOT be intercepted as pure navigation.
+  const isDashNav = /\b(?:take|bring|go|navigate|open|return|head)\s+(?:me\s+)?(?:back\s+)?(?:to\s+)?(?:(?:the|my)\s+)?(?:home\s*page|homepage|home|student\s+dashboard|dashboard)\b/i.test(q);
+  if (isDashNav && !isCompoundNavigationAndAction(q)) {
     return {
       executionId: req.executionId,
       intent: 'dashboard_navigation',

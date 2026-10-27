@@ -136,6 +136,63 @@ export function transformSpeechIdentity(text: string): string {
   // Fractions for natural speech: "5/10" -> "5 out of 10".
   // Date forms like 10/8/2026 and "711 / S" patterns are never touched.
   out = out.replace(/(?<![\d/])(\d{1,3})\s*\/\s*(\d{1,3})(?![\d/])/g, '$1 out of $2');
+
+  // Spoken date expansion: expand month abbreviations (e.g. "05-Dec-2026" -> "5 December 2026",
+  // "Dec" -> "December") so Groq Orpheus speaks natural month names instead of "D ec".
+  const MONTH_NAMES: Record<string, string> = {
+    jan: 'January',
+    feb: 'February',
+    mar: 'March',
+    apr: 'April',
+    may: 'May',
+    jun: 'June',
+    jul: 'July',
+    aug: 'August',
+    sep: 'September',
+    sept: 'September',
+    oct: 'October',
+    nov: 'November',
+    dec: 'December'
+  };
+
+  // Full dates: "05-Dec-2026" / "5-Dec-26" / "05/Dec/2026" -> "5 December 2026"
+  out = out.replace(
+    /(?<!\w)0?(\d{1,2})[-/](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*[-/](\d{2,4})(?!\w)/gi,
+    (_m, day, month, year) => {
+      const expandedMonth = MONTH_NAMES[month.toLowerCase()] || month;
+      const fullYear = year.length === 2 ? `20${year}` : year;
+      return `${parseInt(day, 10)} ${expandedMonth} ${fullYear}`;
+    }
+  );
+
+  // Day-Month / Month-Day hyphenated: "05-Dec" -> "5 December", "Dec-05" -> "December 5"
+  out = out.replace(
+    /(?<!\w)0?(\d{1,2})[-/](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*(?!\w)/gi,
+    (_m, day, month) => {
+      const expandedMonth = MONTH_NAMES[month.toLowerCase()] || month;
+      return `${parseInt(day, 10)} ${expandedMonth}`;
+    }
+  );
+  out = out.replace(
+    /(?<!\w)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*[-/]0?(\d{1,2})(?!\w)/gi,
+    (_m, month, day) => {
+      const expandedMonth = MONTH_NAMES[month.toLowerCase()] || month;
+      return `${expandedMonth} ${parseInt(day, 10)}`;
+    }
+  );
+
+  // Standalone abbreviated months: "Dec" / "Dec." / "in Dec" -> "December" (preserving trailing dot)
+  out = out.replace(
+    /\b(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b(\.?)/gi,
+    (_match, month, dot) => {
+      const low = month.toLowerCase();
+      // Guard: keep lowercase "mar" if used as an isolated English verb
+      if (low === 'mar' && month === 'mar') return `${month}${dot}`;
+      const expanded = MONTH_NAMES[low] || month;
+      return `${expanded}${dot}`;
+    }
+  );
+
   // Keep AI assistant name as Sofia only for voice agent
   out = out
     .replace(/\bI am ONEE\b/gi, 'I am Sofia')

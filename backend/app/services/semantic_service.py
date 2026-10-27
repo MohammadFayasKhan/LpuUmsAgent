@@ -95,6 +95,10 @@ _EXAM_DOMAIN_RE = re.compile(
     r"\b(exam|exams|examination|date\s*sheet|datesheet|reporting\s*time|admit\s*card|hall\s*ticket)\b",
     re.IGNORECASE,
 )
+_TIMETABLE_DOMAIN_RE = re.compile(
+    r"\b(timetable|time\s*table|class\s*schedule|scheduled\s*classes|my\s*classes|classes\s*(?:today|tomorrow)|lecture\s*schedule|faculty|cabin)\b",
+    re.IGNORECASE,
+)
 
 
 def detect_explicit_domain(query: str) -> Optional[str]:
@@ -112,6 +116,8 @@ def detect_explicit_domain(query: str) -> Optional[str]:
         return "seating_plan"
     if _EXAM_DOMAIN_RE.search(q):
         return "examination"
+    if _TIMETABLE_DOMAIN_RE.search(q):
+        return "timetable"
     return None
 
 
@@ -657,7 +663,10 @@ class SemanticService:
             )
 
         # UMS dashboard navigation is a direct extension command, never a greeting.
-        if re.search(r'\b(?:take|bring|go|navigate|open|return|head)\s+(?:me\s+)?(?:back\s+)?(?:to\s+)?(?:(?:the|my)\s+)?(?:home\s*page|homepage|home|student\s+dashboard|dashboard)\b', q, re.IGNORECASE):
+        # But compound requests ("take me to home page and check my attendance") must not be intercepted as pure navigation.
+        is_dash_nav = bool(re.search(r'\b(?:take|bring|go|navigate|open|return|head)\s+(?:me\s+)?(?:back\s+)?(?:to\s+)?(?:(?:the|my)\s+)?(?:home\s*page|homepage|home|student\s+dashboard|dashboard)\b', q, re.IGNORECASE))
+        has_academic_cap = bool(detect_explicit_domain(q))
+        if is_dash_nav and not has_academic_cap:
             return SemanticResolutionResponse(
                 executionId=execution_id,
                 intent="dashboard_navigation",

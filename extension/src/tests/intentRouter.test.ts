@@ -9,7 +9,8 @@ import { describe, it, expect } from 'vitest';
 import {
   routeUserIntent,
   enforceCapabilityDomain,
-  detectExplicitCapabilityDomain
+  detectExplicitCapabilityDomain,
+  isCompoundNavigationAndAction
 } from '../services/intentRouter';
 import { AttendanceSummary, ExaminationSummary } from '../shared/types';
 
@@ -258,6 +259,37 @@ describe('intentRouter', () => {
     it('leaves an already-correct resolution untouched', () => {
       expect(enforceCapabilityDomain('timetable', 'show my timetable for tomorrow')).toBe('timetable');
       expect(enforceCapabilityDomain('general', 'what is the capital of India')).toBe('general');
+    });
+  });
+
+  describe('Compound Navigation & Academic Automation', () => {
+    it('detects compound navigation + attendance requests', () => {
+      const q = 'quickly take me to home page and check what is my attendance right now';
+      expect(isCompoundNavigationAndAction(q)).toBe(true);
+      const routed = routeUserIntent(q);
+      expect(routed.capability).toBe('ATTENDANCE');
+      expect(detectExplicitCapabilityDomain(q)).toBe('attendance');
+    });
+
+    it('detects compound navigation + timetable requests', () => {
+      const q = 'take me to dashboard and show my timetable';
+      expect(isCompoundNavigationAndAction(q)).toBe(true);
+      const routed = routeUserIntent(q);
+      expect(routed.capability).toBe('TIMETABLE');
+      expect(detectExplicitCapabilityDomain(q)).toBe('timetable');
+    });
+
+    it('detects compound navigation + exam requests', () => {
+      const q = 'go to home page and when is my next exam';
+      expect(isCompoundNavigationAndAction(q)).toBe(true);
+      const routed = routeUserIntent(q);
+      expect(routed.capability).toBe('EXAM_DATE_SHEET');
+      expect(detectExplicitCapabilityDomain(q)).toBe('examination');
+    });
+
+    it('does not classify pure navigation as compound', () => {
+      expect(isCompoundNavigationAndAction('take me to home page')).toBe(false);
+      expect(isCompoundNavigationAndAction('go to dashboard')).toBe(false);
     });
   });
 });

@@ -593,6 +593,34 @@ export function generateLocalPlanFallback(
     };
   }
 
+  // If not on the student dashboard, look for a Home / Dashboard link before scrolling blindly
+  const currentObsUrl = (observation.url || '').toLowerCase();
+  const isOnDashboard = currentObsUrl.includes('studentdashboard') || observation.pageType?.toLowerCase().includes('dashboard');
+  if (!isOnDashboard) {
+    const prevClickedEarly = new Set(
+      previousActions.filter((a) => a.action === 'click').map((a) => a.elementId)
+    );
+    const homeEl = observation.elements.find((el) => {
+      const t = el.text.toLowerCase().trim();
+      return (
+        (t === 'home' || t === 'homepage' || t.includes('dashboard') || (el.href && el.href.toLowerCase().includes('studentdashboard'))) &&
+        !prevClickedEarly.has(el.id)
+      );
+    });
+    if (homeEl) {
+      return {
+        thought: 'Navigating to Student Dashboard to locate Attendance records.',
+        action: {
+          action: 'click',
+          elementId: homeEl.id,
+          reason: 'Navigating to UMS Dashboard for attendance',
+          expectedOutcome: 'dashboard_rendered'
+        },
+        isGoalComplete: false
+      };
+    }
+  }
+
   const priorityKeywords = [
     'view attendance',
     'student attendance',

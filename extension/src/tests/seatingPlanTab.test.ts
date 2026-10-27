@@ -92,6 +92,16 @@ describe('navigateToStudentDashboard', () => {
     expect(isStudentDashboardNavigationCommand(command)).toBe(true);
   });
 
+  it.each([
+    'quickly take me to home page and check what is my attendance right now',
+    'take me to home page and check my attendance',
+    'go to dashboard and show my timetable',
+    'go to homepage and check when is my next exam',
+    'head home and can I bunk CSE330'
+  ])('does not classify compound command "%s" as pure dashboard navigation', (command) => {
+    expect(isStudentDashboardNavigationCommand(command)).toBe(false);
+  });
+
   it('reuses the current active tab for the UMS home page', async () => {
     const update = vi.fn().mockResolvedValue({ id: 7, url: STUDENT_DASHBOARD_URL, active: true });
     (globalThis as any).chrome = {

@@ -188,7 +188,7 @@ describe('ElaboratedVoiceSummary', () => {
     });
 
     expect(summary).toContain('PRELUDE TO COMPETITIVE CODING');
-    expect(summary).toContain('14 Oct 2026');
+    expect(summary).toMatch(/14 Oct(?:ober)? 2026/);
     expect(summary).toContain('9:00 AM');
     expect(summary).toContain('Block 34, Room 201');
     expect(summary).toContain('4 upcoming exams');
@@ -241,7 +241,7 @@ describe('ElaboratedVoiceSummary', () => {
     });
 
     expect(summary).toContain('INT373');
-    expect(summary).toContain('14 Oct 2026');
+    expect(summary).toMatch(/14 Oct(?:ober)? 2026/);
     expect(summary).toContain('Block 37, Room 707');
     expect(summary).toContain('seat allotment is currently awaited');
     expect(summary).not.toContain('|');
@@ -276,7 +276,7 @@ describe('ElaboratedVoiceSummary', () => {
     });
 
     expect(summary).toContain('CSE408');
-    expect(summary).toContain('18 Oct 2026');
+    expect(summary).toMatch(/18 Oct(?:ober)? 2026/);
     expect(summary).toContain('Block 34, Room 201');
     expect(summary).toContain('seat allotment is currently awaited');
   });

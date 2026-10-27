@@ -286,6 +286,20 @@ export function detectExplicitCapabilityDomain(query: string): VerifiedDataDomai
 }
 
 /**
+ * Detects compound requests combining a dashboard/home navigation instruction
+ * with an academic automation query (e.g. "take me to home page and check what is my attendance right now").
+ */
+export function isCompoundNavigationAndAction(query: string): boolean {
+  if (!query) return false;
+  const q = query.toLowerCase();
+  const hasNav = /\b(?:take|bring|go|navigate|open|return|head)\s+(?:me\s+)?(?:back\s+)?(?:to\s+)?(?:(?:the|my)\s+)?(?:home\s*page|homepage|home|student\s+dashboard|dashboard)\b/i.test(q);
+  if (!hasNav) return false;
+
+  const hasAction = /\b(attendance|bunk|bunks|skip|skips|percentage|lowest|timetable|time\s*table|schedule|exam|exams|examination|date\s*sheet|datesheet|seating|seat|sample\s*paper)\b/i.test(q);
+  return hasAction;
+}
+
+/**
  * Corrects a resolved capability when the student's own words name a different
  * verified-data domain. Returns the resolved capability unchanged when there is
  * nothing to correct (or the resolution is a non-data capability such as identity).

@@ -110,6 +110,76 @@ def transform_speech_identity(text: str) -> str:
     # Fractions for natural speech: "5/10" -> "5 out of 10". Never touch date
     # forms like 10/8/2026 (lookbehind/lookahead guard) or "711 / S" patterns.
     out = re.sub(r"(?<![\d/])(\d{1,3})\s*/\s*(\d{1,3})(?![\d/])", r"\1 out of \2", out)
+
+    # Spoken date expansion: expand month abbreviations (e.g. "05-Dec-2026" -> "5 December 2026",
+    # "Dec" -> "December") so Groq Orpheus speaks natural month names instead of "D ec".
+    month_names = {
+        "jan": "January",
+        "feb": "February",
+        "mar": "March",
+        "apr": "April",
+        "may": "May",
+        "jun": "June",
+        "jul": "July",
+        "aug": "August",
+        "sep": "September",
+        "sept": "September",
+        "oct": "October",
+        "nov": "November",
+        "dec": "December",
+    }
+
+    def _expand_full_date(m: re.Match) -> str:
+        day = str(int(m.group(1)))
+        m_name = month_names.get(m.group(2).lower(), m.group(2))
+        year = m.group(3)
+        if len(year) == 2:
+            year = f"20{year}"
+        return f"{day} {m_name} {year}"
+
+    out = re.sub(
+        r"(?i)(?<!\w)0?(\d{1,2})[-/](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*[-/](\d{2,4})(?!\w)",
+        _expand_full_date,
+        out,
+    )
+
+    def _expand_day_month(m: re.Match) -> str:
+        day = str(int(m.group(1)))
+        m_name = month_names.get(m.group(2).lower(), m.group(2))
+        return f"{day} {m_name}"
+
+    out = re.sub(
+        r"(?i)(?<!\w)0?(\d{1,2})[-/](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*(?!\w)",
+        _expand_day_month,
+        out,
+    )
+
+    def _expand_month_day(m: re.Match) -> str:
+        m_name = month_names.get(m.group(1).lower(), m.group(1))
+        day = str(int(m.group(2)))
+        return f"{m_name} {day}"
+
+    out = re.sub(
+        r"(?i)(?<!\w)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*[-/]0?(\d{1,2})(?!\w)",
+        _expand_month_day,
+        out,
+    )
+
+    def _expand_standalone_month(m: re.Match) -> str:
+        raw = m.group(1)
+        dot = m.group(2) or ""
+        low = raw.lower()
+        if low == "mar" and raw == "mar":
+            return f"{raw}{dot}"
+        expanded = month_names.get(low, raw)
+        return f"{expanded}{dot}"
+
+    out = re.sub(
+        r"(?i)\b(Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)\b(\.?)",
+        _expand_standalone_month,
+        out,
+    )
+
     # Transform AI assistant name to Sofia ONLY for voice delivery
     out = re.sub(r"\bI am ONEE\b", "I am Sofia", out, flags=re.IGNORECASE)
     out = re.sub(r"\bI'm ONEE\b", "I'm Sofia", out, flags=re.IGNORECASE)
