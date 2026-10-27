@@ -1,0 +1,1173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LPU UMS Agent: Autonomous Browser Agent &amp; Academic Copilot</title>
+  <meta name="description" content="An autonomous, privacy-first Browser Agent with Computer Use for Attendance Intelligence, Examination Date Sheets, Seating Plans, Timetable Navigation, and Voice Interaction on LPU UMS.">
+    <!-- LPU Official Seal High-Resolution Favicons -->
+  <link rel="icon" type="image/png" href="data:image/png;base64,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">
+  <link rel="icon" type="image/x-icon" href="favicon.ico?v=20261028_2">
+  <link rel="shortcut icon" type="image/x-icon" href="favicon.ico?v=20261028_2">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png?v=20261028_2">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png?v=20261028_2">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png?v=20261028_2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="assets/mermaid.min.js"></script>
+</head>
+<body>
+
+  <!-- Top Sticky Navigation Bar -->
+  <header class="site-header">
+    <div class="header-inner container-wide">
+      <a href="#" class="brand">
+        <img src="assets/logo.png" alt="LPU Emblem" class="brand-logo" width="28" height="28">
+        <span class="brand-title">LPU UMS Agent</span>
+      </a>
+      <nav class="nav-links">
+        <a href="#overview" class="nav-link">Overview</a>
+        <a href="#architecture" class="nav-link">Architecture</a>
+        <a href="#how-it-works" class="nav-link">How It Works</a>
+        <a href="#setup" class="nav-link">Setup Guide</a>
+        <a href="#decisions" class="nav-link">Decisions</a>
+        <a href="#infrastructure" class="nav-link">Infrastructure</a>
+      </nav>
+      <div class="header-actions">
+        <a href="assets/downloads/lpu-ums-agent-extension.zip" download="lpu-ums-agent-extension.zip" class="btn-download-nav">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Download Extension</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ========================================================
+         01 HERO SECTION: Title, Summary, Download CTA, macOS Window with Auto-Play
+         ======================================================== -->
+    <section class="hero-section">
+      <div class="container-wide">
+        <!-- Hero Text -->
+        <div class="hero-text-block">
+          <span class="hero-tag">// AUTONOMOUS BROWSER AGENT &amp; ACADEMIC COPILOT</span>
+          <h1 class="project-name">LPU UMS Agent</h1>
+          <p class="project-summary">An autonomous, privacy-first Browser Agent with Computer Use for Attendance Intelligence, Examination Date Sheets, Seating Plans, Timetable Navigation, and Voice Interaction on LPU UMS.</p>
+          
+          <div class="hero-cta-group">
+            <a href="assets/downloads/lpu-ums-agent-extension.zip" download="lpu-ums-agent-extension.zip" class="btn-hero-primary">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <span>Download Extension (.ZIP)</span>
+              <span class="btn-badge-size">51 MB</span>
+            </a>
+            <a href="#setup" class="btn-hero-secondary">
+              <span>Setup Guide</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </a>
+            <div class="hero-spec-pill">
+              <span>v2.4.0 · Manifest V3 · Chrome Side Panel · 422 Vitest Tests</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- macOS Screenshot Window with Tab Switcher & Smooth Auto-Play Slideshow -->
+        <div class="screenshot-window" id="heroScreenshotWindow">
+          <div class="window-bar">
+            <div class="window-buttons">
+              <span class="w-circle close"></span>
+              <span class="w-circle minimize"></span>
+              <span class="w-circle expand"></span>
+            </div>
+            <div class="window-address" id="windowAddress">lpu.ums.agent / live-session</div>
+            <div class="screenshot-switcher" id="screenshotSwitcher">
+              <button class="ss-btn active" data-img="assets/pics/Pic1.png" data-addr="lpu.ums.agent / live-session">Side Panel Mounting</button>
+              <button class="ss-btn" data-img="assets/pics/Pic2.png" data-addr="lpu.ums.agent / voice-barge-in">Voice Subsystem</button>
+              <button class="ss-btn" data-img="assets/pics/Pic3.png" data-addr="lpu.ums.agent / attendance-grounding">Attendance Extraction</button>
+              <button class="ss-btn" data-img="assets/pics/Pic4.png" data-addr="lpu.ums.agent / bunk-algebra">Safe Bunk Calculator</button>
+              <button class="ss-btn" data-img="assets/pics/Pic5.png" data-addr="lpu.ums.agent / timetable-ssrs">SSRS Timetable</button>
+              <button class="ss-btn" data-img="assets/pics/Pic6.png" data-addr="lpu.ums.agent / companion-states">Companion Mascot</button>
+              <button class="ss-btn" data-img="assets/pics/Pic7.png" data-addr="lpu.ums.agent / seating-plan-nav">Autonomous Seating</button>
+              <button class="ss-btn" data-img="assets/pics/Pic8.png" data-addr="lpu.ums.agent / exam-venues">Exam Date Sheet</button>
+              <button class="ss-btn" data-img="assets/pics/Pic9.png" data-addr="lpu.ums.agent / multi-exam-cards">Multi-Course Cards</button>
+              <button class="ss-btn" data-img="assets/pics/Pic10.png" data-addr="lpu.ums.agent / sample-paper-agent">Sample Paper Agent</button>
+            </div>
+          </div>
+          <div class="auto-play-bar-wrapper">
+            <div class="auto-play-bar-fill" id="autoPlayBarFill"></div>
+          </div>
+          <div class="image-viewport">
+            <img id="heroScreenshotImg" class="zoomable-img" src="assets/pics/Pic1.png" alt="LPU UMS Agent Native Side Panel Mounting" data-caption="Figure 1: Native Side Panel Mounting &amp; Portal Awareness on ums.lpu.in" loading="eager">
+            <div class="image-zoom-hint">Click image to inspect full-screen · Auto-cycles every 4s</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         02 OVERVIEW: The Problem, The Approach, 3 Core Pillars
+         ======================================================== -->
+    <section class="overview-section" id="overview">
+      <div class="container">
+        <div class="editorial-header">
+          <span class="section-num">02 // OVERVIEW</span>
+          <h2 class="section-title">Why was it built?</h2>
+          <p class="section-subtitle">The engineering motivation behind grounding autonomous AI directly into university portals.</p>
+        </div>
+
+        <div class="overview-content">
+          <!-- The Problem -->
+          <div class="editorial-block">
+            <h3 class="block-label">THE PROBLEM</h3>
+            <p>Lovely Professional University operates two separate, mission-critical portals for students: the legacy ASP.NET / SSRS WebForms portal (ums.lpu.in) and the modern Angular SPA portal (studentums.lpu.in). Both portals are protected by strict session authentication, dynamic postback forms, and nested iframes.</p>
+            <p>Students face continuous friction during everyday academic operations. Calculating whether missing an upcoming lecture drops attendance below the university's rigid 75% debarment threshold involves manual arithmetic. Locating examination seating across 50+ campus blocks or checking timetable faculty directories requires digging through multi-level menus. Unannounced "Campus Drive Notifications" popups frequently block portal interaction.</p>
+            <p>External AI bots and cloud scrapers fail completely in this environment: Cloudflare Turnstile blocks automated headless scrapers (Playwright/Puppeteer), storing student passwords on third-party servers creates catastrophic privacy liabilities, and generic language models regularly make dangerous arithmetic mistakes calculating attendance margins.</p>
+          </div>
+
+          <!-- The Approach -->
+          <div class="editorial-block">
+            <h3 class="block-label">THE APPROACH</h3>
+            <p>LPU UMS Agent was engineered as a native Chrome Side Panel extension (Manifest V3) running directly inside the student's already-authenticated browser session. It operates with zero password storage and zero cookie interception.</p>
+            <p>Through autonomous in-session Computer Use, the agent observes the live DOM, locates UI targets via 2D IoU spatial matching, moves a visible AI cursor along smooth cubic-Bézier trajectories at 60 FPS, and executes navigation controls. All attendance forecasting is evaluated by deterministic closed-form algebra, backed by a dual-tier Groq voice pipeline and local-first IndexedDB v3 memory.</p>
+
+            <!-- 3 Core Pillars -->
+            <div class="three-points-grid">
+              <div class="point-item">
+                <span class="point-number">01</span>
+                <div class="point-content">
+                  <h4 class="point-title">In-Session Computer Use</h4>
+                  <p class="point-desc">Operates directly inside active student sessions with a visible 60 FPS AI cursor. Traverses ASP.NET tables and Angular SPA views with zero credentials leaving the device.</p>
+                </div>
+              </div>
+              <div class="point-item">
+                <span class="point-number">02</span>
+                <div class="point-content">
+                  <h4 class="point-title">100% Deterministic Algebra</h4>
+                  <p class="point-desc">Calculates safe bunk allowances and required recovery attendances with closed-form mathematics, eliminating LLM arithmetic hallucinations and debarment risks.</p>
+                </div>
+              </div>
+              <div class="point-item">
+                <span class="point-number">03</span>
+                <div class="point-content">
+                  <h4 class="point-title">Full-Duplex Voice Subsystem</h4>
+                  <p class="point-desc">Dual-tier Groq pipeline with Whisper Large-v3 STT and Orpheus TTS, featuring hardware audio prewarming, speech barge-in, and dynamic milestone narration.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         03 ARCHITECTURE: 3 Interactive Levels
+         ======================================================== -->
+    <section class="architecture-section" id="architecture">
+      <div class="container-wide">
+        <div class="editorial-header">
+          <span class="section-num">03 // ARCHITECTURE</span>
+          <h2 class="section-title">System Architecture</h2>
+          <p class="section-subtitle">How the Chrome Side Panel, Computer-Use Content Script, Deterministic Algebra, and Groq LPU cluster interact.</p>
+        </div>
+
+        <!-- Architecture Level Tabs -->
+        <div class="arch-level-tabs">
+          <button class="level-tab active" data-level="1">
+            <span class="tab-badge">Level 1</span>
+            <span>System Overview</span>
+          </button>
+          <button class="level-tab" data-level="2">
+            <span class="tab-badge">Level 2</span>
+            <span>Component Zoom</span>
+          </button>
+          <button class="level-tab" data-level="3">
+            <span class="tab-badge">Level 3</span>
+            <span>Data Flow Pipelines</span>
+          </button>
+        </div>
+
+        <!-- ========================================================
+             LEVEL 1: SYSTEM OVERVIEW (Interactive Tree + Inspector + Mermaid)
+             ======================================================== -->
+        <div class="level-view active" id="level-1-view">
+          <div class="arch-split-layout">
+            <!-- Left: Clickable Topology Tree -->
+            <div class="diagram-canvas">
+              <div class="canvas-hint">Click any component box to inspect responsibilities and technology stack.</div>
+              <div class="topology-tree">
+                <!-- Tier 1: Client Side Panel -->
+                <div class="tree-tier">
+                  <button class="node-box" data-node="client">
+                    <span class="node-type">CLIENT TIER</span>
+                    <span class="node-name">Chrome Side Panel</span>
+                    <span class="node-tech">React 18.3 · Tailwind · Apple iOS HIG</span>
+                  </button>
+                </div>
+                <div class="connector-v">↓</div>
+
+                <!-- Tier 2: DOM Execution & Preflight -->
+                <div class="tree-branch">
+                  <button class="node-box" data-node="dom">
+                    <span class="node-type">COMPUTER USE</span>
+                    <span class="node-name">Content Script &amp; Cursor</span>
+                    <span class="node-tech">2D IoU · Bezier Physics (60 FPS)</span>
+                  </button>
+                  <button class="node-box" data-node="modal">
+                    <span class="node-type">PREFLIGHT GUARD</span>
+                    <span class="node-name">Modal Dismissal Guard</span>
+                    <span class="node-tech">Safe 'Remind me later' Target</span>
+                  </button>
+                  <button class="node-box" data-node="storage">
+                    <span class="node-type">LOCAL STORAGE</span>
+                    <span class="node-name">IndexedDB v3 Memory</span>
+                    <span class="node-tech">Local-First On-Device Store</span>
+                  </button>
+                </div>
+                <div class="connector-v">↓</div>
+
+                <!-- Tier 3: Gateway -->
+                <div class="tree-tier">
+                  <button class="node-box active" data-node="gateway">
+                    <span class="node-type">API GATEWAY</span>
+                    <span class="node-name">FastAPI Asynchronous Gateway</span>
+                    <span class="node-tech">FastAPI 0.115 · Uvicorn · Hugging Face</span>
+                  </button>
+                </div>
+                <div class="connector-v">↓</div>
+
+                <!-- Tier 4: Specialized Service Engines -->
+                <div class="tree-branch">
+                  <button class="node-box" data-node="math">
+                    <span class="node-type">DETERMINISTIC ENGINE</span>
+                    <span class="node-name">Deterministic Bunk Algebra</span>
+                    <span class="node-tech">Exact Formulas (75%, 80%, 85%)</span>
+                  </button>
+                  <button class="node-box" data-node="voice">
+                    <span class="node-type">VOICE PIPELINE</span>
+                    <span class="node-name">Dual-Tier Groq Voice</span>
+                    <span class="node-tech">Whisper Large-v3 &amp; Orpheus TTS</span>
+                  </button>
+                  <button class="node-box highlight" data-node="llm">
+                    <span class="node-type">INFERENCE CLUSTER</span>
+                    <span class="node-name">Groq LPU Inference</span>
+                    <span class="node-tech">Llama 3.3 70B · 500+ tok/s</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Dynamic Inspector Panel -->
+            <div class="inspector-panel" id="inspectorPanel">
+              <div class="inspector-header">
+                <span class="inspector-pill" id="inspPill">API GATEWAY</span>
+                <span class="inspector-status">STATUS: OPERATIONAL</span>
+              </div>
+              <h3 class="inspector-title" id="inspTitle">FastAPI Asynchronous Gateway (Hugging Face Spaces)</h3>
+              <p class="inspector-summary" id="inspSummary">Stateless backend service powering the Chrome Side Panel extension. Hosted on Hugging Face Spaces with FastAPI and Uvicorn, fully compatible with both CPU Basic and ZeroGPU (A10G) tiers.</p>
+              
+              <div class="inspector-details">
+                <div class="detail-column">
+                  <h4 class="detail-heading">Key Responsibilities</h4>
+                  <ul class="detail-list" id="inspResponsibilities">
+                    <li>GET /health: Microsecond service health check and LLM model verification</li>
+                    <li>POST /api/chat: Token-streaming conversational reasoning with grounded context</li>
+                    <li>POST /api/agent/plan: Autonomous Computer Use browser action planner</li>
+                    <li>POST /api/voice/transcribe: Groq Whisper large-v3 speech-to-text processing</li>
+                    <li>POST /api/voice/speak: Groq Orpheus expressive audio synthesis</li>
+                    <li>Zero credential collection: zero passwords or student session cookies touch this backend</li>
+                  </ul>
+                </div>
+                <div class="detail-column">
+                  <h4 class="detail-heading">Core Technologies</h4>
+                  <ul class="detail-list" id="inspTechnologies">
+                    <li>FastAPI 0.115</li>
+                    <li>Python 3.11</li>
+                    <li>Uvicorn (ASGI)</li>
+                    <li>Hugging Face Spaces</li>
+                    <li>ZeroGPU Support</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- System Architecture & Boundary Topology: Exact Mermaid Flowchart from README.md -->
+          <!-- System Architecture & Boundary Topology: Interactive Mermaid Flowchart with Pan/Zoom & Move -->
+          <div class="mermaid-diagram-card" id="mermaidCard">
+            <div class="diagram-header">
+              <div>
+                <h3 class="diagram-title">System Architecture &amp; Boundary Topology</h3>
+                <p class="section-subtitle" style="font-size: 0.85rem; margin-top: 0.25rem;">Live structural topology showing Chrome Browser Tab, Native Side Panel, and Backend Service execution boundaries.</p>
+              </div>
+              <div class="mermaid-toolbar">
+                <span class="diagram-badge">Architecture Flow</span>
+                <div class="m-nav-group" title="Move Diagram (Pan)">
+                  <button type="button" class="m-ctrl-btn" id="mPanLeft" title="Move Left" aria-label="Move Left">←</button>
+                  <button type="button" class="m-ctrl-btn" id="mPanUp" title="Move Up" aria-label="Move Up">↑</button>
+                  <button type="button" class="m-ctrl-btn" id="mPanDown" title="Move Down" aria-label="Move Down">↓</button>
+                  <button type="button" class="m-ctrl-btn" id="mPanRight" title="Move Right" aria-label="Move Right">→</button>
+                </div>
+                <div class="m-zoom-group">
+                  <button type="button" class="m-ctrl-btn" id="mZoomOut" title="Zoom Out" aria-label="Zoom Out">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  </button>
+                  <span class="m-zoom-level" id="mZoomLevel">100%</span>
+                  <button type="button" class="m-ctrl-btn" id="mZoomIn" title="Zoom In" aria-label="Zoom In">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  </button>
+                  <button type="button" class="m-ctrl-btn m-reset-btn" id="mReset" title="Reset View" aria-label="Reset View">
+                    <span>⟲ Reset</span>
+                  </button>
+                  <button type="button" class="m-ctrl-btn" id="mExpand" title="Toggle Expanded View" aria-label="Toggle Expanded View">
+                    <span id="mExpandText">⛶ Expand</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mermaid-viewport" id="mermaidViewport">
+              <div class="mermaid-pan-zoom-container" id="mermaidPanZoom">
+                <pre class="mermaid" id="systemArchMermaid">
+flowchart TB
+    subgraph TAB["🌐 CHROME BROWSER TAB · Live Authenticated UMS Session"]
+        direction TB
+        subgraph CS["LPU UMS Agent Injected Content Script (content.js)"]
+            direction LR
+            D1["🛡️ UMS Detector &amp; Preflight<br/>Domain validation &amp; Placement modal safe dismissal"]
+            D2["👁️ Page Observer &amp; Grounding<br/>Interactive DOM harvesting &amp; 2D IoU spatial matching"]
+            D3["🎯 AI Cursor &amp; Motion<br/>Natural cubic-Bézier trajectories &amp; live badges"]
+            D4["📑 Universal Parsers<br/>Attendance, Date Sheets, Seating &amp; SSRS Timetable"]
+            D5["⚡ Action Engine<br/>Native click dispatch &amp; WAIT_FOR_RENDER watcher"]
+            D1 --> D2 --> D3 --> D4 --> D5
+        end
+    end
+
+    subgraph PANEL["📱 LPU UMS AGENT CHROME SIDE PANEL · Native Manifest V3 Extension"]
+        direction TB
+        subgraph VOICE["🎙️ Multimodal Voice Subsystem"]
+            direction LR
+            V1["VoiceController<br/>Microphone lifecycle &amp; barge-in"]
+            V2["VoiceQueue<br/>Sentence chunking &amp; priority queue"]
+            V3["NarrationPolicy<br/>Semantic milestone narration"]
+            V4["AudioController<br/>Web Audio API &amp; prewarming"]
+            V1 --> V2 --> V3 --> V4
+        end
+
+        subgraph CORE["🧠 React 18 Agent Controller &amp; Deterministic Engines"]
+            direction LR
+            C1["useAgentController<br/>Perception-action loop manager"]
+            C2["useChatAgent &amp; Intent Router<br/>Token streaming &amp; capability firewall"]
+            C3["Deterministic Calculators<br/>Exact safe-bunk algebra &amp; exam sorting"]
+            C4["IndexedDB v3 Database<br/>On-device chat, executions &amp; datasets"]
+            C1 &lt;--&gt; C2
+            C1 &lt;--&gt; C3
+            C3 &lt;--&gt; C4
+        end
+
+        subgraph UI["✨ Apple iOS HIG Interface &amp; Companion Mascot"]
+            direction LR
+            U1["Agent Control Panel<br/>Category pills &amp; state visualizers"]
+            U2["Chat Feed &amp; 60 FPS Spring Follow<br/>Critically-damped smooth glide loop"]
+            U3["Examination &amp; Attendance Cards<br/>Fluid CSS grid disclosures (0fr → 1fr)"]
+            U4["Procedural 3D SVG Mascot<br/>22 expressions synced via Bridge"]
+            U1 --- U2 --- U3 --- U4
+        end
+
+        VOICE -->|"Transcribed Intents &amp; Barge-in Events"| CORE
+        CORE -->|"Dynamic Mascot Expressions &amp; Component Feeds"| UI
+    end
+
+    subgraph BACKEND["⚡ LPU UMS AGENT BACKEND SERVICE · FastAPI + Groq Cloud"]
+        direction LR
+        B1["/api/agent/plan<br/>Next-action planner &amp; WAIT_FOR_RENDER"]
+        B2["/api/chat<br/>Token streaming with grounded context"]
+        B3["/api/voice/transcribe<br/>Groq Whisper large-v3 STT fallback"]
+        B4["/api/voice/speak<br/>Groq Orpheus vocal-directed synthesis"]
+        B5["Credential Isolation Boundary<br/>Dedicated Agent &amp; Voice Groq Keys"]
+        B1 --- B2 --- B3 --- B4 --- B5
+    end
+
+    %% Cross-tier execution pathways
+    CS &lt;--&gt;|"Chrome Runtime IPC (DOM Observations ↔ Agent Actions)"| CORE
+    CORE &lt;--&gt;|"Stateless REST &amp; SSE Audio Streams"| BACKEND
+
+    %% Tier Styling
+    classDef tabBox fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
+    classDef panelBox fill:#18181b,stroke:#a855f7,stroke-width:2px,color:#f8fafc;
+    classDef backendBox fill:#022c22,stroke:#10b981,stroke-width:2px,color:#f8fafc;
+    classDef nodeStyle fill:#1e293b,stroke:#64748b,stroke-width:1.5px,color:#f1f5f9;
+    classDef voiceStyle fill:#3b0764,stroke:#c084fc,stroke-width:1.5px,color:#f3e8ff;
+    classDef mathStyle fill:#064e3b,stroke:#34d399,stroke-width:1.5px,color:#ecfdf5;
+    classDef uiStyle fill:#1e1b4b,stroke:#818cf8,stroke-width:1.5px,color:#e0e7ff;
+
+    class TAB,CS tabBox;
+    class PANEL,VOICE,CORE,UI panelBox;
+    class BACKEND backendBox;
+    class D1,D2,D3,D4,D5 nodeStyle;
+    class V1,V2,V3,V4 voiceStyle;
+    class C1,C2 nodeStyle;
+    class C3,C4 mathStyle;
+    class U1,U2,U3,U4 uiStyle;
+    class B1,B2,B3,B4,B5 nodeStyle;
+                </pre>
+              </div>
+              <div class="mermaid-hint-overlay">
+                <span>✋ Click &amp; drag to move · Scroll wheel to zoom</span>
+              </div>
+            </div>
+            <p class="diagram-caption">Figure 1.0: End-to-end component topology detailing the Chrome Browser Tab live session, Chrome Side Panel (React 18.3 &amp; Apple iOS HIG), and FastAPI Backend Service.</p>
+          </div>
+        </div>
+
+        <!-- ========================================================
+             LEVEL 2: COMPONENT ZOOM (Deep-Dive into Loops & Engines)
+             ======================================================== -->
+        <div class="level-view" id="level-2-view">
+          <div class="zoom-selector">
+            <button class="zoom-btn active" data-zoom="agent">Autonomous Computer Use Pipeline</button>
+            <button class="zoom-btn" data-zoom="nlp">Dual-Tier Voice &amp; Multimodal NLP</button>
+            <button class="zoom-btn" data-zoom="bunk">Deterministic Attendance Algebra</button>
+          </div>
+
+          <!-- Zoom 1: Autonomous Computer Use Pipeline -->
+          <div class="zoom-content active" id="zoom-agent">
+            <div class="zoom-grid">
+              <div class="box-chain">
+                <div class="box-step">
+                  <span class="step-badge">STEP 01</span>
+                  <h4>● OBSERVE &amp; ● THINK</h4>
+                  <p>Observes active DOM tree and iframe contents. Evaluates route: legacy ums.lpu.in vs Angular studentums.lpu.in.</p>
+                </div>
+                <div class="box-arrow">↓</div>
+                <div class="box-step">
+                  <span class="step-badge">STEP 02</span>
+                  <h4>● LOCATE &amp; ✓ WAIT_FOR_RENDER</h4>
+                  <p>Hybrid 2D IoU spatial matching pairs with semantic text scoring; monitors Angular DOM mutations until cards mount.</p>
+                </div>
+                <div class="box-arrow">↓</div>
+                <div class="box-step active-box">
+                  <span class="step-badge">STEP 03</span>
+                  <h4>→ MOVE (Cubic-Bézier Physics)</h4>
+                  <p>Smooth 60 FPS visual AI cursor glides across coordinates with cosine smoothstep easing (400-1200ms).</p>
+                </div>
+                <div class="box-arrow">↓</div>
+                <div class="box-step active-tool">
+                  <span class="step-badge">STEP 04</span>
+                  <h4>● ACT &amp; ● EXTRACT</h4>
+                  <p>Dispatches synthetic mouse events, executes ASPX postbacks, and extracts verified timetable/exam tables.</p>
+                </div>
+                <div class="box-arrow">↓</div>
+                <div class="box-step">
+                  <span class="step-badge">STEP 05</span>
+                  <h4>✓ VALIDATE, VERIFY &amp; DONE</h4>
+                  <p>Validates non-empty records, syncs to IndexedDB v3, and delivers visual UI cards with milestone voice narration.</p>
+                </div>
+              </div>
+
+              <div class="zoom-explanation">
+                <h3>Autonomous In-Session Computer Use</h3>
+                <p>Unlike generic bots that rely on fragile static CSS selectors, LPU UMS Agent executes true in-session browser actions through a strict 10-step perception-action loop:</p>
+                <ol class="editorial-list">
+                  <li><strong>Hybrid 2D IoU Spatial Grounding</strong>: Combines bounding-box intersection calculations with semantic text relevance to locate target controls even when ASP.NET table IDs change between semesters.</li>
+                  <li><strong>Natural Cursor Physics</strong>: Visible cursor moves along natural cubic-Bézier curves, providing visual transparency so students see exactly what action the agent performs.</li>
+                  <li><strong>Angular SPA Render Watcher (WAIT_FOR_RENDER)</strong>: On studentums.lpu.in, dynamically pauses extraction until Angular finishes rendering seating cards, preventing empty record extractions.</li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- Agent Loop Diagram -->
+            <div class="diagram-showcase-card">
+              <div class="diagram-header">
+                <h3 class="diagram-title">Autonomous Perception-Action Loop &amp; Computer-Use Execution Flow</h3>
+                <span class="diagram-badge">Cyclic State Machine</span>
+              </div>
+              <div class="diagram-image-wrapper">
+                <img class="zoomable-img" src="assets/diagrams/diagram_agentic_loop.jpg" alt="Autonomous Agentic Loop Execution Flow" data-caption="Figure 2.0: Cyclic perception-action state machine driving browser computer-use from DOM inspection to Bezier cursor flight and verification." loading="lazy">
+              </div>
+              <p class="diagram-caption">Figure 2.0: Cyclic state machine driving computer-use actions from intent perception to DOM element discovery, trajectory interpolation, and postback verification.</p>
+            </div>
+          </div>
+
+          <!-- Zoom 2: NLP Pipeline -->
+          <div class="zoom-content" id="zoom-nlp">
+            <div class="zoom-grid">
+              <div class="box-chain">
+                <div class="box-step">
+                  <span class="step-badge">STEP 01</span>
+                  <h4>Web Audio Capture &amp; Prewarming</h4>
+                  <p>Audio is captured via Web Audio API; hardware audio pipeline is prewarmed to eliminate startup latency.</p>
+                </div>
+                <div class="box-arrow">↓</div>
+                <div class="box-step active-box">
+                  <span class="step-badge">STEP 02</span>
+                  <h4>Groq Whisper Large-v3 STT</h4>
+                  <p>Converts speech to text with domain adaptation for Indian English pronunciations and course code acronyms.</p>
+                </div>
+                <div class="box-arrow">↓</div>
+                <div class="box-step active-tool">
+                  <span class="step-badge">STEP 03</span>
+                  <h4>Speech Barge-in Interruption</h4>
+                  <p>Real-time Voice Activity Detection (VAD) instantly cuts ongoing speech playback when the student starts speaking.</p>
+                </div>
+                <div class="box-arrow">↓</div>
+                <div class="box-step">
+                  <span class="step-badge">STEP 04</span>
+                  <h4>Groq LPU Reasoning (Llama 3.3 70B)</h4>
+                  <p>Generates structured computer-use JSON plans and reasons over academic contexts with 500+ tokens/sec throughput.</p>
+                </div>
+                <div class="box-arrow">↓</div>
+                <div class="box-step">
+                  <span class="step-badge">STEP 05</span>
+                  <h4>Groq Orpheus Expressive TTS</h4>
+                  <p>Streams natural, expressive audio back to the student with dynamic milestone progress narration.</p>
+                </div>
+              </div>
+
+              <div class="zoom-explanation">
+                <h3>Dual-Tier Groq Voice Pipeline</h3>
+                <p>Speed is essential for an intuitive voice copilot. LPU UMS Agent utilizes Groq's Language Processing Units (LPUs) to eliminate awkward conversational pauses:</p>
+                <ol class="editorial-list">
+                  <li><strong>Ultra-Low Latency Inference</strong>: 500+ tokens/second inference allows the agent to formulate computer-use action plans and speech responses in under 150ms.</li>
+                  <li><strong>Natural Barge-In Detection</strong>: Students can interrupt the agent's voice response at any time; the audio playback cuts off immediately and the new command is prioritized.</li>
+                  <li><strong>Dynamic Milestone Narration</strong>: Verbally narrates physical browser progress (e.g. "Opening Seating Plan", "Found Room 34-201, Desk A-12") so students stay informed during automation.</li>
+                </ol>
+              </div>
+            </div>
+
+            <!-- NLP Pipeline Diagram -->
+            <div class="diagram-showcase-card">
+              <div class="diagram-header">
+                <h3 class="diagram-title">Voice Execution &amp; Multimodal Speech Pipeline</h3>
+                <span class="diagram-badge">Dual-Tier Groq Pipeline</span>
+              </div>
+              <div class="diagram-image-wrapper">
+                <img class="zoomable-img" src="assets/diagrams/diagram_nlp_pipeline.jpg" alt="NLP Intent Classification Pipeline" data-caption="Figure 3.0: Dual-tier Groq voice processing pipeline uniting Whisper large-v3 STT, Llama 3.3 70B reasoning, and Orpheus expressive audio." loading="lazy">
+              </div>
+              <p class="diagram-caption">Figure 3.0: Dual-path NLP architecture combining fast-path compiled regex matching with high-throughput Groq LPU reasoning and Whisper voice transcription.</p>
+            </div>
+          </div>
+
+          <!-- Zoom 3: Safe Bunk Engine -->
+          <div class="zoom-content" id="zoom-bunk">
+            <div class="zoom-grid">
+              <div class="box-chain">
+                <div class="box-step">
+                  <span class="step-badge">STEP 01</span>
+                  <h4>DOM Scrape of Attended &amp; Delivered</h4>
+                  <p>Extracts total delivered lectures (T), attended lectures (P), and duty leaves per course directly from UMS tables.</p>
+                </div>
+                <div class="box-arrow">↓</div>
+                <div class="box-step active-box">
+                  <span class="step-badge">STEP 02</span>
+                  <h4>Deterministic Boundary Algebra</h4>
+                  <p>Calculates maximum skippable lectures before dropping below 75%: B = floor((P - 0.75 * T) / 0.75).</p>
+                </div>
+                <div class="box-arrow">↓</div>
+                <div class="box-step active-tool">
+                  <span class="step-badge">STEP 03</span>
+                  <h4>Recovery Lecture Requirement</h4>
+                  <p>If attendance &lt; 75%, evaluates consecutive attendances needed to recover: R = ceil((0.75 * T - P) / 0.25).</p>
+                </div>
+                <div class="box-arrow">↓</div>
+                <div class="box-step">
+                  <span class="step-badge">STEP 04</span>
+                  <h4>Multi-Threshold Margin Analysis</h4>
+                  <p>Displays clear margin cushions across 75%, 80%, and 85% attendance targets with zero arithmetic hallucination.</p>
+                </div>
+              </div>
+
+              <div class="zoom-explanation">
+                <h3>Zero-Hallucination Safe Bunk Algebra</h3>
+                <p>At Lovely Professional University, attendance debarment is strictly enforced at 74.9% and below. Relying on an LLM to perform mathematical calculations on attendance records risks hallucinations that could lead to student debarment.</p>
+                <ol class="editorial-list">
+                  <li><strong>Rigorous Mathematical Formulation</strong>: If present percentage exceeds 75%, allowable bunks $B$ satisfies: $\frac{P}{T + B} \ge 0.75 \implies B \le \frac{P - 0.75T}{0.75}$.</li>
+                  <li><strong>Deficit Recovery Calculus</strong>: If attendance is below 75%, consecutive attendances $R$ required to regain eligibility satisfies: $\frac{P + R}{T + R} \ge 0.75 \implies R \ge \frac{0.75T - P}{0.25}$.</li>
+                  <li><strong>Duty Leave Reconciliation</strong>: Reconciles approved university duty leave records with delivered totals, guaranteeing 100% mathematical consistency with official registrar records.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================================
+             LEVEL 3: DATA FLOW PIPELINES
+             ======================================================== -->
+        <div class="level-view" id="level-3-view">
+          <div class="data-flow-container">
+            <div class="flow-picker">
+              <button class="flow-tab-btn active" data-flow="query">Academic Record Extraction Pipeline</button>
+              <button class="flow-tab-btn" data-flow="nav">Autonomous Computer-Use Navigation Pipeline</button>
+            </div>
+
+            <!-- Query Flow -->
+            <div class="flow-step-deck active" id="flow-query">
+              <div class="flow-card">
+                <span class="f-num">01</span>
+                <h4>Voice / Text Prompt</h4>
+                <p>Student requests records via Chrome Side Panel chat or voice microphone.</p>
+              </div>
+              <div class="f-arrow">→</div>
+              <div class="flow-card">
+                <span class="f-num">02</span>
+                <h4>In-Session Scrape</h4>
+                <p>Content script traverses active UMS tables without re-authenticating.</p>
+              </div>
+              <div class="f-arrow">→</div>
+              <div class="flow-card active-flow">
+                <span class="f-num">03</span>
+                <h4>Algebraic Evaluation</h4>
+                <p>Deterministic Engine calculates safe bunks, recovery needs, and margins.</p>
+              </div>
+              <div class="f-arrow">→</div>
+              <div class="flow-card active-flow">
+                <span class="f-num">04</span>
+                <h4>IndexedDB v3 Cache</h4>
+                <p>Records and conversational checkpoints persist locally on the device.</p>
+              </div>
+              <div class="f-arrow">→</div>
+              <div class="flow-card">
+                <span class="f-num">05</span>
+                <h4>iOS UI &amp; Voice Narration</h4>
+                <p>Displays frosted acrylic card while Orpheus TTS streams spoken response.</p>
+              </div>
+            </div>
+
+            <!-- Navigation Flow -->
+            <div class="flow-step-deck" id="flow-nav">
+              <div class="flow-card">
+                <span class="f-num">01</span>
+                <h4>Navigation Goal</h4>
+                <p>Student asks to find seating plan, examination dates, or timetable schedule.</p>
+              </div>
+              <div class="f-arrow">→</div>
+              <div class="flow-card">
+                <span class="f-num">02</span>
+                <h4>Preflight Modal Guard</h4>
+                <p>Inspects page and safely clicks 'Remind me later' on notification popups.</p>
+              </div>
+              <div class="f-arrow">→</div>
+              <div class="flow-card active-flow">
+                <span class="f-num">03</span>
+                <h4>2D IoU Coordinate Grounding</h4>
+                <p>Locates target button and computes natural cubic-Bézier cursor flight path.</p>
+              </div>
+              <div class="f-arrow">→</div>
+              <div class="flow-card active-flow">
+                <span class="f-num">04</span>
+                <h4>Action &amp; WAIT_FOR_RENDER</h4>
+                <p>Fires synthetic click; monitors Angular SPA mutations until cards mount.</p>
+              </div>
+              <div class="f-arrow">→</div>
+              <div class="flow-card">
+                <span class="f-num">05</span>
+                <h4>Milestone Confirmation</h4>
+                <p>Highlights arrival venue (e.g. Room 34-201, Desk A-12) and reports completion to student.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         04 HOW IT WORKS: Query & Navigation Timelines
+         ======================================================== -->
+    <section class="how-it-works-section" id="how-it-works">
+      <div class="container">
+        <div class="editorial-header">
+          <span class="section-num">04 // WORKFLOWS</span>
+          <h2 class="section-title">How It Works</h2>
+          <p class="section-subtitle">What actually happens under the hood when a student interacts with the copilot or executes autonomous navigation.</p>
+        </div>
+
+        <div class="timelines-grid">
+          <!-- Workflow 1: Query Lifecycle -->
+          <div class="timeline-column">
+            <h3 class="workflow-title">ACADEMIC QUERY &amp; EXTRACTION LIFECYCLE</h3>
+            <p class="workflow-desc">The path from raw voice or text prompt to verified data visualization.</p>
+            <div class="visual-timeline">
+              <div class="timeline-step">
+                <span class="step-num">01</span>
+                <div class="step-body">
+                  <h4>User inputs prompt or speech</h4>
+                  <p>Student speaks into microphone or types query into the Chrome Side Panel interface.</p>
+                </div>
+              </div>
+              <div class="timeline-arrow">↓</div>
+              <div class="timeline-step">
+                <span class="step-num">02</span>
+                <div class="step-body">
+                  <h4>Groq Whisper large-v3 transcribes</h4>
+                  <p>Audio packets stream to backend gateway; Whisper transcribes speech with academic domain tuning.</p>
+                </div>
+              </div>
+              <div class="timeline-arrow">↓</div>
+              <div class="timeline-step">
+                <span class="step-num">03</span>
+                <div class="step-body">
+                  <h4>In-Session Content Script scrapes DOM</h4>
+                  <p>Extracts enrolled courses, attended/delivered counts, and duty leave directly from active UMS tables.</p>
+                </div>
+              </div>
+              <div class="timeline-arrow">↓</div>
+              <div class="timeline-step">
+                <span class="step-num">04</span>
+                <div class="step-body">
+                  <h4>Deterministic Algebra evaluates bounds</h4>
+                  <p>Safe Bunk Engine evaluates closed-form ceiling formulas for 75%, 80%, and 85% attendance thresholds.</p>
+                </div>
+              </div>
+              <div class="timeline-arrow">↓</div>
+              <div class="timeline-step">
+                <span class="step-num">05</span>
+                <div class="step-body">
+                  <h4>Local-first checkpointing in IndexedDB v3</h4>
+                  <p>Academic records and conversation state are saved on-device with complete user privacy.</p>
+                </div>
+              </div>
+              <div class="timeline-arrow">↓</div>
+              <div class="timeline-step">
+                <span class="step-num">06</span>
+                <div class="step-body">
+                  <h4>Frosted UI Card &amp; Orpheus Voice Narration</h4>
+                  <p>Side Panel displays interactive gauge card; Groq Orpheus streams natural spoken summary.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Workflow 2: Autonomous Navigation -->
+          <div class="timeline-column">
+            <h3 class="workflow-title">AUTONOMOUS COMPUTER-USE NAVIGATION</h3>
+            <p class="workflow-desc">The physical execution pipeline for automated browser navigation.</p>
+            <div class="visual-timeline">
+              <div class="timeline-step">
+                <span class="step-num">01</span>
+                <div class="step-body">
+                  <h4>Student requests navigation</h4>
+                  <p>Command like "Show my exam seating" or "Find CSE325 faculty in timetable" is received.</p>
+                </div>
+              </div>
+              <div class="timeline-arrow">↓</div>
+              <div class="timeline-step">
+                <span class="step-num">02</span>
+                <div class="step-body">
+                  <h4>Preflight Modal Inspection</h4>
+                  <p>Agent scans for blocking "Campus Drive Notifications" popups and safely targets "Remind me later".</p>
+                </div>
+              </div>
+              <div class="timeline-arrow">↓</div>
+              <div class="timeline-step">
+                <span class="step-num">03</span>
+                <div class="step-body">
+                  <h4>Hybrid 2D IoU Target Grounding</h4>
+                  <p>Computes spatial intersection and semantic relevance to resolve exact target coordinates (x, y).</p>
+                </div>
+              </div>
+              <div class="timeline-arrow">↓</div>
+              <div class="timeline-step">
+                <span class="step-num">04</span>
+                <div class="step-body">
+                  <h4>Visible Bézier Cursor Motion (60 FPS)</h4>
+                  <p>Visible AI cursor glides naturally across the student's screen with cosine smoothstep easing.</p>
+                </div>
+              </div>
+              <div class="timeline-arrow">↓</div>
+              <div class="timeline-step">
+                <span class="step-num">05</span>
+                <div class="step-body">
+                  <h4>Action Execution &amp; WAIT_FOR_RENDER</h4>
+                  <p>Fires synthetic click or ASPX postback; MutationObserver monitors Angular DOM until cards mount.</p>
+                </div>
+              </div>
+              <div class="timeline-arrow">↓</div>
+              <div class="timeline-step">
+                <span class="step-num">06</span>
+                <div class="step-body">
+                  <h4>Target Verification &amp; Voice Confirmation</h4>
+                  <p>Highlights arrival venue (e.g. Room 34-201, Desk A-12) and verbally narrates completion to student.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         05 CHROME EXTENSION SETUP & INSTALLATION (NEW & ENHANCED)
+         ======================================================== -->
+    <section class="setup-section" id="setup">
+      <div class="container">
+        <div class="editorial-header">
+          <span class="section-num">05 // INSTALLATION &amp; SETUP</span>
+          <h2 class="section-title">How to Install &amp; Set Up the Extension</h2>
+          <p class="section-subtitle">Get up and running in under two minutes with our production-ready Chrome Extension build.</p>
+        </div>
+
+        <!-- Download Hub Card -->
+        <div class="download-hub-card">
+          <div class="hub-info">
+            <div class="hub-icon">✦</div>
+            <div class="hub-text">
+              <h3>LPU UMS Agent Extension</h3>
+              <p>Complete pre-built package ready for Chrome, Edge, and Brave.</p>
+              <div class="hub-meta">
+                <span>Version 2.4.0</span>
+                <span>•</span>
+                <span>Manifest V3</span>
+                <span>•</span>
+                <span>Format: .ZIP (51 MB)</span>
+              </div>
+            </div>
+          </div>
+          <div class="hub-actions">
+            <a href="assets/downloads/lpu-ums-agent-extension.zip" download="lpu-ums-agent-extension.zip" class="btn-download-big">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <span>Download Extension (.ZIP)</span>
+            </a>
+            <span class="download-subtext">Direct download · No build tools required</span>
+          </div>
+        </div>
+
+        <!-- Step-by-Step Installation Visual Cards -->
+        <div class="setup-steps-grid">
+          <!-- Step 1 -->
+          <div class="setup-card">
+            <span class="setup-step-tag">STEP 01</span>
+            <h4>Download &amp; Unzip</h4>
+            <p>Click the download button above to save <code class="code-snippet">lpu-ums-agent-extension.zip</code> to your computer. Extract the archive into a folder of your choice.</p>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="setup-card">
+            <span class="setup-step-tag">STEP 02</span>
+            <h4>Open Chrome Extensions</h4>
+            <p>Open Google Chrome (or Brave / Edge), open a new tab, and enter the following address into your URL bar:</p>
+            <span class="code-snippet">chrome://extensions</span>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="setup-card">
+            <span class="setup-step-tag">STEP 03</span>
+            <h4>Enable Developer Mode</h4>
+            <p>In the top right corner of the Chrome Extensions page, toggle the <strong>Developer mode</strong> switch to the <strong>ON</strong> position.</p>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="setup-card">
+            <span class="setup-step-tag">STEP 04</span>
+            <h4>Load Unpacked Extension</h4>
+            <p>In the top left toolbar, click the <strong>"Load unpacked"</strong> button. In the file picker, select the unzipped <code class="code-snippet">lpu-ums-agent-extension</code> directory.</p>
+          </div>
+
+          <!-- Step 5 -->
+          <div class="setup-card">
+            <span class="setup-step-tag">STEP 05</span>
+            <h4>Pin Extension to Toolbar</h4>
+            <p>Click the jigsaw puzzle piece icon in Chrome's top toolbar, find <strong>LPU UMS Agent</strong>, and click the pin icon for instant one-click access.</p>
+          </div>
+
+          <!-- Step 6 -->
+          <div class="setup-card">
+            <span class="setup-step-tag">STEP 06</span>
+            <h4>Open UMS &amp; Launch</h4>
+            <p>Navigate to <code class="code-snippet">https://ums.lpu.in</code> or <code class="code-snippet">https://studentums.lpu.in</code> and log in. Click the extension icon (or press <strong>Alt + Shift + U</strong>) to open your native Side Panel!</p>
+          </div>
+        </div>
+
+        <!-- Pro Tips & Troubleshooting Box -->
+        <div class="setup-tips-box">
+          <span class="tips-title">Pro-Tips &amp; Troubleshooting</span>
+          <ul class="tips-list">
+            <li><strong>Audio Permission</strong>: When using the voice copilot for the first time, allow microphone access so Groq Whisper large-v3 can transcribe your speech with barge-in support.</li>
+            <li><strong>Keep UMS Tab Active</strong>: Ensure you have your active UMS tab open when asking questions so the in-session content script can read your live attendance and schedule data.</li>
+            <li><strong>Automated Modal Dismissal</strong>: If a "Campus Drive Notifications" popup appears on UMS, the agent will automatically detect it and safely click "Remind me later" with visual AI cursor movement.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         06 ENGINEERING DECISIONS: Problem → Decision → Reasoning
+         ======================================================== -->
+    <section class="decisions-section" id="decisions">
+      <div class="container">
+        <div class="editorial-header">
+          <span class="section-num">06 // ARCHITECTURAL TRADEOFFS</span>
+          <h2 class="section-title">Engineering Decisions</h2>
+          <p class="section-subtitle">The technical rationale behind architectural choices: Problem → Decision → Reasoning.</p>
+        </div>
+
+        <div class="decisions-grid">
+          <!-- Decision 1 -->
+          <div class="decision-card">
+            <div class="decision-top">
+              <span class="decision-index">DECISION 01</span>
+              <h3 class="decision-title">Why Chrome Side Panel MV3 over Remote Headless Scrapers?</h3>
+            </div>
+            <div class="pdr-flow">
+              <div class="pdr-item">
+                <span class="pdr-label problem">PROBLEM</span>
+                <p>UMS is protected behind private authentication, session cookies, and Cloudflare verification. External headless bots (Playwright/Puppeteer) require students to transmit plaintext passwords to remote servers, creating critical data leak liabilities.</p>
+              </div>
+              <div class="pdr-item">
+                <span class="pdr-label decision">DECISION</span>
+                <p>Engineered as a native Chrome Side Panel extension (Manifest V3) running directly inside the student's already-authenticated browser session.</p>
+              </div>
+              <div class="pdr-item">
+                <span class="pdr-label reasoning">REASONING</span>
+                <p>Operates completely client-side in the student's real browser context. Zero student passwords or session tokens are stored or transmitted, guaranteeing complete zero-knowledge privacy.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Decision 2 -->
+          <div class="decision-card">
+            <div class="decision-top">
+              <span class="decision-index">DECISION 02</span>
+              <h3 class="decision-title">Why Deterministic Algebra over LLM Arithmetic?</h3>
+            </div>
+            <div class="pdr-flow">
+              <div class="pdr-item">
+                <span class="pdr-label problem">PROBLEM</span>
+                <p>Large Language Models are probabilistic token predictors that struggle with exact ceiling arithmetic, regularly miscalculating attendance margins and risking student debarment at the strict 75% threshold.</p>
+              </div>
+              <div class="pdr-item">
+                <span class="pdr-label decision">DECISION</span>
+                <p>Separated numerical calculations into a pure deterministic Python and TypeScript calculation engine.</p>
+              </div>
+              <div class="pdr-item">
+                <span class="pdr-label reasoning">REASONING</span>
+                <p>Calculations are evaluated via closed-form ceiling formulas (B = floor((P - 0.75T)/0.75)), guaranteeing 100% precision and eliminating arithmetic hallucinations.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Decision 3 -->
+          <div class="decision-card">
+            <div class="decision-top">
+              <span class="decision-index">DECISION 03</span>
+              <h3 class="decision-title">Why Groq LPUs for Language &amp; Voice Pipelines?</h3>
+            </div>
+            <div class="pdr-flow">
+              <div class="pdr-item">
+                <span class="pdr-label problem">PROBLEM</span>
+                <p>Standard cloud GPU inference exhibits high token latency (1-3 seconds time-to-first-token), rendering voice copilot conversations sluggish, awkward, and incapable of dynamic progress narration.</p>
+              </div>
+              <div class="pdr-item">
+                <span class="pdr-label decision">DECISION</span>
+                <p>Deployed high-speed Language Processing Units (LPUs) via Groq hosting Llama 3.3 70B, Whisper Large-v3 STT, and Orpheus expressive audio TTS.</p>
+              </div>
+              <div class="pdr-item">
+                <span class="pdr-label reasoning">REASONING</span>
+                <p>Delivers sustained 500+ tokens/second inference with sub-150ms latency, enabling fluid conversational voice exchanges with real-time speech barge-in.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Decision 4 -->
+          <div class="decision-card">
+            <div class="decision-top">
+              <span class="decision-index">DECISION 04</span>
+              <h3 class="decision-title">Why Local-First IndexedDB v3 Storage?</h3>
+            </div>
+            <div class="pdr-flow">
+              <div class="pdr-item">
+                <span class="pdr-label problem">PROBLEM</span>
+                <p>Centralizing student examination seating, attendance records, and personal academic histories in remote cloud databases introduces security targets and privacy concerns.</p>
+              </div>
+              <div class="pdr-item">
+                <span class="pdr-label decision">DECISION</span>
+                <p>Implemented a local-first storage architecture utilizing browser IndexedDB v3 on the student's device.</p>
+              </div>
+              <div class="pdr-item">
+                <span class="pdr-label reasoning">REASONING</span>
+                <p>Academic records and multi-turn chat history persist across browser restarts locally with instantaneous caching, zero centralized database overhead, and complete student sovereignty.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         07 INFRASTRUCTURE: Deployment Topology
+         ======================================================== -->
+    <section class="infra-section" id="infrastructure">
+      <div class="container">
+        <div class="editorial-header">
+          <span class="section-num">07 // DEPLOYMENT TOPOLOGY</span>
+          <h2 class="section-title">Infrastructure</h2>
+          <p class="section-subtitle">Production container topology, edge routing, and runtime boundaries.</p>
+        </div>
+
+        <div class="infra-card">
+          <div class="topology-display">
+            <pre class="ascii-infra">
+                 Student Browser (Google Chrome Manifest V3)
+                                 │
+           ┌─────────────────────┴─────────────────────┐
+           │                                           │
+   [Chrome Side Panel]                         [In-Session Content Script]
+   - React 18.3 &amp; Apple iOS HIG                - 2D IoU Spatial Grounding
+   - Deterministic Attendance Gauges           - 60 FPS Cubic-Bezier AI Cursor
+   - SSRS Timetable Day Filters                - Preflight Modal Dismissal Guard
+   - Local IndexedDB v3 Cache                  - MutationObserver SPA Watcher
+           │                                           │
+           └─────────────────────┬─────────────────────┘
+                                 │ (HTTPS / SSE Streaming)
+                                 ▼
+                     FastAPI Inference Gateway
+                     (Hugging Face Spaces · Python 3.11 · ZeroGPU / CPU)
+                     - /health: Microsecond Telemetry Check
+                     - /api/chat: Context-Grounded Reasoning
+                     - /api/agent/plan: Computer-Use Action Planner
+                     - /api/voice/transcribe: Whisper Large-v3 STT
+                     - /api/voice/speak: Groq Orpheus Expressive TTS
+                                 │
+          ┌──────────────────────┼──────────────────────┐
+          ▼                      ▼                      ▼
+  [Safe Bunk Algebra]    [Groq Voice Engine]    [Groq LPU Cluster]
+  - Closed-Form Calculus - Whisper Large-v3 STT - Llama 3.3 70B Versatile
+  - 75%, 80%, 85% Bounds - Orpheus Audio TTS    - 500+ tokens / second
+  - 22 Pytest Verified   - Real-Time Barge-in   - 32,768 Token Context
+            </pre>
+          </div>
+          <div class="infra-stack-footer">
+            <span>Chrome MV3</span>
+            <span class="dot">·</span>
+            <span>TypeScript 5.6</span>
+            <span class="dot">·</span>
+            <span>React 18.3</span>
+            <span class="dot">·</span>
+            <span>TailwindCSS</span>
+            <span class="dot">·</span>
+            <span>FastAPI 0.115</span>
+            <span class="dot">·</span>
+            <span>Groq LPU</span>
+            <span class="dot">·</span>
+            <span>Whisper Large-v3</span>
+            <span class="dot">·</span>
+            <span>Groq Orpheus</span>
+            <span class="dot">·</span>
+            <span>IndexedDB v3</span>
+            <span class="dot">·</span>
+            <span>Vitest (422 Passed)</span>
+            <span class="dot">·</span>
+            <span>Pytest (22 Passed)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         08 CHALLENGES: Authentic Engineering Realities
+         ======================================================== -->
+    <section class="challenges-section" id="challenges">
+      <div class="container">
+        <div class="editorial-header">
+          <span class="section-num">08 // ENGINEERING REALITIES</span>
+          <h2 class="section-title">Challenges</h2>
+          <p class="section-subtitle">Specific technical hurdles overcome during the design and deployment of the autonomous copilot.</p>
+        </div>
+
+        <div class="challenges-grid">
+          <!-- Challenge 01 -->
+          <div class="challenge-card">
+            <span class="ch-num">01</span>
+            <h3 class="ch-title">SSRS ReportViewer Container Traversal Without Host Page Scrolling</h3>
+            <p class="ch-body">The timetable on ums.lpu.in is rendered inside a legacy SQL Server Reporting Services (SSRS) WebForms ReportViewer container (<code class="code-snippet">Reports/frmStudentTimeTable.aspx</code>). Standard scroll commands scrolled the student's entire browser window rather than the internal table. Engineered a custom container-relative scroll interpolator that targets internal overflow divs directly, scrolling to faculty directories smoothly while maintaining host viewport stability.</p>
+          </div>
+
+          <!-- Challenge 02 -->
+          <div class="challenge-card">
+            <span class="ch-num">02</span>
+            <h3 class="ch-title">Angular SPA Dynamic Shells &amp; WAIT_FOR_RENDER Synchronization</h3>
+            <p class="ch-body">The modern portal at studentums.lpu.in serves an Angular Single Page Application shell that renders seating cards asynchronously after initial navigation. Early scraping attempts extracted empty DOM nodes. Built a dedicated <code class="code-snippet">WAIT_FOR_RENDER</code> state in the computer-use loop that monitors DOM mutations via MutationObserver, pausing extraction until exam records mount completely.</p>
+          </div>
+
+          <!-- Challenge 03 -->
+          <div class="challenge-card">
+            <span class="ch-num">03</span>
+            <h3 class="ch-title">Blocking "Campus Drive Notifications" Popups Disrupting Workflows</h3>
+            <p class="ch-body">UMS frequently displays unannounced modal notifications regarding campus placement opportunities, freezing underlying page clicks. Implemented an automated Global Preflight Modal Guard that intercepts modals, locates the button, and safely clicks <code class="code-snippet">Remind me later</code> using the visual AI cursor. This ensures students never miss placement opportunities while unblocking automation.</p>
+          </div>
+
+          <!-- Challenge 04 -->
+          <div class="challenge-card">
+            <span class="ch-num">04</span>
+            <h3 class="ch-title">Full-Duplex Voice Barge-in &amp; Hardware Audio Prewarming</h3>
+            <p class="ch-body">In speech interfaces, high latency and inability to interrupt spoken answers creates a frustrating experience. Engineered a Web Audio API audio pipeline with real-time speech barge-in detection that cuts TTS playback the instant the student speaks, paired with hardware audio pipeline prewarming that drops speech startup latency below 200ms.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================
+         09 CLOSING: The System Statement, Built With, Milestones
+         ======================================================== -->
+    <section class="closing-section" id="docs">
+      <div class="container">
+        <div class="editorial-block-closing">
+          <span class="closing-tag">THE SYSTEM</span>
+          <h2 class="closing-headline">An autonomous campus agent bridging student queries with live browser execution.</h2>
+          <p class="closing-statement">LPU UMS Agent replaces confusing menu hierarchies, attendance calculation anxiety, and manual hall searches with an intelligent, client-grounded copilot engineered specifically for Lovely Professional University students.</p>
+          
+          <div class="closing-divider"></div>
+
+          <div class="closing-cols">
+            <!-- Built With Column -->
+            <div class="closing-col">
+              <span class="col-title">BUILT WITH</span>
+              <div class="built-stack">
+                <span>Chrome MV3 Side Panel</span>
+                <span class="s-dot">·</span>
+                <span>TypeScript 5.6</span>
+                <span class="s-dot">·</span>
+                <span>React 18.3</span>
+                <span class="s-dot">·</span>
+                <span>FastAPI 0.115</span>
+                <span class="s-dot">·</span>
+                <span>Groq LPU</span>
+                <span class="s-dot">·</span>
+                <span>Whisper Large-v3</span>
+                <span class="s-dot">·</span>
+                <span>Groq Orpheus</span>
+                <span class="s-dot">·</span>
+                <span>IndexedDB v3</span>
+                <span class="s-dot">·</span>
+                <span>Vitest</span>
+                <span class="s-dot">·</span>
+                <span>Pytest</span>
+              </div>
+            </div>
+
+            <!-- Next Column -->
+            <div class="closing-col">
+              <span class="col-title">NEXT MILESTONES</span>
+              <ul class="next-list">
+                <li><span>→</span> Offline Edge WebAssembly Models</li>
+                <li><span>→</span> Multi-Tab Session Orchestraction</li>
+                <li><span>→</span> Automated Assignment Submission Alerts</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal Lightbox for Full-Screen Screenshots & Diagrams -->
+  <div class="modal-overlay" id="imageModal">
+    <div class="modal-content">
+      <button class="modal-close" id="modalClose" aria-label="Close image viewer">✕</button>
+      <img id="modalImg" src="" alt="Full Resolution Visual">
+      <p class="modal-caption" id="modalCaption"></p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

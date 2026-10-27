@@ -34,3 +34,6 @@ extension/dist/voices/
 extension/dist/wasm/
 extension/dist/pic/
 # dist/ is built via npm run build
+
+# Scratch directory
+scratch/
