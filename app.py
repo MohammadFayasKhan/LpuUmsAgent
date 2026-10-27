@@ -23,6 +23,15 @@ if backend_dir not in sys.path:
 from app.main import app as fastapi_app
 from app.config import settings
 
+# ZeroGPU compatibility hook (satisfies Hugging Face startup validator if ZeroGPU is active)
+try:
+    import spaces
+    @spaces.GPU(duration=10)
+    def _zerogpu_init():
+        return True
+except (ImportError, Exception):
+    pass
+
 def test_chat_query(message: str):
     """Interactive helper to test the agent directly in the Gradio dashboard."""
     if not message.strip():
