@@ -16,7 +16,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-  <script src="assets/mermaid.min.js"></script>
 </head>
 <body>
 
@@ -188,7 +187,7 @@
         </div>
 
         <!-- ========================================================
-             LEVEL 1: SYSTEM OVERVIEW (Interactive Tree + Inspector + Mermaid)
+             LEVEL 1: SYSTEM OVERVIEW (Interactive Tree + Inspector + Architecture Flow)
              ======================================================== -->
         <div class="level-view active" id="level-1-view">
           <div class="arch-split-layout">
@@ -292,127 +291,89 @@
             </div>
           </div>
 
-          <!-- System Architecture & Boundary Topology: Exact Mermaid Flowchart from README.md -->
-          <!-- System Architecture & Boundary Topology: Interactive Mermaid Flowchart with Pan/Zoom & Move -->
-          <div class="mermaid-diagram-card" id="mermaidCard">
+          <!-- System Architecture & Boundary Topology: Native High-Performance Flow Architecture -->
+          <div class="arch-topology-card" id="archTopologyCard">
             <div class="diagram-header">
               <div>
                 <h3 class="diagram-title">System Architecture &amp; Boundary Topology</h3>
-                <p class="section-subtitle" style="font-size: 0.85rem; margin-top: 0.25rem;">Live structural topology showing Chrome Browser Tab, Native Side Panel, and Backend Service execution boundaries.</p>
+                <p class="section-subtitle" style="font-size: 0.85rem; margin-top: 0.25rem;">End-to-end component topology detailing the Chrome Browser Tab live session, Chrome Side Panel, and FastAPI Backend Service.</p>
               </div>
-              <div class="mermaid-toolbar">
-                <span class="diagram-badge">Architecture Flow</span>
-                <div class="m-nav-group" title="Move Diagram (Pan)">
-                  <button type="button" class="m-ctrl-btn" id="mPanLeft" title="Move Left" aria-label="Move Left">←</button>
-                  <button type="button" class="m-ctrl-btn" id="mPanUp" title="Move Up" aria-label="Move Up">↑</button>
-                  <button type="button" class="m-ctrl-btn" id="mPanDown" title="Move Down" aria-label="Move Down">↓</button>
-                  <button type="button" class="m-ctrl-btn" id="mPanRight" title="Move Right" aria-label="Move Right">→</button>
+              <span class="diagram-badge">System Topology Flow</span>
+            </div>
+
+            <div class="arch-flow-diagram">
+              <!-- Tier 1: Client Tier -->
+              <div class="arch-tier-single">
+                <div class="arch-card arch-card-client">
+                  <span class="arch-card-badge">CLIENT TIER</span>
+                  <h4 class="arch-card-title">Chrome Side Panel</h4>
+                  <p class="arch-card-tech">React 18.3 &middot; Tailwind &middot; Apple iOS HIG</p>
                 </div>
-                <div class="m-zoom-group">
-                  <button type="button" class="m-ctrl-btn" id="mZoomOut" title="Zoom Out" aria-label="Zoom Out">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                  </button>
-                  <span class="m-zoom-level" id="mZoomLevel">100%</span>
-                  <button type="button" class="m-ctrl-btn" id="mZoomIn" title="Zoom In" aria-label="Zoom In">
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                  </button>
-                  <button type="button" class="m-ctrl-btn m-reset-btn" id="mReset" title="Reset View" aria-label="Reset View">
-                    <span>⟲ Reset</span>
-                  </button>
-                  <button type="button" class="m-ctrl-btn" id="mExpand" title="Toggle Expanded View" aria-label="Toggle Expanded View">
-                    <span id="mExpandText">⛶ Expand</span>
-                  </button>
+              </div>
+
+              <!-- Connector Arrow -->
+              <div class="arch-connector">
+                <span class="arch-arrow">&darr;</span>
+              </div>
+
+              <!-- Tier 2: Triad Components -->
+              <div class="arch-tier-grid arch-grid-3">
+                <div class="arch-card">
+                  <span class="arch-card-badge">COMPUTER USE</span>
+                  <h4 class="arch-card-title">Content Script &amp; Cursor</h4>
+                  <p class="arch-card-tech">2D IoU &middot; Bezier Physics (60 FPS)</p>
+                </div>
+                <div class="arch-card">
+                  <span class="arch-card-badge">PREFLIGHT GUARD</span>
+                  <h4 class="arch-card-title">Modal Dismissal Guard</h4>
+                  <p class="arch-card-tech">Safe 'Remind me later' Target</p>
+                </div>
+                <div class="arch-card">
+                  <span class="arch-card-badge">LOCAL STORAGE</span>
+                  <h4 class="arch-card-title">IndexedDB v3 Memory</h4>
+                  <p class="arch-card-tech">Local-First On-Device Store</p>
+                </div>
+              </div>
+
+              <!-- Connector Arrow -->
+              <div class="arch-connector">
+                <span class="arch-arrow">&darr;</span>
+              </div>
+
+              <!-- Tier 3: API Gateway (Glowing Orange Border) -->
+              <div class="arch-tier-single">
+                <div class="arch-card arch-card-gateway">
+                  <span class="arch-card-badge">API GATEWAY</span>
+                  <h4 class="arch-card-title">FastAPI Asynchronous Gateway</h4>
+                  <p class="arch-card-tech">FastAPI 0.115 &middot; Uvicorn &middot; Hugging Face</p>
+                </div>
+              </div>
+
+              <!-- Connector Arrow -->
+              <div class="arch-connector">
+                <span class="arch-arrow">&darr;</span>
+              </div>
+
+              <!-- Tier 4: Triad Backend Engines -->
+              <div class="arch-tier-grid arch-grid-3">
+                <div class="arch-card">
+                  <span class="arch-card-badge">DETERMINISTIC ENGINE</span>
+                  <h4 class="arch-card-title">Deterministic Bunk Algebra</h4>
+                  <p class="arch-card-tech">Exact Formulas (75%, 80%, 85%)</p>
+                </div>
+                <div class="arch-card">
+                  <span class="arch-card-badge">VOICE PIPELINE</span>
+                  <h4 class="arch-card-title">Dual-Tier Groq Voice</h4>
+                  <p class="arch-card-tech">Whisper Large-v3 &amp; Orpheus TTS</p>
+                </div>
+                <div class="arch-card">
+                  <span class="arch-card-badge">INFERENCE CLUSTER</span>
+                  <h4 class="arch-card-title">Groq LPU Inference</h4>
+                  <p class="arch-card-tech">Llama 3.3 70B &middot; 500+ tok/s</p>
                 </div>
               </div>
             </div>
 
-            <div class="mermaid-viewport" id="mermaidViewport">
-              <div class="mermaid-pan-zoom-container" id="mermaidPanZoom">
-                <pre class="mermaid" id="systemArchMermaid">
-flowchart TB
-    subgraph TAB["🌐 TIER 1 · CHROME BROWSER TAB (Live Authenticated UMS Session)"]
-        direction LR
-        D1["🛡️ UMS Detector & Preflight<br/>Domain validation & Placement modal dismissal"]
-        D2["👁️ Page Observer & Grounding<br/>Interactive DOM harvesting & 2D IoU matching"]
-        D3["🎯 AI Cursor & Motion<br/>Natural cubic-Bézier trajectories & live badges"]
-        D4["📑 Universal Parsers<br/>Attendance, Date Sheets, Seating & SSRS Timetable"]
-        D5["⚡ Action Engine<br/>Native click dispatch & WAIT_FOR_RENDER watcher"]
-        D1 --> D2 --> D3 --> D4 --> D5
-    end
-
-    subgraph VOICE["🎙️ TIER 2A · SIDE PANEL MULTIMODAL VOICE SUBSYSTEM"]
-        direction LR
-        V1["VoiceController<br/>Microphone lifecycle & barge-in"]
-        V2["VoiceQueue<br/>Sentence chunking & priority queue"]
-        V3["NarrationPolicy<br/>Semantic milestone narration"]
-        V4["AudioController<br/>Web Audio API & prewarming"]
-        V1 --> V2 --> V3 --> V4
-    end
-
-    subgraph CORE["🧠 TIER 2B · REACT 18 AGENT CONTROLLER & DETERMINISTIC ENGINES"]
-        direction LR
-        C1["useAgentController<br/>Perception-action loop manager"]
-        C2["useChatAgent & Intent Router<br/>Token streaming & capability firewall"]
-        C3["Deterministic Calculators<br/>Exact safe-bunk algebra & exam sorting"]
-        C4["IndexedDB v3 Database<br/>On-device chat, executions & datasets"]
-        C1 --> C2 --> C3 --> C4
-    end
-
-    subgraph UI["✨ TIER 2C · APPLE iOS HIG INTERFACE & COMPANION MASCOT"]
-        direction LR
-        U1["Agent Control Panel<br/>Category pills & state visualizers"]
-        U2["Chat Feed & 60 FPS Spring Follow<br/>Critically-damped smooth glide loop"]
-        U3["Examination & Attendance Cards<br/>Fluid CSS grid disclosures (0fr to 1fr)"]
-        U4["Procedural 3D SVG Mascot<br/>22 expressions synced via Bridge"]
-        U1 --> U2 --> U3 --> U4
-    end
-
-    subgraph BACKEND["⚡ TIER 3 · FASTAPI BACKEND SERVICE & GROQ CLOUD INFERENCE"]
-        direction LR
-        B1["/api/agent/plan<br/>Next-action planner & WAIT_FOR_RENDER"]
-        B2["/api/chat<br/>Token streaming with grounded context"]
-        B3["/api/voice/transcribe<br/>Groq Whisper large-v3 STT fallback"]
-        B4["/api/voice/speak<br/>Groq Orpheus vocal-directed synthesis"]
-        B5["Credential Isolation Boundary<br/>Dedicated Agent & Voice Groq Keys"]
-        B1 --> B2 --> B3 --> B4 --> B5
-    end
-
-    %% Cross-Tier Execution Pipelines
-    D5 ==>|"Runtime IPC (DOM Observations ↔ Actions)"| C1
-    V4 ==>|"Voice Intents & Barge-in"| C1
-    C2 ==>|"Mascot Signals & Feed Updates"| U1
-    C1 ==>|"Stateless REST & SSE Audio Streams"| B1
-
-    %% Tier Styling
-    classDef tabBox fill:#0f172a,stroke:#38bdf8,stroke-width:2px,color:#f8fafc;
-    classDef voiceBox fill:#18181b,stroke:#c084fc,stroke-width:2px,color:#f8fafc;
-    classDef coreBox fill:#18181b,stroke:#a855f7,stroke-width:2px,color:#f8fafc;
-    classDef uiBox fill:#18181b,stroke:#818cf8,stroke-width:2px,color:#f8fafc;
-    classDef backendBox fill:#022c22,stroke:#10b981,stroke-width:2px,color:#f8fafc;
-
-    classDef nodeStyle fill:#1e293b,stroke:#64748b,stroke-width:1.5px,color:#f1f5f9;
-    classDef voiceStyle fill:#3b0764,stroke:#c084fc,stroke-width:1.5px,color:#f3e8ff;
-    classDef mathStyle fill:#064e3b,stroke:#34d399,stroke-width:1.5px,color:#ecfdf5;
-    classDef uiStyle fill:#1e1b4b,stroke:#818cf8,stroke-width:1.5px,color:#e0e7ff;
-
-    class TAB tabBox;
-    class VOICE voiceBox;
-    class CORE coreBox;
-    class UI uiBox;
-    class BACKEND backendBox;
-
-    class D1,D2,D3,D4,D5 nodeStyle;
-    class V1,V2,V3,V4 voiceStyle;
-    class C1,C2 nodeStyle;
-    class C3,C4 mathStyle;
-    class U1,U2,U3,U4 uiStyle;
-    class B1,B2,B3,B4,B5 nodeStyle;
-                </pre>
-              </div>
-              <div class="mermaid-hint-overlay">
-                <span>✋ Click &amp; drag to move · Scroll wheel to zoom</span>
-              </div>
-            </div>
             <p class="diagram-caption">Figure 1.0: End-to-end component topology detailing the Chrome Browser Tab live session, Chrome Side Panel (React 18.3 &amp; Apple iOS HIG), and FastAPI Backend Service.</p>
           </div>
         </div>
