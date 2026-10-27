@@ -1,3 +1,16 @@
+---
+title: Lpuagent
+emoji: 🎓
+colorFrom: purple
+colorTo: indigo
+sdk: gradio
+sdk_version: 6.30.0
+app_file: app.py
+pinned: false
+license: mit
+short_description: Autonomous Browser Agent & Academic Copilot 🎓✨
+---
+
 <div align="center">
 
 # ONEE → Autonomous Browser Agent & Academic Copilot 🎓✨
