@@ -1,0 +1,16 @@
+.git
+.github
+.vscode
+.DS_Store
+extension/
+pics/
+docs/
+.pytest_cache
+*.log
+__pycache__
+*.py[cod]
+.venv
+venv
+env
+backend/.env.test
+backend/.pytest_cache
