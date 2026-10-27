@@ -2,32 +2,14 @@
 ONEE - Autonomous Browser Agent & Academic Copilot
 Hugging Face Spaces Entrypoint (Gradio SDK + FastAPI Integration).
 
-This file enables 100% free hosting on Hugging Face Spaces using the Gradio SDK.
-It mounts the entire stateless FastAPI backend (/api/chat, /health, /api/voice/...)
-alongside an interactive dashboard and live health monitor.
+Stateless backend powering the ONEE Chrome Side Panel Extension on Hugging Face Spaces.
+Fully compatible with both Hugging Face CPU Basic and ZeroGPU (A10G) tiers.
 """
 
 import os
 import sys
 
-# Disable Gradio's internal Node SSR proxy in Gradio 5/6 to prevent port 7860 collision
-os.environ["GRADIO_SSR_MODE"] = "false"
-
-import json
-import httpx
-import uvicorn
-import gradio as gr
-
-# Ensure backend package is discoverable on python path
-current_dir = os.path.dirname(os.path.abspath(__file__))
-backend_dir = os.path.join(current_dir, "backend")
-if backend_dir not in sys.path:
-    sys.path.insert(0, backend_dir)
-
-from app.main import app as fastapi_app
-from app.config import settings
-
-# ZeroGPU compatibility for Hugging Face Spaces
+# 1. ZeroGPU compatibility: import spaces FIRST before torch/gradio/uvicorn
 try:
     import spaces
 except ImportError:
@@ -41,6 +23,28 @@ except ImportError:
             return decorator
     spaces = _MockSpaces()
 
+try:
+    import torch
+except ImportError:
+    pass
+
+# 2. Disable Gradio's internal Node SSR proxy in Gradio 5/6 to prevent port 7860 collision
+os.environ["GRADIO_SSR_MODE"] = "false"
+
+import gradio as gr
+import uvicorn
+
+# 3. Ensure backend package is discoverable on python path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+backend_dir = os.path.join(current_dir, "backend")
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+from app.main import app as fastapi_app
+from app.config import settings
+
+
+# 4. Mandatory ZeroGPU function decorators
 @spaces.GPU
 def test_chat_query(message: str):
     """Interactive helper to test the agent directly in the Gradio dashboard."""
@@ -50,7 +54,6 @@ def test_chat_query(message: str):
         return "⚠️ Warning: GROQ_API_KEY is not configured in Space secrets."
     
     try:
-        # Test query against internal agent service
         from app.agent.agent import onee_agent
         import asyncio
         response = asyncio.run(onee_agent.run(
@@ -63,11 +66,14 @@ def test_chat_query(message: str):
     except Exception as e:
         return f"Error executing test query: {str(e)}"
 
+
 @spaces.GPU
 def check_gpu_status():
     """Explicit ZeroGPU heartbeat hook required by Hugging Face ZeroGPU supervisor."""
     return "🟢 ZeroGPU Allocation Verified & Operational"
 
+
+# 5. Build Gradio Blocks UI
 with gr.Blocks(title="ONEE - Autonomous Academic Copilot API") as demo:
     gr.Markdown("""
     # 🎓 ONEE → Autonomous Browser Agent & Academic Copilot
@@ -110,6 +116,7 @@ with gr.Blocks(title="ONEE - Autonomous Academic Copilot API") as demo:
     *Repository:* [github.com/MohammadFayasKhan/LpuUmsAgent](https://github.com/MohammadFayasKhan/LpuUmsAgent)
     """)
 
+
 @fastapi_app.get("/")
 async def root_discovery():
     """Root endpoint for status verification and link to Gradio UI."""
@@ -121,9 +128,37 @@ async def root_discovery():
         "docs": "/docs"
     }
 
+
 # Mount Gradio at /ui so FastAPI endpoints (/health, /api/*) remain completely unhindered
 app = gr.mount_gradio_app(fastapi_app, demo, path="/ui")
 
+
+def signal_zerogpu():
+    """Explicitly triggers ZeroGPU startup reporting to satisfy Hugging Face watchdog."""
+    try:
+        import spaces.zero as zero
+        if hasattr(zero, "startup"):
+            zero.startup()
+            print("🟢 ZeroGPU startup() executed successfully")
+    except Exception as e:
+        print(f"ZeroGPU startup notice: {e}")
+
+    try:
+        from spaces.zero.client import startup_report
+        startup_report()
+        print("🟢 ZeroGPU startup_report() sent to device API")
+    except Exception as e:
+        print(f"ZeroGPU client notice: {e}")
+
+
+@fastapi_app.on_event("startup")
+def on_app_startup():
+    """Triggered as soon as Uvicorn starts the application."""
+    signal_zerogpu()
+
+
 if __name__ == "__main__":
+    # Signal ZeroGPU supervisor before entering uvicorn loop
+    signal_zerogpu()
     port = int(os.environ.get("PORT", 7860))
     uvicorn.run(app, host="0.0.0.0", port=port)
