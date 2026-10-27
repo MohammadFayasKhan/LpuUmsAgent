@@ -142,6 +142,7 @@ export interface VoiceQueueItem {
   priority: SpeechPriority;
   executionId?: string;
   isFinalResult?: boolean;
+  force?: boolean;
   /** FINAL SPEC: only Groq Orpheus or 'auto' (which resolves to Groq) can be requested. */
   providerPreference?: 'groq' | 'auto';
   onStart?: () => void;
@@ -176,6 +177,10 @@ export interface SpeechSynthesisOptions {
   pitch?: number;
   volume?: number;
   voiceURI?: string;
+  priority?: SpeechPriority;
+  executionId?: string;
+  isFinalResult?: boolean;
+  force?: boolean;
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (err: Error) => void;

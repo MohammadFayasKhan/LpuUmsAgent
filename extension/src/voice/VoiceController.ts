@@ -508,7 +508,7 @@ export class VoiceController {
     if (!force && this.preferences.mode === 'OFF') return;
     audioController.unlockAudio().catch(() => {});
     const effectiveExecId = executionId || `speak_${Date.now()}`;
-    if (!executionId) {
+    if (!executionId || force) {
       this.setActiveExecutionId(effectiveExecId);
     }
     if (isFinal) {
@@ -520,7 +520,8 @@ export class VoiceController {
       priority: isFinal ? 'FINAL_RESULT' : 'LOW',
       executionId: effectiveExecId,
       isFinalResult: isFinal,
-      providerPreference: 'auto'
+      providerPreference: 'auto',
+      force
     });
   }
 

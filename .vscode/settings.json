@@ -1,5 +1,11 @@
 {
   "playwright.configs": [
     "extension/playwright.config.ts"
+  ],
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/backend"
+  ],
+  "python.autoComplete.extraPaths": [
+    "${workspaceFolder}/backend"
   ]
 }

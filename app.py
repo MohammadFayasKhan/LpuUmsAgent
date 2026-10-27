@@ -40,8 +40,12 @@ backend_dir = os.path.join(current_dir, "backend")
 if backend_dir not in sys.path:
     sys.path.insert(0, backend_dir)
 
-from app.main import app as fastapi_app
-from app.config import settings
+try:
+    from app.main import app as fastapi_app
+    from app.config import settings
+except ImportError:
+    from backend.app.main import app as fastapi_app
+    from backend.app.config import settings
 
 
 # 4. Mandatory ZeroGPU function decorators
@@ -54,7 +58,10 @@ def test_chat_query(message: str):
         return "⚠️ Warning: GROQ_API_KEY is not configured in Space secrets."
     
     try:
-        from app.agent.agent import onee_agent
+        try:
+            from app.agent.agent import onee_agent
+        except ImportError:
+            from backend.app.agent.agent import onee_agent
         import asyncio
         response = asyncio.run(onee_agent.run(
             user_message=message,
@@ -117,7 +124,10 @@ with gr.Blocks(title="ONEE - Autonomous Academic Copilot API") as demo:
     """)
 
 
-@fastapi_app.get("/")
+from contextlib import asynccontextmanager
+
+
+@fastapi_app.api_route("/", methods=["GET", "HEAD", "POST"], include_in_schema=False)
 async def root_discovery():
     """Root endpoint for status verification and link to Gradio UI."""
     return {
@@ -151,10 +161,14 @@ def signal_zerogpu():
         print(f"ZeroGPU client notice: {e}")
 
 
-@fastapi_app.on_event("startup")
-def on_app_startup():
-    """Triggered as soon as Uvicorn starts the application."""
+@asynccontextmanager
+async def lifespan(app_instance):
+    """Lifespan handler replacing deprecated on_event('startup')."""
     signal_zerogpu()
+    yield
+
+
+fastapi_app.router.lifespan_context = lifespan
 
 
 if __name__ == "__main__":

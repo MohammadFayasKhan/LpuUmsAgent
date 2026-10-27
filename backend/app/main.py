@@ -53,7 +53,7 @@ app.add_middleware(
 # Include dedicated voice API router
 app.include_router(voice_router)
 
-@app.get("/health", status_code=status.HTTP_200_OK)
+@app.api_route("/health", methods=["GET", "HEAD"], status_code=status.HTTP_200_OK)
 async def health_check():
     """
     Health check endpoint to verify backend service readiness.

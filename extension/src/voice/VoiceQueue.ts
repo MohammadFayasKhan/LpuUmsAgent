@@ -100,12 +100,13 @@ export class VoiceQueue {
       executionId?: string;
       isFinalResult?: boolean;
       providerPreference?: 'groq' | 'auto';
+      force?: boolean;
       onStart?: () => void;
       onEnd?: () => void;
       onError?: (err: Error) => void;
     } = {}
   ): string[] {
-    if (!this.preferences.enabled || this.preferences.mode === 'OFF') {
+    if (!options.force && (!this.preferences.enabled || this.preferences.mode === 'OFF')) {
       options.onEnd?.();
       return [];
     }
@@ -122,8 +123,9 @@ export class VoiceQueue {
       return [];
     }
 
-    // Discard immediately if execution ID belongs to an older/stale execution
+    // Discard immediately if execution ID belongs to an older/stale execution (unless forced)
     if (
+      !options.force &&
       options.executionId &&
       this.activeExecutionId &&
       options.executionId !== this.activeExecutionId
@@ -162,6 +164,7 @@ export class VoiceQueue {
         priority: itemPriority,
         executionId: options.executionId ?? (this.activeExecutionId || undefined),
         isFinalResult: Boolean(options.isFinalResult && idx === chunks.length - 1),
+        force: options.force,
         providerPreference: options.providerPreference || 'auto',
         onStart: idx === 0 ? options.onStart : undefined,
         onEnd: idx === chunks.length - 1 ? options.onEnd : undefined,
@@ -298,7 +301,8 @@ export class VoiceQueue {
           onError: item.onError,
           executionId: item.executionId,
           priority: item.priority,
-          isFinalResult: item.isFinalResult
+          isFinalResult: item.isFinalResult,
+          force: item.force
         } as any);
         await this.withTimeout(attempt, 0, `${provider.name} synthesis timed out`);
         if (!this.isItemCurrent(item)) return;
@@ -339,7 +343,7 @@ export class VoiceQueue {
   }
 
   private isItemCurrent(item: VoiceQueueItem): boolean {
-    return this.currentItem === item && (!item.executionId || !this.activeExecutionId || item.executionId === this.activeExecutionId);
+    return this.currentItem === item && (Boolean(item.force) || !item.executionId || !this.activeExecutionId || item.executionId === this.activeExecutionId);
   }
 
   private withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {

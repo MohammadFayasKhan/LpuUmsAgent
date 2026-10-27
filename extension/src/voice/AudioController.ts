@@ -23,6 +23,7 @@ export interface AudioPlaybackItem {
   sampleRate: number;
   priority?: SpeechPriority;
   isFinalResult?: boolean;
+  force?: boolean;
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (err: Error) => void;
@@ -83,13 +84,13 @@ export class AudioController {
       this.activeExecutionId = executionId;
 
       if (executionId !== null) {
-        // Discard any queued items from older executions
+        // Discard any queued items from older executions (unless forced)
         this.queue = this.queue.filter(
-          (item) => !item.executionId || item.executionId === executionId
+          (item) => Boolean(item.force) || !item.executionId || item.executionId === executionId
         );
 
-        // If currently playing item belongs to an older execution, stop it immediately
-        if (this.currentItem?.executionId && this.currentItem.executionId !== executionId) {
+        // If currently playing item belongs to an older execution, stop it immediately (unless forced)
+        if (this.currentItem?.executionId && this.currentItem.executionId !== executionId && !this.currentItem.force) {
           logVoiceDiagnostic('AUDIO_STOPPED', 'AudioController', {
             reason: 'execution_id_mismatch',
             stoppedExecId: this.currentItem.executionId,
@@ -226,8 +227,9 @@ export class AudioController {
     const nextItem = this.queue.shift();
     if (!nextItem) return;
 
-    // Check execution validity before playing
+    // Check execution validity before playing (unless forced)
     if (
+      !nextItem.force &&
       nextItem.executionId &&
       this.activeExecutionId &&
       nextItem.executionId !== this.activeExecutionId

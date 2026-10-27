@@ -14,13 +14,15 @@
     "downloads"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://huggingface.co https://*.huggingface.co https://cdn.jsdelivr.net http://localhost:8000 data: blob:;"
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; connect-src 'self' https://huggingface.co https://*.huggingface.co https://hf.space https://*.hf.space https://cdn.jsdelivr.net http://localhost:8000 data: blob:;"
   },
   "host_permissions": [
     "*://ums.lpu.in/*",
     "*://*.lpu.in/*",
     "https://huggingface.co/*",
     "https://*.huggingface.co/*",
+    "https://hf.space/*",
+    "https://*.hf.space/*",
     "https://cdn.jsdelivr.net/*",
     "http://localhost:8000/*"
   ],

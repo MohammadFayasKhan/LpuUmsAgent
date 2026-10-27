@@ -22,6 +22,7 @@ export interface GroqOrpheusOptions extends SpeechSynthesisOptions {
   executionId?: string;
   priority?: SpeechPriority;
   isFinalResult?: boolean;
+  force?: boolean;
 }
 
 export class GroqOrpheusProvider implements ISpeechSynthesisProvider {
@@ -100,11 +101,11 @@ export class GroqOrpheusProvider implements ISpeechSynthesisProvider {
       const total = segments.length;
 
       for (const segment of segments) {
-        if (!this.isOwned(executionId)) return;
+        if (!this.isOwned(executionId, options?.force)) return;
         const buffer = await this.synthesizeSegment(segment, chosenVoice, executionId);
         const i = index++;
         playChain = playChain.then(() => {
-          if (!this.isOwned(executionId)) return;
+          if (!this.isOwned(executionId, options?.force)) return;
           return audioController.enqueueAndWait({
             id: `orpheus-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             executionId,
@@ -112,6 +113,7 @@ export class GroqOrpheusProvider implements ISpeechSynthesisProvider {
             sampleRate: buffer.sampleRate,
             priority: options?.priority || 'NORMAL',
             isFinalResult: Boolean(options?.isFinalResult && i === total - 1),
+            force: options?.force,
             onStart: i === 0 ? options?.onStart : undefined,
             onEnd: i === total - 1 ? options?.onEnd : undefined,
             onError: options?.onError
@@ -129,8 +131,8 @@ export class GroqOrpheusProvider implements ISpeechSynthesisProvider {
     }
   }
 
-  private isOwned(executionId?: string): boolean {
-    if (!executionId) return true;
+  private isOwned(executionId?: string, force?: boolean): boolean {
+    if (force || !executionId) return true;
     const active = audioController.getActiveExecutionId();
     return !active || active === executionId;
   }
