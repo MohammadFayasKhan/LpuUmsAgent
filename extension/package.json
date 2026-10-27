@@ -1,8 +1,8 @@
 {
-  "name": "onee-lpu-agent",
+  "name": "lpu-ums-agent",
   "private": true,
-  "version": "1.1.0",
-  "description": "ONEE - LPU Agent Chrome Extension",
+  "version": "2.4.0",
+  "description": "LPU UMS Agent Chrome Extension",
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",

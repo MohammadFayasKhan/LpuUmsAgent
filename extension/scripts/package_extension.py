@@ -30,15 +30,15 @@ def package_extension():
     with open(manifest_path, 'r', encoding='utf-8') as f:
         manifest = json.load(f)
 
-    version = manifest.get('version', '1.0.0')
-    zip_filename = f"onee-lpu-agent-v{version}.zip"
+    version = manifest.get('version', '2.4.0')
+    zip_filename = f"lpu-ums-agent-v{version}.zip"
     zip_filepath = os.path.join(dist_dir, zip_filename)
 
     # Remove existing zip if present
     if os.path.exists(zip_filepath):
         os.remove(zip_filepath)
 
-    print(f"📦 Packaging ONEE - LPU Agent v{version}...")
+    print(f"📦 Packaging LPU UMS Agent v{version}...")
     files_added = []
 
     with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -64,7 +64,15 @@ def package_extension():
             if req not in contents:
                 print(f"⚠️ Warning: Missing required entry in ZIP: {req}")
 
-    print("🚀 Extension package is ready for Chrome Web Store Developer Dashboard upload.")
+    # Copy to website downloads directory for landing page direct download
+    website_downloads = os.path.abspath(os.path.join(ext_dir, '..', 'website', 'assets', 'downloads'))
+    if os.path.isdir(website_downloads):
+        import shutil
+        target_web_zip = os.path.join(website_downloads, 'lpu-ums-agent-extension.zip')
+        shutil.copy2(zip_filepath, target_web_zip)
+        print(f"🌐 Synced clean extension package to website: {target_web_zip} ({size_kb / 1024:.1f} MB)")
+
+    print("🚀 Extension package is ready for Chrome Web Store & unpacked installation.")
 
 if __name__ == '__main__':
     package_extension()

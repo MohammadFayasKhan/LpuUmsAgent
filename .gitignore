@@ -30,6 +30,7 @@ yarn-error.log*
 
 # Build artifacts & test outputs
 test-results/
+extension/dist/*.zip
 extension/dist/voices/
 extension/dist/wasm/
 extension/dist/pic/
