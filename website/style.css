@@ -26,6 +26,10 @@
   padding: 0;
 }
 
+img, video, svg, canvas {
+  max-width: 100%;
+}
+
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 80px;
@@ -40,6 +44,7 @@ body {
   font-size: 1rem;
   line-height: 1.7;
   overflow-x: hidden;
+  width: 100%;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -99,14 +104,15 @@ a {
   letter-spacing: -0.02em;
   color: var(--text-primary);
   margin-bottom: 0.6rem;
-  font-size: 2.25rem;
+  font-size: clamp(1.6rem, 3.8vw, 2.25rem);
   font-weight: 800;
+  word-break: break-word;
 }
 
 .section-subtitle {
   color: var(--text-secondary);
   max-width: 720px;
-  font-size: 1.05rem;
+  font-size: clamp(0.875rem, 1.8vw, 1.05rem);
   line-height: 1.6;
 }
 
@@ -241,6 +247,37 @@ a {
   }
 }
 
+@media (max-width: 480px) {
+  .header-inner {
+    padding: 0 1rem;
+  }
+  .brand {
+    font-size: 1.1rem;
+    gap: 0.5rem;
+  }
+  .brand-logo {
+    width: 24px;
+    height: 24px;
+  }
+  .btn-download-nav {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.75rem;
+    gap: 0.35rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .brand-title {
+    font-size: 1rem;
+  }
+  .btn-download-nav span {
+    display: none;
+  }
+  .btn-download-nav {
+    padding: 0.4rem 0.55rem;
+  }
+}
+
 /* ========================================================
    01 HERO SECTION
    ======================================================== */
@@ -271,15 +308,16 @@ a {
   letter-spacing: -0.035em;
   color: #fff;
   margin-bottom: 1.15rem;
-  font-size: 3.75rem;
+  font-size: clamp(2rem, 5.5vw, 3.75rem);
   font-weight: 800;
-  line-height: 1.05;
+  line-height: 1.1;
+  word-break: break-word;
 }
 
 .project-summary {
   color: #d1d9e6;
   max-width: 880px;
-  font-size: 1.3rem;
+  font-size: clamp(0.95rem, 2.2vw, 1.3rem);
   font-weight: 400;
   line-height: 1.65;
   margin-bottom: 1.75rem;
@@ -291,6 +329,28 @@ a {
   flex-wrap: wrap;
   gap: 1rem;
   margin-bottom: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .hero-cta-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .btn-hero-primary,
+  .btn-hero-secondary {
+    width: 100%;
+    justify-content: center;
+    padding: 0.8rem 1.25rem;
+    font-size: 0.9rem;
+  }
+  .hero-spec-pill {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    font-size: 0.72rem;
+    padding: 0.6rem 0.85rem;
+  }
 }
 
 .btn-hero-primary {
@@ -421,7 +481,13 @@ a {
   gap: 0.35rem;
   max-width: 100%;
   overflow-x: auto;
-  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.screenshot-switcher::-webkit-scrollbar {
+  display: none;
 }
 
 .ss-btn {
@@ -484,7 +550,7 @@ a {
   justify-content: center;
   align-items: center;
   width: 100%;
-  min-height: 480px;
+  min-height: clamp(180px, 45vw, 480px);
   position: relative;
   overflow: hidden;
 }
@@ -510,6 +576,26 @@ a {
   padding: 0.3rem 0.7rem;
   border-radius: 6px;
   pointer-events: none;
+}
+
+@media (max-width: 540px) {
+  .window-bar {
+    padding: 0.55rem 0.75rem;
+    gap: 0.45rem;
+  }
+  .window-address {
+    display: none;
+  }
+  .ss-btn {
+    font-size: 0.72rem;
+    padding: 0.3rem 0.55rem;
+  }
+  .image-zoom-hint {
+    font-size: 0.62rem;
+    bottom: 8px;
+    right: 8px;
+    padding: 0.2rem 0.5rem;
+  }
 }
 
 /* ========================================================
@@ -587,6 +673,31 @@ a {
   .three-points-grid {
     grid-template-columns: 1fr;
     gap: 1.5rem;
+  }
+  .arch-level-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.75rem;
+    gap: 0.5rem;
+    margin-bottom: 1.75rem;
+  }
+  .arch-level-tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .level-tab {
+    flex-shrink: 0;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.8125rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .three-points-grid {
+    padding-top: 1.25rem;
+    margin-top: 1.25rem;
+    gap: 1.25rem;
   }
 }
 
@@ -872,6 +983,45 @@ a {
   left: 0;
 }
 
+@media (max-width: 992px) {
+  .arch-split-layout {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+  .diagram-canvas,
+  .inspector-panel {
+    min-height: auto;
+    padding: 1.75rem 1.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .diagram-canvas,
+  .inspector-panel {
+    padding: 1.25rem 0.85rem;
+    border-radius: 12px;
+  }
+  .tree-branch {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+  .node-box {
+    max-width: 100%;
+    padding: 0.75rem 0.85rem;
+  }
+  .inspector-details {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    padding-top: 1rem;
+  }
+  .inspector-title {
+    font-size: 1.2rem;
+  }
+  .canvas-hint {
+    margin-bottom: 1.25rem;
+  }
+}
+
 /* ========================================================
    SYSTEM ARCHITECTURE & BOUNDARY TOPOLOGY (Static Flow)
    ======================================================== */
@@ -1030,6 +1180,33 @@ a {
 
   .arch-topology-card {
     padding: 1.5rem 1.25rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .arch-topology-card {
+    padding: 1.25rem 0.85rem;
+    border-radius: 12px;
+  }
+  .arch-topology-card .diagram-header {
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.85rem;
+  }
+  .arch-card {
+    padding: 1.25rem 0.85rem;
+    border-radius: 10px;
+  }
+  .arch-card-title {
+    font-size: 1.05rem;
+  }
+  .arch-card-tech {
+    font-size: 0.75rem;
+  }
+  .arch-connector {
+    padding: 0.6rem 0;
+  }
+  .arch-arrow {
+    font-size: 1.2rem;
   }
 }
 
@@ -1213,6 +1390,41 @@ a {
   line-height: 1.6;
 }
 
+@media (max-width: 640px) {
+  .zoom-selector {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.5rem;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .zoom-selector::-webkit-scrollbar {
+    display: none;
+  }
+  .zoom-btn {
+    flex-shrink: 0;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.8rem;
+  }
+  .zoom-grid {
+    padding: 1.25rem 0.85rem;
+    gap: 1.5rem;
+    border-radius: 12px;
+  }
+  .zoom-explanation h3 {
+    font-size: 1.15rem;
+  }
+  .editorial-list {
+    padding-left: 1rem;
+    gap: 0.6rem;
+  }
+  .editorial-list li {
+    font-size: 0.8125rem;
+  }
+}
+
 /* Level 3: Data Flow Pipelines */
 .data-flow-container {
   background: var(--bg-surface);
@@ -1300,6 +1512,37 @@ a {
   flex-shrink: 0;
 }
 
+@media (max-width: 768px) {
+  .data-flow-container {
+    padding: 1.5rem 1rem;
+    gap: 1.5rem;
+    border-radius: 12px;
+  }
+  .flow-picker {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.5rem;
+    gap: 0.5rem;
+  }
+  .flow-picker::-webkit-scrollbar {
+    display: none;
+  }
+  .flow-tab-btn {
+    flex-shrink: 0;
+    padding: 0.45rem 0.85rem;
+    font-size: 0.8rem;
+  }
+  .flow-step-deck {
+    -webkit-overflow-scrolling: touch;
+  }
+  .flow-card {
+    min-width: 150px;
+    padding: 0.9rem;
+  }
+}
+
 /* ========================================================
    04 HOW IT WORKS (WORKFLOWS)
    ======================================================== */
@@ -1313,6 +1556,13 @@ a {
   grid-template-columns: 1fr 1fr;
   gap: 3.5rem;
   margin-top: 2rem;
+}
+
+@media (max-width: 900px) {
+  .timelines-grid {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+  }
 }
 
 .timeline-column {
@@ -1384,6 +1634,23 @@ a {
   font-family: var(--font-mono);
   color: var(--text-muted);
   font-size: 0.875rem;
+}
+
+@media (max-width: 480px) {
+  .timeline-step {
+    padding: 0.85rem 0.95rem;
+    gap: 0.75rem;
+  }
+  .step-num {
+    font-size: 0.75rem;
+    min-width: 20px;
+  }
+  .step-body h4 {
+    font-size: 0.875rem;
+  }
+  .step-body p {
+    font-size: 0.78rem;
+  }
 }
 
 /* ========================================================
@@ -1608,6 +1875,55 @@ a {
   }
 }
 
+@media (max-width: 640px) {
+  .download-hub-card {
+    padding: 1.5rem 1rem;
+    gap: 1.5rem;
+    border-radius: 12px;
+  }
+  .hub-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    width: 100%;
+  }
+  .hub-icon {
+    width: 52px;
+    height: 52px;
+    font-size: 1.6rem;
+  }
+  .hub-text h3 {
+    font-size: 1.35rem;
+  }
+  .hub-text p {
+    font-size: 0.875rem;
+  }
+  .hub-meta {
+    font-size: 0.7rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .setup-card {
+    padding: 1.25rem 1rem;
+    border-radius: 12px;
+  }
+  .setup-card h4 {
+    font-size: 1.05rem;
+  }
+  .setup-card p {
+    font-size: 0.8125rem;
+  }
+  .code-snippet {
+    font-size: 0.72rem;
+    max-width: 100%;
+    word-break: break-all;
+  }
+  .setup-tips-box {
+    padding: 1.25rem 1rem;
+    border-radius: 10px;
+  }
+}
+
 /* ========================================================
    06 ENGINEERING DECISIONS
    ======================================================== */
@@ -1702,6 +2018,20 @@ a {
   }
 }
 
+@media (max-width: 480px) {
+  .decision-card {
+    padding: 1.25rem 0.85rem;
+    border-radius: 12px;
+    gap: 1rem;
+  }
+  .decision-title {
+    font-size: 1.05rem;
+  }
+  .pdr-item p {
+    font-size: 0.8125rem;
+  }
+}
+
 /* ========================================================
    07 INFRASTRUCTURE SECTION
    ======================================================== */
@@ -1755,8 +2085,31 @@ a {
 }
 
 @media (max-width: 640px) {
+  .infra-card {
+    padding: 1.5rem 0.85rem;
+    border-radius: 12px;
+    gap: 1.25rem;
+  }
+  .topology-display {
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+  }
   .ascii-infra {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
+    line-height: 1.35;
+  }
+  .infra-stack-footer {
+    font-size: 0.72rem;
+    gap: 0.4rem;
+    padding-top: 1rem;
+  }
+}
+
+@media (max-width: 400px) {
+  .ascii-infra {
+    font-size: 0.52rem;
+    line-height: 1.3;
   }
 }
 
@@ -1820,6 +2173,19 @@ a {
 @media (max-width: 768px) {
   .challenges-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .challenge-card {
+    padding: 1.25rem 0.85rem;
+    gap: 0.5rem;
+  }
+  .ch-title {
+    font-size: 1.05rem;
+  }
+  .ch-body {
+    font-size: 0.8125rem;
   }
 }
 
@@ -1932,6 +2298,64 @@ a {
   }
   .closing-headline {
     font-size: 1.65rem;
+  }
+  .overview-section,
+  .architecture-section,
+  .how-it-works-section,
+  .setup-section,
+  .decisions-section,
+  .infra-section,
+  .challenges-section {
+    padding: 3.25rem 0;
+  }
+  .closing-section {
+    padding: 3.25rem 0 4rem;
+  }
+  .container,
+  .container-wide {
+    padding: 0 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .overview-section,
+  .architecture-section,
+  .how-it-works-section,
+  .setup-section,
+  .decisions-section,
+  .infra-section,
+  .challenges-section {
+    padding: 2.5rem 0;
+  }
+  .closing-section {
+    padding: 2.5rem 0 3.25rem;
+  }
+  .container,
+  .container-wide {
+    padding: 0 1rem;
+  }
+  .closing-headline {
+    font-size: 1.35rem;
+    line-height: 1.25;
+  }
+  .closing-statement {
+    font-size: 0.875rem;
+  }
+  .closing-cols {
+    gap: 1.5rem;
+  }
+  .built-stack {
+    font-size: 0.72rem;
+  }
+  .modal-overlay {
+    padding: 0.75rem;
+  }
+  .modal-close {
+    top: -38px;
+    right: 0;
+    width: 32px;
+    height: 32px;
+    font-size: 1.1rem;
   }
 }
 

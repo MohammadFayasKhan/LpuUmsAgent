@@ -102,6 +102,13 @@ document.addEventListener("DOMContentLoaded", () => {
       isPaused = false;
       startTime = Date.now();
     });
+    heroScreenshotWindow.addEventListener("touchstart", () => {
+      isPaused = true;
+    }, { passive: true });
+    heroScreenshotWindow.addEventListener("touchend", () => {
+      isPaused = false;
+      startTime = Date.now();
+    }, { passive: true });
   }
 
   // Pause auto-play when user scrolls down past the hero screenshot section (prevent background CPU & unwanted changes)
