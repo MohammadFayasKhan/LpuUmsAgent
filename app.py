@@ -96,9 +96,19 @@ with gr.Blocks(title="ONEE - Autonomous Academic Copilot API", css=custom_css, t
     *Repository:* [github.com/MohammadFayasKhan/LpuUmsAgent](https://github.com/MohammadFayasKhan/LpuUmsAgent)
     """)
 
-# Mount Gradio onto the existing FastAPI application
-# Native FastAPI endpoints (/health, /api/*) retain first-class routing priority
-app = gr.mount_gradio_app(fastapi_app, demo, path="/")
+@fastapi_app.get("/")
+async def root_discovery():
+    """Root endpoint for status verification and link to Gradio UI."""
+    return {
+        "status": "online",
+        "service": "ONEE Autonomous Academic Copilot API",
+        "health": "/health",
+        "ui": "/ui",
+        "docs": "/docs"
+    }
+
+# Mount Gradio at /ui so FastAPI endpoints (/health, /api/*) remain completely unhindered
+app = gr.mount_gradio_app(fastapi_app, demo, path="/ui")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 7860))
