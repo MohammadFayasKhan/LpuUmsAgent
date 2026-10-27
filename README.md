@@ -1,32 +1,39 @@
 <div align="center">
 
-# ONEE → Autonomous Browser Agent & Academic Copilot 🎓✨
+# LPU UMS Agent → Autonomous Browser Agent & Academic Copilot 🎓✨
 
-**An autonomous, privacy-first Browser Agent with Computer Use for Attendance Intelligence, Examination Date Sheets, Seating Plans, and Lecture Schedules on LPU UMS.**
+**An autonomous, privacy-first Browser Agent with Computer Use for Attendance Intelligence, Examination Date Sheets, Seating Plans, Timetable Navigation, and Voice Interaction on LPU UMS.**
 
+[![Website](https://img.shields.io/badge/Live_Website-lpuumsagent.vercel.app-ff8426?style=flat-square&logo=vercel&logoColor=white)](http://lpuumsagent.vercel.app/)
+[![Download Extension](https://img.shields.io/badge/Download_Extension-Google_Drive-4285F4?style=flat-square&logo=googledrive&logoColor=white)](https://drive.google.com/file/d/1u1zKyuFMx4wedX4Z2BqrnG-K5Os7hGu8/view?usp=sharing)
+[![Version](https://img.shields.io/badge/Version-v2.4.0-ff8426?style=flat-square)](https://github.com/MohammadFayasKhan/LpuUmsAgent)
+[![Chrome Extension](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![React](https://img.shields.io/badge/React-18.3-20232A?style=flat-square&logo=react&logoColor=61DAFB)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Vite](https://img.shields.io/badge/Vite-5.4-B73BFE?style=flat-square&logo=vite&logoColor=FFD62E)](https://vitejs.dev/)
-[![Chrome Extension](https://img.shields.io/badge/Chrome_Extension-Manifest_V3-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](https://developer.chrome.com/docs/extensions/mv3/)
 [![Design System](https://img.shields.io/badge/Design_System-Apple_iOS_HIG-007AFF?style=flat-square&logo=apple&logoColor=white)](https://developer.apple.com/design/human-interface-guidelines/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white)](https://www.python.org/)
-[![IndexedDB](https://img.shields.io/badge/Storage-IndexedDB_Local--First-7C3AED?style=flat-square)](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
 [![Vitest](https://img.shields.io/badge/Vitest-422_Passing-22c55e?style=flat-square&logo=vitest&logoColor=white)](https://vitest.dev/)
 [![Pytest](https://img.shields.io/badge/Pytest-22_Passing-22c55e?style=flat-square&logo=pytest&logoColor=white)](https://pytest.org/)
-[![Voice Agent](https://img.shields.io/badge/Voice_Agent-Multimodal_Computer_Use-7c3aed?style=flat-square)](https://groq.com/)
-[![Playwright](https://img.shields.io/badge/E2E-Playwright_Verified-2EAD33?style=flat-square&logo=playwright&logoColor=white)](https://playwright.dev/)
 [![License](https://img.shields.io/badge/License-MIT-22c55e?style=flat-square)](LICENSE)
 
 <br/>
 
-<img src="extension/public/icons/onee-master-1024.png" alt="ONEE Companion Mascot & Browser Agent" width="180" style="border-radius: 28px;" />
-<p align="center"><em>Native Chrome Side Panel Agent operating directly inside the student's authenticated UMS session</em></p>
+<img src="lpulogo.png" alt="LPU UMS Agent" width="130" style="border-radius: 50%; box-shadow: 0 4px 20px rgba(255, 132, 38, 0.35); border: 2px solid rgba(255, 140, 60, 0.4);" />
+
+<p align="center">
+  <a href="http://lpuumsagent.vercel.app/"><b>🌐 Live Website: http://lpuumsagent.vercel.app/</b></a> &nbsp;•&nbsp;
+  <a href="https://drive.google.com/file/d/1u1zKyuFMx4wedX4Z2BqrnG-K5Os7hGu8/view?usp=sharing"><b>📦 Download Extension (.ZIP)</b></a>
+</p>
+
+<p align="center"><em>Native Chrome Side Panel Agent operating directly inside the student's authenticated LPU UMS session</em></p>
 
 </div>
 
-> **No passwords. No scrapers. No headless browsers.**
-> ONEE works inside your real Chrome session → sees the same pages you see → navigates with a visible AI cursor → extracts verified data → stores everything locally on your device.
+> **🌐 Live Showcase Website:** [http://lpuumsagent.vercel.app/](http://lpuumsagent.vercel.app/)  
+> **📦 Direct Extension Download:** [Google Drive Mirror (.ZIP)](https://drive.google.com/file/d/1u1zKyuFMx4wedX4Z2BqrnG-K5Os7hGu8/view?usp=sharing)  
+> **⚡ Version:** v2.4.0 (Manifest V3 · Chrome Side Panel · Ready to Install)  
+> **No passwords. No scrapers. No headless browsers.**  
+> LPU UMS Agent works inside your real Chrome session → sees the same pages you see → navigates with a visible AI cursor → extracts verified data → stores everything locally on your device.
 
 ---
 
@@ -34,7 +41,9 @@
 
 | Specification Parameter | Platform Standard |
 | :--- | :--- |
-| **Project Title** | **ONEE - Autonomous Browser Agent & Academic Copilot** |
+| **Project Title** | **LPU UMS Agent - Autonomous Browser Agent & Academic Copilot** |
+| **Live Showcase Website** | **[http://lpuumsagent.vercel.app/](http://lpuumsagent.vercel.app/)** |
+| **Download Package** | **[Google Drive (.ZIP Release)](https://drive.google.com/file/d/1u1zKyuFMx4wedX4Z2BqrnG-K5Os7hGu8/view?usp=sharing)** |
 | **Target Portals** | **`ums.lpu.in` (Legacy ASP.NET/SSRS) & `studentums.lpu.in` (Angular SPA)** |
 | **Runtime Environment** | **Google Chrome Side Panel (Manifest V3 Extension)** |
 | **Execution Paradigm** | **Autonomous In-Session Computer Use (Perception-Action Loop)** |
@@ -513,21 +522,43 @@ OneeLpuAgentFinal/
 
 ---
 
-## ⚙️ Installation & Local Development
+## ⚙️ Installation & Setup Guide
+
+### ⚡ Quick Start: 30-Second Install (No Build Tools Required)
+
+If you simply want to run the extension in Google Chrome, Brave, or Microsoft Edge:
+
+1. **Download the pre-built Extension ZIP** directly from Google Drive:  
+   👉 **[Download LPU UMS Agent Extension (.ZIP)](https://drive.google.com/file/d/1u1zKyuFMx4wedX4Z2BqrnG-K5Os7hGu8/view?usp=sharing)**
+2. **Extract** the downloaded `.zip` archive into a folder of your choice on your computer.
+3. Open Google Chrome (or any Chromium browser) and go to:
+   ```
+   chrome://extensions/
+   ```
+4. Enable **Developer mode** via the toggle switch in the top-right corner.
+5. Click the **Load unpacked** button in the top-left corner.
+6. Select the extracted folder (containing `manifest.json`).
+7. Open **[https://ums.lpu.in](https://ums.lpu.in)** or **[https://studentums.lpu.in](https://studentums.lpu.in)**, log in normally, and click the **LPU UMS Agent** icon in your Chrome toolbar or Side Panel to launch your copilot!
+
+> 🌐 **Interactive Documentation & Features Tour:** Visit the live website at **[http://lpuumsagent.vercel.app/](http://lpuumsagent.vercel.app/)**
+
+---
+
+### 🛠️ Developer Setup: Building from Source
 
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (version 18.x or later)
-- [Python 3.11+](https://www.python.org/) (for optional backend streaming server)
-- Google Chrome (or any Chromium browser supporting the Side Panel API)
+- [Python 3.11+](https://www.python.org/) (for optional local backend streaming server)
+- Google Chrome (or Chromium browser supporting Side Panel API)
 
-### 1. Clone the Repository
+#### 1. Clone the Repository
 ```bash
 git clone https://github.com/MohammadFayasKhan/LpuUmsAgent.git
 cd LpuUmsAgent
 ```
 
-### 2. Build the Chrome Extension
+#### 2. Build the Chrome Extension
 ```bash
 cd extension
 npm install
@@ -541,14 +572,14 @@ This compiles TypeScript and outputs production bundles into `extension/dist/`:
 - `offscreen.html` (Offscreen audio decoding pipeline)
 - `permission.html` (Microphone permission onboarding)
 
-### 3. Load Extension in Google Chrome
+#### 3. Load Extension in Google Chrome
 1. Open Google Chrome and navigate to `chrome://extensions/`.
 2. Enable **Developer mode** via the top-right toggle switch.
 3. Click **Load unpacked** and select the `extension/dist` folder.
-4. Log into `https://ums.lpu.in/` normally and open the Side Panel (or click the ONEE icon in your extension toolbar).
+4. Log into `https://ums.lpu.in/` normally and open the Side Panel.
 
-### 4. (Optional) Start the FastAPI Backend
-ONEE functions offline with built-in deterministic calculation tools and local planning. To enable cloud LLM streaming and expressive voice:
+#### 4. (Optional) Start the FastAPI Backend
+LPU UMS Agent functions offline with built-in deterministic calculation tools and local planning. To enable cloud LLM streaming and expressive voice:
 
 ```bash
 cd backend
@@ -632,7 +663,7 @@ As a B.Tech Computer Science Engineering student at Lovely Professional Universi
 
 Existing tools often require students to enter passwords into third-party databases, use fragile scrapers that trigger account lockouts, or use chatbots that make arithmetic mistakes.
 
-I built ONEE to demonstrate a clean, reliable browser agent architecture:
+I built LPU UMS Agent to demonstrate a clean, reliable browser agent architecture:
 - Operates inside the student's real, authenticated session without storing credentials.
 - Separates deterministic calculations from conversational reasoning.
 - Treats portal loading delays as explicit state transitions (`WAIT_FOR_RENDER`) instead of arbitrary timeouts.
@@ -655,7 +686,7 @@ Contributions, issues, and feature requests are welcome! Feel free to check the 
 
 ## ⭐ Show Your Support
 
-If ONEE helped you track your attendance or find your exam seat, give the project a **star** → it means a lot!
+If LPU UMS Agent helped you track your attendance or find your exam seat, give the project a **star** → it means a lot!
 
 ---
 
