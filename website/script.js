@@ -170,12 +170,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const mExpand = document.getElementById("mExpand");
   const mExpandText = document.getElementById("mExpandText");
 
-  let mScale = 0.85;
+  let mScale = 0.38;
   let mPanX = 0;
   let mPanY = 0;
-  const M_MIN_SCALE = 0.35;
+  const M_MIN_SCALE = 0.2;
   const M_MAX_SCALE = 3.5;
-  const M_SCALE_STEP = 0.2;
+  const M_SCALE_STEP = 0.1;
   const M_PAN_STEP = 80;
 
   function applyMermaidTransform(smooth = true) {
@@ -206,7 +206,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (mReset) {
     mReset.addEventListener("click", () => {
-      mScale = 0.85;
+      mScale = 0.38;
       mPanX = 0;
       mPanY = 0;
       applyMermaidTransform(true);
@@ -310,7 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Double-click to reset view
     mViewport.addEventListener("dblclick", (e) => {
       if (e.target.closest("button")) return;
-      mScale = 0.85;
+      mScale = 0.38;
       mPanX = 0;
       mPanY = 0;
       applyMermaidTransform(true);

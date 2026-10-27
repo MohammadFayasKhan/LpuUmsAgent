@@ -998,9 +998,9 @@ a {
   user-select: none;
   touch-action: none;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 2rem 1.5rem;
+  padding: 1.5rem;
 }
 
 .mermaid-viewport.is-dragging {
@@ -1009,7 +1009,7 @@ a {
 
 .mermaid-pan-zoom-container {
   display: inline-block;
-  transform-origin: top center;
+  transform-origin: center center;
   transition: transform 0.06s ease-out;
   will-change: transform;
 }
